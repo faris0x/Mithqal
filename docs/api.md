@@ -4,7 +4,7 @@ This document defines the stable library surface for version 0.0.1.
 
 ## Implementation status
 
-The session, parsing, printing, exact arithmetic, comparisons, logic, and error values are active. Definitions, pattern matching, the virtual machine, and the collector are part of this contract and are still being implemented. The example at the end of this document describes the target behavior once definitions land.
+The session, parsing, printing, exact arithmetic, comparisons, logic, error values, definitions, pattern matching, and lexical `let` are active. Closures, the virtual machine, and the collector are part of this contract and are still being implemented. The example at the end of this document works with the current definition and pattern implementation.
 
 ## Design rules
 

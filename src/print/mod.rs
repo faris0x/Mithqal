@@ -72,7 +72,15 @@ fn head_name(arena: &Arena, id: ExprId) -> Option<&str> {
 
 fn precedence(arena: &Arena, id: ExprId) -> u8 {
     match arena.node(id) {
-        Node::Int(_) | Node::Rat(_) | Node::Symbol(_) => P_ATOM,
+        Node::Int(value) => {
+            if value.sign() < 0 {
+                P_UNARY
+            } else {
+                P_ATOM
+            }
+        }
+        Node::Rat(_) => P_MUL,
+        Node::Symbol(_) => P_ATOM,
         Node::Call { .. } => match head_name(arena, id) {
             Some("set") | Some("setDelayed") => P_SET,
             Some("rule") | Some("ruleDelayed") => P_RULE,

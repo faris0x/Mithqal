@@ -2,7 +2,7 @@
 
 use crate::config::Config;
 use crate::diag::{Diagnostic, ErrorCode, Span};
-use crate::eval::evaluate_with_limits;
+use crate::eval::{SessionDefinitions, evaluate_with_definitions};
 use crate::expr::{Arena, ExprId, Node};
 use crate::num::{Int, Rat};
 use crate::print;
@@ -31,6 +31,7 @@ pub enum ExprView<'a> {
 /// A symbolic math session.
 pub struct Session {
     arena: Arena,
+    definitions: SessionDefinitions,
     last_result: Option<ExprId>,
     config: Config,
 }
@@ -45,6 +46,7 @@ impl Session {
     pub fn with_config(config: Config) -> Self {
         Session {
             arena: Arena::new(),
+            definitions: SessionDefinitions::new(),
             last_result: None,
             config,
         }
@@ -90,8 +92,9 @@ impl Session {
 
     /// Evaluate an expression to a normal form.
     pub fn eval(&mut self, expression: ExprId) -> Result<ExprId, Diagnostic> {
-        let value = evaluate_with_limits(
+        let value = evaluate_with_definitions(
             &mut self.arena,
+            &mut self.definitions,
             expression,
             self.config.max_steps,
             self.config.max_depth,

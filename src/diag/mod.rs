@@ -56,6 +56,8 @@ pub enum ErrorCode {
     EvalBudget,
     /// A call has the wrong number of arguments.
     EvalArity,
+    /// A definition target is invalid.
+    EvalDefinition,
     /// A numeric operation failed.
     NumericFailure,
     /// An internal invariant failed.
@@ -78,6 +80,7 @@ impl ErrorCode {
             ErrorCode::EvalProtected => "TGN-EVAL-0011",
             ErrorCode::EvalBudget => "TGN-EVAL-0012",
             ErrorCode::EvalArity => "TGN-EVAL-0013",
+            ErrorCode::EvalDefinition => "TGN-EVAL-0014",
             ErrorCode::NumericFailure => "TGN-NUM-0001",
             ErrorCode::InternalInvariant => "TGN-INT-0001",
         }
@@ -97,7 +100,8 @@ impl ErrorCode {
             ErrorCode::EvalNotCallable
             | ErrorCode::EvalProtected
             | ErrorCode::EvalBudget
-            | ErrorCode::EvalArity => ErrorKind::Eval,
+            | ErrorCode::EvalArity
+            | ErrorCode::EvalDefinition => ErrorKind::Eval,
             ErrorCode::NumericFailure => ErrorKind::Numeric,
             ErrorCode::InternalInvariant => ErrorKind::Internal,
         }

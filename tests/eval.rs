@@ -70,7 +70,7 @@ fn imaginary_unit() {
 fn gaussian_rationals_normalize() {
     assert_eq!(ep("(1+i)*(1-i)"), "2");
     assert_eq!(ep("(1+i)^2"), "2*i");
-    assert_eq!(ep("(2+3*i)/(1-i)"), "-1/2+5/2*i");
+    assert_eq!(ep("(2+3*i)/(1-i)"), "-1/2+(5/2)*i");
     assert_eq!(ep("(a+b*i)*(c+d*i)"), "(a+b*i)*(c+d*i)");
 }
 

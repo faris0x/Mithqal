@@ -4,12 +4,21 @@
 //! logic, and the boundary for definitions. Definitions and pattern matching
 //! are added in the next layer.
 
+mod definitions;
+mod pattern;
+
 use core::cmp::Ordering;
+use std::collections::HashMap;
 
 use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode};
-use crate::expr::{Arena, Attributes, ExprId, Node};
+use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
 use crate::num::{Int, Rat};
+
+use definitions::{Definitions, Rule};
+use pattern::{Bindings, match_pattern, substitute};
+
+pub(crate) use definitions::Definitions as SessionDefinitions;
 
 struct Heads {
     plus: ExprId,
@@ -34,11 +43,16 @@ struct Heads {
     indeterminate: ExprId,
     failed: ExprId,
     imaginary: ExprId,
+    set: ExprId,
+    set_delayed: ExprId,
+    let_head: ExprId,
+    null: ExprId,
 }
 
 /// Evaluate an expression to a normal form.
 pub fn evaluate(arena: &mut Arena, id: ExprId) -> Result<ExprId, Diagnostic> {
-    evaluate_with_limits(arena, id, 1_000_000, 2048)
+    let mut definitions = Definitions::new();
+    evaluate_with_definitions(arena, &mut definitions, id, 1_000_000, 2048)
 }
 
 /// Evaluate an expression with explicit budget and depth limits.
@@ -48,7 +62,18 @@ pub fn evaluate_with_limits(
     max_steps: u64,
     max_depth: u32,
 ) -> Result<ExprId, Diagnostic> {
-    let mut evaluator = Evaluator::new(arena);
+    let mut definitions = Definitions::new();
+    evaluate_with_definitions(arena, &mut definitions, id, max_steps, max_depth)
+}
+
+pub(crate) fn evaluate_with_definitions(
+    arena: &mut Arena,
+    definitions: &mut Definitions,
+    id: ExprId,
+    max_steps: u64,
+    max_depth: u32,
+) -> Result<ExprId, Diagnostic> {
+    let mut evaluator = Evaluator::new(arena, definitions);
     evaluator.max_steps = max_steps.max(1);
     evaluator.max_depth = max_depth.max(1);
     evaluator.eval(id)
@@ -56,7 +81,9 @@ pub fn evaluate_with_limits(
 
 struct Evaluator<'a> {
     arena: &'a mut Arena,
+    definitions: &'a mut Definitions,
     heads: Heads,
+    locals: Vec<HashMap<SymbolId, ExprId>>,
     steps: u64,
     max_steps: u64,
     depth: u32,
@@ -64,7 +91,7 @@ struct Evaluator<'a> {
 }
 
 impl<'a> Evaluator<'a> {
-    fn new(arena: &'a mut Arena) -> Self {
+    fn new(arena: &'a mut Arena, definitions: &'a mut Definitions) -> Self {
         let heads = Heads {
             plus: head(arena, "plus"),
             times: head(arena, "times"),
@@ -88,10 +115,16 @@ impl<'a> Evaluator<'a> {
             indeterminate: head(arena, "indeterminate"),
             failed: head(arena, "failed"),
             imaginary: head(arena, "i"),
+            set: head(arena, "set"),
+            set_delayed: head(arena, "setDelayed"),
+            let_head: head(arena, "let"),
+            null: head(arena, "null"),
         };
         Evaluator {
             arena,
+            definitions,
             heads,
+            locals: Vec::new(),
             steps: 0,
             max_steps: 1_000_000,
             depth: 0,
@@ -122,10 +155,36 @@ impl<'a> Evaluator<'a> {
 
     fn eval_inner(&mut self, id: ExprId) -> Result<ExprId, Diagnostic> {
         let (head, args) = match self.arena.node(id) {
-            Node::Int(_) | Node::Rat(_) | Node::Symbol(_) => return Ok(id),
+            Node::Int(_) | Node::Rat(_) => return Ok(id),
+            Node::Symbol(symbol) => {
+                let symbol = *symbol;
+                if let Some(value) = self.local_value(symbol) {
+                    return Ok(value);
+                }
+                if let Some(own) = self.definitions.own_value(symbol) {
+                    return self.eval(own.value);
+                }
+                return Ok(id);
+            }
             Node::Call { head, args } => (*head, args.to_vec()),
         };
+        let head = self.eval(head)?;
+        if !matches!(self.arena.node(head), Node::Symbol(_)) {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalNotCallable,
+                "a call head must evaluate to a symbol",
+            ));
+        }
 
+        if head == self.heads.set {
+            return self.eval_definition(&args, false);
+        }
+        if head == self.heads.set_delayed {
+            return self.eval_definition(&args, true);
+        }
+        if head == self.heads.let_head {
+            return self.eval_let(&args);
+        }
         if head == self.heads.if_head {
             return self.eval_if(&args);
         }
@@ -177,6 +236,81 @@ impl<'a> Evaluator<'a> {
         }
     }
 
+    fn local_value(&self, symbol: SymbolId) -> Option<ExprId> {
+        for frame in self.locals.iter().rev() {
+            if let Some(value) = frame.get(&symbol) {
+                return Some(*value);
+            }
+        }
+        None
+    }
+
+    fn eval_definition(&mut self, args: &[ExprId], delayed: bool) -> Result<ExprId, Diagnostic> {
+        if args.len() != 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "a definition expects two arguments",
+            ));
+        }
+        let rhs = if delayed {
+            args[1]
+        } else {
+            self.eval(args[1])?
+        };
+        {
+            let arena = &*self.arena;
+            self.definitions.define(arena, args[0], rhs, delayed)?;
+        }
+        Ok(if delayed { self.heads.null } else { rhs })
+    }
+
+    fn eval_let(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.len() != 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "let expects two arguments",
+            ));
+        }
+        let bindings = match self.arena.node(args[0]) {
+            Node::Call {
+                head,
+                args: bindings,
+            } if *head == self.heads.list => bindings.to_vec(),
+            _ => {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "let bindings must be a list",
+                ));
+            }
+        };
+        let mut frame = HashMap::new();
+        for binding in bindings {
+            let (lhs, rhs) = match self.arena.node(binding) {
+                Node::Call { head, args } if *head == self.heads.set && args.len() == 2 => {
+                    (args[0], args[1])
+                }
+                _ => {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        "each let binding must use the form name=value",
+                    ));
+                }
+            };
+            let Some(symbol) = self.arena.symbol_id(lhs) else {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "a let binding name must be a symbol",
+                ));
+            };
+            let value = self.eval(rhs)?;
+            frame.insert(symbol, value);
+        }
+        self.locals.push(frame);
+        let result = self.eval(args[1]);
+        self.locals.pop();
+        result
+    }
+
     fn eval_if(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
         if args.len() != 3 {
             return Err(Diagnostic::eval(
@@ -211,13 +345,12 @@ impl<'a> Evaluator<'a> {
             }
             evaluated.push(value);
         }
-        if evaluated
-            .iter()
-            .all(|value| *value == self.heads.true_value)
-        {
-            return Ok(self.heads.true_value);
+        evaluated.retain(|value| *value != self.heads.true_value);
+        match evaluated.len() {
+            0 => Ok(self.heads.true_value),
+            1 => Ok(evaluated[0]),
+            _ => Ok(self.arena.intern_call(self.heads.and, &evaluated)),
         }
-        Ok(self.arena.intern_call(self.heads.and, &evaluated))
     }
 
     fn eval_or(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -232,13 +365,12 @@ impl<'a> Evaluator<'a> {
             }
             evaluated.push(value);
         }
-        if evaluated
-            .iter()
-            .all(|value| *value == self.heads.false_value)
-        {
-            return Ok(self.heads.false_value);
+        evaluated.retain(|value| *value != self.heads.false_value);
+        match evaluated.len() {
+            0 => Ok(self.heads.false_value),
+            1 => Ok(evaluated[0]),
+            _ => Ok(self.arena.intern_call(self.heads.or, &evaluated)),
         }
-        Ok(self.arena.intern_call(self.heads.or, &evaluated))
     }
 
     fn eval_not(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -349,7 +481,51 @@ impl<'a> Evaluator<'a> {
         if head == self.heads.greater_equal {
             return self.ordering(args, Ordering::Greater, self.heads.greater_equal);
         }
+        if let Some(symbol) = self.arena.symbol_id(head) {
+            if let Some(result) = self.apply_user(symbol, head, args)? {
+                return Ok(result);
+            }
+        }
         Ok(self.arena.intern_call(head, args))
+    }
+
+    fn apply_user(
+        &mut self,
+        symbol: SymbolId,
+        head: ExprId,
+        args: &[ExprId],
+    ) -> Result<Option<ExprId>, Diagnostic> {
+        let rules: Vec<Rule> = self.definitions.rules(symbol).to_vec();
+        if rules.is_empty() {
+            return Ok(None);
+        }
+        let call = self.arena.intern_call(head, args);
+        for rule in rules {
+            let mut bindings = Bindings::new();
+            let mut conditions = Vec::new();
+            if !match_pattern(&self.arena, rule.lhs, call, &mut bindings, &mut conditions) {
+                continue;
+            }
+            let mut accepted = true;
+            for condition in conditions {
+                let condition = substitute(&mut self.arena, condition, &bindings);
+                let value = self.eval(condition)?;
+                if value != self.heads.true_value {
+                    accepted = false;
+                    break;
+                }
+            }
+            if !accepted {
+                continue;
+            }
+            let rhs = substitute(&mut self.arena, rule.rhs, &bindings);
+            return if rule.delayed {
+                self.eval(rhs).map(Some)
+            } else {
+                Ok(Some(rhs))
+            };
+        }
+        Ok(None)
     }
 
     fn plus(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -513,6 +689,23 @@ impl<'a> Evaluator<'a> {
                             Some((real, imaginary)) => Ok(self.gaussian_node(&real, &imaginary)),
                             None => Ok(self.heads.undefined),
                         };
+                    }
+                    let nested = match self.arena.node(base) {
+                        Node::Call { head, args }
+                            if *head == self.heads.power && args.len() == 2 =>
+                        {
+                            Some((args[0], args[1]))
+                        }
+                        _ => None,
+                    };
+                    if let Some((inner_base, inner_exponent)) = nested {
+                        if let Some(inner) = self.as_rat(inner_exponent) {
+                            let combined = inner.mul(&exp);
+                            let combined_node = self.arena.intern_rat(combined);
+                            return Ok(self
+                                .arena
+                                .intern_call(self.heads.power, &[inner_base, combined_node]));
+                        }
                     }
                     let negated_base = match self.arena.node(base) {
                         Node::Call { head, args }

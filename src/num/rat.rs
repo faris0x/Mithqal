@@ -86,7 +86,7 @@ impl Rat {
 
     /// Parse a rational in `num/den` form.
     pub fn from_decimal(text: &str) -> Result<Self, NumError> {
-        if text.is_empty() {
+        if text.is_empty() || text.bytes().any(|byte| byte.is_ascii_whitespace()) {
             return Err(NumError::Parse);
         }
         let c_text = CString::new(text).map_err(|_| NumError::Parse)?;

@@ -339,18 +339,9 @@ impl Parser<'_> {
                     _ => Ok(base),
                 }
             }
-            TokenKind::Underscore => {
-                self.advance();
-                Ok(self.call_name("blank", &[]))
-            }
-            TokenKind::Underscore2 => {
-                self.advance();
-                Ok(self.call_name("blankSequence", &[]))
-            }
-            TokenKind::Underscore3 => {
-                self.advance();
-                Ok(self.call_name("blankNullSequence", &[]))
-            }
+            TokenKind::Underscore => Ok(self.call_name("blank", &[])),
+            TokenKind::Underscore2 => Ok(self.call_name("blankSequence", &[])),
+            TokenKind::Underscore3 => Ok(self.call_name("blankNullSequence", &[])),
             TokenKind::LParen => {
                 let inner = self.parse_expr()?;
                 self.expect(TokenKind::RParen, "expected a closing parenthesis")?;

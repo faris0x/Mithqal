@@ -4,7 +4,7 @@ A symbolic math engine.
 
 The public interface is a Rust library. Programs are whitespace free statements separated by newlines. Exact arithmetic uses GMP for arbitrary precision integers and rationals. The engine treats expressions as terms and defines evaluation as deterministic rewriting.
 
-This repository is in early development. Version 0.0.1 is in progress. The exact number layer, expression arena, source reader, printers, arithmetic evaluator, diagnostics, and public session API are implemented. Definitions, pattern matching, the virtual machine, and the collector are specified and remain in progress. Numeric approximation, calculus, and algebra come later.
+This repository is in early development. Version 0.0.1 is in progress. The exact number layer, expression arena, source reader, printers, arithmetic evaluator, definitions, pattern matching, lexical `let`, diagnostics, and public session API are implemented. Closures, the virtual machine, and the collector are specified and remain in progress. Numeric approximation, calculus, and algebra come later.
 
 ## Documentation
 

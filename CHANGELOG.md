@@ -14,4 +14,8 @@ Initial kernel work.
 - Added canonical and infix printers with round trip tests.
 - Added the exact arithmetic evaluator with listable threading, comparisons, logic, error values, and Gaussian rational normalization.
 - Added the public `Session`, `ExprId`, `ExprView`, `Config`, and diagnostic surface.
-- Added integration tests for numbers, expressions, syntax, printing, evaluation, and the session API.
+- Added own values, down values, protected symbol checks, definition specificity, and immediate and delayed definitions.
+- Added pattern matching for blanks, named patterns, sequence patterns, repeated variables, and conditions.
+- Added lexical `let` bindings with local shadowing.
+- Added integration tests for numbers, expressions, syntax, printing, evaluation, definitions, patterns, and the session API.
+- Expanded the suite to more than 200 tests covering normal behavior, boundaries, malformed input, and error propagation.
