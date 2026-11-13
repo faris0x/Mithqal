@@ -1,0 +1,9 @@
+[package]
+name = "cas"
+version = "0.0.1"
+edition = "2024"
+license = "GPL-3.0-or-later"
+description = "A symbolic math engine"
+publish = false
+
+[dependencies]
