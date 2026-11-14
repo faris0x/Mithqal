@@ -81,6 +81,8 @@ Initial kernel work.
 - Generalized multivariate power extraction through degree six.
 - Extended evaluation and interpolation to constant rational leading coefficients, restoring the scalar on the factor with the largest denominator.
 - Restricted Hensel lifting to degree four and above, added early irreducibility exit from a square-free prime reduction, and started modular divisor search at degree two.
+- Raised multivariate power extraction to degree twelve.
+- Added polynomial-leading quadratic factoring for monomial leading coefficients.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.
 - Added irrational and complex two by two eigenvectors.

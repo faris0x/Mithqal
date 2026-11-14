@@ -11,12 +11,13 @@
 //! - Evaluation and interpolation for bivariate polynomials that split into
 //!   linear factors with polynomial coefficients, including a constant rational
 //!   leading coefficient.
-//! - Power extraction from two through six for monic bivariate polynomials.
+//! - Power extraction from two through twelve for monic bivariate polynomials.
+//! - Polynomial-leading quadratics whose leading coefficient is a monomial.
 //! - Even-term grouping.
 //!
 //! Reserved stages for the full algorithm:
 //!
-//! - Non-constant polynomial leading coefficients.
+//! - General polynomial leading coefficients.
 //! - A multivariate Hensel hook beyond the univariate integer path.
 
 use super::*;
@@ -45,6 +46,7 @@ pub(super) enum FactorStage {
     BinaryQuadratic,
     HomogeneousBivariate,
     RecursiveQuadratic,
+    PolynomialLeadingQuadratic,
     Grouping,
     SquareFree,
     EvaluationInterpolation,
@@ -92,6 +94,7 @@ impl<'a> MultivariateFactorizer<'a> {
             FactorStage::BinaryQuadratic,
             FactorStage::HomogeneousBivariate,
             FactorStage::RecursiveQuadratic,
+            FactorStage::PolynomialLeadingQuadratic,
             FactorStage::EvaluationInterpolation,
             FactorStage::Grouping,
             FactorStage::SquareFree,
@@ -101,6 +104,9 @@ impl<'a> MultivariateFactorizer<'a> {
                 FactorStage::BinaryQuadratic => self.factor_binary_quadratic(polynomial),
                 FactorStage::HomogeneousBivariate => self.factor_homogeneous_bivariate(polynomial),
                 FactorStage::RecursiveQuadratic => self.factor_recursive_quadratic(polynomial),
+                FactorStage::PolynomialLeadingQuadratic => {
+                    self.factor_polynomial_leading_quadratic(polynomial)
+                }
                 FactorStage::Grouping => self.factor_by_grouping(polynomial),
                 FactorStage::SquareFree => self.factor_square_free_stage(polynomial),
                 FactorStage::EvaluationInterpolation => {
@@ -276,6 +282,31 @@ impl<'a> MultivariateFactorizer<'a> {
         Some(factors)
     }
 
+    fn factor_polynomial_leading_quadratic(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
+        let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        let (leading, linear, constant) = quadratic_coefficients(polynomial, horizontal, vertical)?;
+        if leading.terms.len() != 1 || leading.is_constant() {
+            return None;
+        }
+        let four = Poly::constant(Rat::from_i64(4, 1).ok()?);
+        let discriminant = linear.mul(&linear).sub(&four.mul(&leading).mul(&constant));
+        let discriminant = discriminant.dense_in(vertical)?;
+        let root = Poly::from_dense(vertical, &dense_nth_root(&discriminant, 2)?);
+        let two_leading = leading.scale(&Rat::from_i64(2, 1).ok()?);
+        let linear_term = Poly::variable(horizontal).mul(&two_leading);
+        let first = linear_term.add(&linear).sub(&root);
+        let second = linear_term.add(&linear).add(&root);
+        let (_, first) = extract_common_factor(&first)?;
+        let (_, second) = extract_common_factor(&second)?;
+        if first.mul(&second) != *polynomial {
+            return None;
+        }
+        Some(vec![
+            expression_from_poly(self.arena, &first, &self.context),
+            expression_from_poly(self.arena, &second, &self.context),
+        ])
+    }
+
     fn factor_square_free_stage(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
         let (horizontal, vertical) = bivariate_variables(polynomial)?;
         let degree = x_degree(polynomial, horizontal);
@@ -286,7 +317,7 @@ impl<'a> MultivariateFactorizer<'a> {
         if bound > 24 {
             return None;
         }
-        let maximum_power = (degree.min(bound as usize).min(6)) as u32;
+        let maximum_power = (degree.min(bound as usize).min(12)) as u32;
         for power in (2..=maximum_power).rev() {
             if !degree.is_multiple_of(power as usize) || !bound.is_multiple_of(power) {
                 continue;
@@ -495,6 +526,39 @@ impl<'a> MultivariateFactorizer<'a> {
         // Reserved for Hensel lifting over the rationals.
         None
     }
+}
+
+fn quadratic_coefficients(
+    polynomial: &Poly,
+    horizontal: SymbolId,
+    vertical: SymbolId,
+) -> Option<(Poly, Poly, Poly)> {
+    let mut leading = Poly::zero();
+    let mut linear = Poly::zero();
+    let mut constant = Poly::zero();
+    let mut degree = 0u32;
+    for (monomial, coefficient) in &polynomial.terms {
+        let horizontal_power = monomial.degree_in(horizontal);
+        let vertical_power = monomial.degree_in(vertical);
+        degree = degree.max(horizontal_power);
+        let mut powers = Vec::new();
+        if vertical_power > 0 {
+            powers.push((vertical, vertical_power));
+        }
+        let term = Poly {
+            terms: std::collections::BTreeMap::from([(Monomial { powers }, coefficient.clone())]),
+        };
+        match horizontal_power {
+            2 => leading = leading.add(&term),
+            1 => linear = linear.add(&term),
+            0 => constant = constant.add(&term),
+            _ => return None,
+        }
+    }
+    if degree != 2 {
+        return None;
+    }
+    Some((leading, linear, constant))
 }
 
 fn bivariate_variables(polynomial: &Poly) -> Option<(SymbolId, SymbolId)> {

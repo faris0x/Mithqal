@@ -418,3 +418,21 @@ fn non_monic_bivariate_splitting() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn polynomial_leading_bivariate_splitting() {
+    assert_eq!(text("factor((y*x+1)*(x+y))"), "(1+x*y)*(x+y)");
+    assert_eq!(text("factor((y*x+1)*(x+y+2))"), "(1+x*y)*(2+x+y)");
+    for source in ["(y*x+1)*(x+y)", "(y*x+1)*(x+y+2)"] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn deep_multivariate_powers() {
+    assert_eq!(text("factor((x+y^2)^8)"), "(x+y^2)^8");
+    assert_eq!(text("factor((x+y^2)^12)"), "(x+y^2)^12");
+    for source in ["(x+y^2)^8", "(x+y^2)^12"] {
+        assert_factor_matches(source);
+    }
+}

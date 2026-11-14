@@ -53,9 +53,11 @@ Bivariate quadratics are evaluated as a polynomial in one variable with coeffici
 
 The evaluation and interpolation stage factors monic bivariate polynomials that split into linear factors with polynomial coefficients. It also handles a constant rational leading coefficient by scaling to monic form and restoring the scalar on a factor. It samples the vertical variable, factors each univariate slice, interpolates each root branch, and verifies the reconstructed product exactly.
 
-The multivariate power stage extracts powers from two through six of bivariate polynomials by taking exact univariate roots of sampled slices, interpolating the root coefficients, and verifying the full power.
+The multivariate power stage extracts powers from two through twelve of bivariate polynomials by taking exact univariate roots of sampled slices, interpolating the root coefficients, and verifying the full power.
 
-The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, evaluation and interpolation, power extraction, and grouping. Reserved stages cover non-constant polynomial leading coefficients and a broader multivariate Hensel hook.
+A polynomial-leading quadratic stage handles bivariate quadratics whose leading coefficient in one variable is a monomial in the other. It factors the discriminant when it is a perfect square and normalises the resulting linear factors.
+
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, evaluation and interpolation, power extraction through twelve, and grouping. Reserved stages cover general polynomial leading coefficients and a broader multivariate Hensel hook.
 
 Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 
