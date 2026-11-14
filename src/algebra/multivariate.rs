@@ -8,14 +8,15 @@
 //! - Homogeneous binary quadratic forms with rational roots.
 //! - Homogeneous bivariate forms of degree three and above.
 //! - Recursive coefficient factorisation for bivariate quadratics.
-//! - Evaluation and interpolation for monic bivariate polynomials that split
-//!   into linear factors with polynomial coefficients.
-//! - Square-free extraction for monic bivariate perfect squares.
+//! - Evaluation and interpolation for bivariate polynomials that split into
+//!   linear factors with polynomial coefficients, including a constant rational
+//!   leading coefficient.
+//! - Power extraction from two through six for monic bivariate polynomials.
 //! - Even-term grouping.
 //!
 //! Reserved stages for the full algorithm:
 //!
-//! - Square-free extraction for higher multivariate powers.
+//! - Non-constant polynomial leading coefficients.
 //! - A multivariate Hensel hook beyond the univariate integer path.
 
 use super::*;
@@ -48,6 +49,16 @@ pub(super) enum FactorStage {
     SquareFree,
     EvaluationInterpolation,
     HenselLifting,
+}
+
+struct InterpolationRequest<'a> {
+    polynomial: &'a Poly,
+    horizontal: SymbolId,
+    vertical: SymbolId,
+    degree: usize,
+    bound: u32,
+    leading: &'a Rat,
+    samples: &'a [(Rat, Vec<Rat>)],
 }
 
 /// A staged multivariate factoriser.
@@ -268,77 +279,87 @@ impl<'a> MultivariateFactorizer<'a> {
     fn factor_square_free_stage(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
         let (horizontal, vertical) = bivariate_variables(polynomial)?;
         let degree = x_degree(polynomial, horizontal);
-        if degree < 2 || degree % 2 != 0 || !is_monic_in(polynomial, horizontal) {
+        if degree < 2 || !is_monic_in(polynomial, horizontal) {
             return None;
         }
         let bound = total_degree(polynomial);
-        if bound % 2 != 0 || bound > 24 {
+        if bound > 24 {
             return None;
         }
-        let root_bound = bound / 2;
-        let needed = root_bound as usize + 1;
-        for base in [0i64, 10, -10] {
-            let mut samples: Vec<(Rat, Vec<Rat>)> = Vec::new();
-            for offset in 0..(4 * needed as i64 + 16) {
-                let Some(value) = Rat::from_i64(base + offset, 1).ok() else {
-                    continue;
-                };
-                let (sample_degree, coefficients) =
-                    substitute_vertical(polynomial, horizontal, vertical, &value);
-                if sample_degree != degree {
-                    continue;
-                }
-                let Some(mut root) = dense_square_root(&coefficients) else {
-                    continue;
-                };
-                root.resize(degree / 2 + 1, Rat::zero());
-                samples.push((value, root));
-                if samples.len() == needed {
-                    break;
-                }
-            }
-            if samples.len() < needed {
+        let maximum_power = (degree.min(bound as usize).min(6)) as u32;
+        for power in (2..=maximum_power).rev() {
+            if !degree.is_multiple_of(power as usize) || !bound.is_multiple_of(power) {
                 continue;
             }
-            let mut root_coefficients = Vec::with_capacity(degree / 2 + 1);
-            for coefficient in 0..=degree / 2 {
-                let points: Vec<(Rat, Rat)> = samples
-                    .iter()
-                    .map(|(value, roots)| {
-                        (
-                            value.clone(),
-                            roots.get(coefficient).cloned().unwrap_or_else(Rat::zero),
-                        )
-                    })
-                    .collect();
-                root_coefficients.push(interpolate(&points, root_bound)?);
-            }
-            let mut root = Poly::zero();
-            for (horizontal_power, coefficients) in root_coefficients.iter().enumerate() {
-                for (vertical_power, coefficient) in coefficients.iter().enumerate() {
-                    if coefficient.is_zero() {
+            let root_bound = bound / power;
+            let needed = root_bound as usize + 1;
+            for base in [0i64, 10, -10] {
+                let mut samples: Vec<(Rat, Vec<Rat>)> = Vec::new();
+                for offset in 0..(4 * needed as i64 + 16) {
+                    let Some(value) = Rat::from_i64(base + offset, 1).ok() else {
+                        continue;
+                    };
+                    let (sample_degree, coefficients) =
+                        substitute_vertical(polynomial, horizontal, vertical, &value);
+                    if sample_degree != degree {
                         continue;
                     }
-                    let mut powers = Vec::new();
-                    if horizontal_power > 0 {
-                        powers.push((horizontal, horizontal_power as u32));
+                    let Some(mut root) = dense_nth_root(&coefficients, power) else {
+                        continue;
+                    };
+                    root.resize(degree / power as usize + 1, Rat::zero());
+                    samples.push((value, root));
+                    if samples.len() == needed {
+                        break;
                     }
-                    if vertical_power > 0 {
-                        powers.push((vertical, vertical_power as u32));
-                    }
-                    powers.sort_by_key(|(symbol, _)| *symbol);
-                    root.terms.insert(Monomial { powers }, coefficient.clone());
                 }
+                if samples.len() < needed {
+                    continue;
+                }
+                let mut root_coefficients = Vec::with_capacity(degree / power as usize + 1);
+                for coefficient in 0..=degree / power as usize {
+                    let points: Vec<(Rat, Rat)> = samples
+                        .iter()
+                        .map(|(value, roots)| {
+                            (
+                                value.clone(),
+                                roots.get(coefficient).cloned().unwrap_or_else(Rat::zero),
+                            )
+                        })
+                        .collect();
+                    root_coefficients.push(interpolate(&points, root_bound)?);
+                }
+                let mut root = Poly::zero();
+                for (horizontal_power, coefficients) in root_coefficients.iter().enumerate() {
+                    for (vertical_power, coefficient) in coefficients.iter().enumerate() {
+                        if coefficient.is_zero() {
+                            continue;
+                        }
+                        let mut powers = Vec::new();
+                        if horizontal_power > 0 {
+                            powers.push((horizontal, horizontal_power as u32));
+                        }
+                        if vertical_power > 0 {
+                            powers.push((vertical, vertical_power as u32));
+                        }
+                        powers.sort_by_key(|(symbol, _)| *symbol);
+                        root.terms.insert(Monomial { powers }, coefficient.clone());
+                    }
+                }
+                let mut expansion = Poly::constant(Rat::one());
+                for _ in 0..power {
+                    expansion = expansion.mul(&root);
+                }
+                if expansion != *polynomial {
+                    continue;
+                }
+                let expression = expression_from_poly(self.arena, &root, &self.context);
+                let exponent = self.arena.intern_int(Int::from_u64(power as u64));
+                return Some(vec![
+                    self.arena
+                        .intern_call(self.context.power, &[expression, exponent]),
+                ]);
             }
-            if root.mul(&root) != *polynomial {
-                continue;
-            }
-            let expression = expression_from_poly(self.arena, &root, &self.context);
-            let exponent = self.arena.intern_int(Int::from_u64(2));
-            return Some(vec![
-                self.arena
-                    .intern_call(self.context.power, &[expression, exponent]),
-            ]);
         }
         None
     }
@@ -346,13 +367,19 @@ impl<'a> MultivariateFactorizer<'a> {
     fn factor_evaluation_interpolation_stage(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
         let (horizontal, vertical) = bivariate_variables(polynomial)?;
         let degree = x_degree(polynomial, horizontal);
-        if degree < 2 || degree > 6 {
+        if !(2..=6).contains(&degree) {
             return None;
         }
-        if !is_monic_in(polynomial, horizontal) {
+        let leading = constant_leading_coefficient(polynomial, horizontal)?;
+        let scaling = if leading.is_one() {
+            polynomial.clone()
+        } else {
+            polynomial.scale(&Rat::one().div(&leading).ok()?)
+        };
+        if !is_monic_in(&scaling, horizontal) {
             return None;
         }
-        let bound = total_degree(polynomial);
+        let bound = total_degree(&scaling);
         if bound > 12 {
             return None;
         }
@@ -365,7 +392,7 @@ impl<'a> MultivariateFactorizer<'a> {
                         continue;
                     };
                     let (sample_degree, coefficients) =
-                        substitute_vertical(polynomial, horizontal, vertical, &value);
+                        substitute_vertical(&scaling, horizontal, vertical, &value);
                     if sample_degree != degree {
                         continue;
                     }
@@ -394,9 +421,15 @@ impl<'a> MultivariateFactorizer<'a> {
                 if samples.len() < needed {
                     continue;
                 }
-                if let Some(factors) = self
-                    .factor_from_samples(polynomial, horizontal, vertical, degree, bound, &samples)
-                {
+                if let Some(factors) = self.factor_from_samples(InterpolationRequest {
+                    polynomial: &scaling,
+                    horizontal,
+                    vertical,
+                    degree,
+                    bound,
+                    leading: &leading,
+                    samples: &samples,
+                }) {
                     return Some(factors);
                 }
             }
@@ -404,35 +437,48 @@ impl<'a> MultivariateFactorizer<'a> {
         None
     }
 
-    fn factor_from_samples(
-        &mut self,
-        polynomial: &Poly,
-        horizontal: SymbolId,
-        vertical: SymbolId,
-        degree: usize,
-        bound: u32,
-        samples: &[(Rat, Vec<Rat>)],
-    ) -> Option<Vec<ExprId>> {
-        let mut root_polynomials = Vec::with_capacity(degree);
-        for root_index in 0..degree {
-            let points: Vec<(Rat, Rat)> = samples
+    fn factor_from_samples(&mut self, request: InterpolationRequest<'_>) -> Option<Vec<ExprId>> {
+        let mut root_polynomials = Vec::with_capacity(request.degree);
+        for root_index in 0..request.degree {
+            let points: Vec<(Rat, Rat)> = request
+                .samples
                 .iter()
                 .map(|(value, roots)| (value.clone(), roots[root_index].clone()))
                 .collect();
-            let coefficients = interpolate(&points, bound)?;
-            root_polynomials.push(Poly::from_dense(vertical, &coefficients));
+            let coefficients = interpolate(&points, request.bound)?;
+            root_polynomials.push(Poly::from_dense(request.vertical, &coefficients));
         }
         let mut collected: Vec<(Poly, u32)> = Vec::new();
         let mut product = Poly::constant(Rat::one());
         for root in root_polynomials {
-            let factor = Poly::variable(horizontal).add(&root.scale(&Rat::from_i64(-1, 1).ok()?));
+            let factor =
+                Poly::variable(request.horizontal).add(&root.scale(&Rat::from_i64(-1, 1).ok()?));
             product = product.mul(&factor);
             merge_poly_factor(&mut collected, factor);
         }
-        if product != *polynomial {
+        if product != *request.polynomial {
             return None;
         }
         let mut factors = Vec::new();
+        if !request.leading.is_one() {
+            let mut chosen = None;
+            let mut best = Int::one();
+            for (index, (factor, multiplicity)) in collected.iter().enumerate() {
+                if *multiplicity != 1 {
+                    continue;
+                }
+                let denominator = poly_denominator_lcm(factor);
+                if chosen.is_none() || denominator.cmp(&best) == core::cmp::Ordering::Greater {
+                    best = denominator;
+                    chosen = Some(index);
+                }
+            }
+            if let Some(index) = chosen {
+                collected[index].0 = collected[index].0.scale(request.leading);
+            } else {
+                factors.push(expression_from_rat(self.arena, request.leading));
+            }
+        }
         for (factor, multiplicity) in collected {
             push_factor(
                 self.arena,
@@ -467,6 +513,41 @@ fn x_degree(polynomial: &Poly, horizontal: SymbolId) -> usize {
         .map(|monomial| monomial.degree_in(horizontal) as usize)
         .max()
         .unwrap_or(0)
+}
+
+fn poly_denominator_lcm(polynomial: &Poly) -> Int {
+    let mut denominator = Int::one();
+    for coefficient in polynomial.terms.values() {
+        denominator = lcm(&denominator, &coefficient.den());
+    }
+    denominator
+}
+
+fn constant_leading_coefficient(polynomial: &Poly, horizontal: SymbolId) -> Option<Rat> {
+    let degree = x_degree(polynomial, horizontal) as u32;
+    let mut leading = None;
+    for (monomial, coefficient) in &polynomial.terms {
+        if monomial.degree_in(horizontal) != degree {
+            continue;
+        }
+        if monomial
+            .powers
+            .iter()
+            .any(|(symbol, exponent)| *symbol != horizontal && *exponent != 0)
+        {
+            return None;
+        }
+        if leading.is_some() {
+            return None;
+        }
+        leading = Some(coefficient.clone());
+    }
+    let leading = leading?;
+    if leading.is_zero() {
+        None
+    } else {
+        Some(leading)
+    }
 }
 
 fn is_monic_in(polynomial: &Poly, horizontal: SymbolId) -> bool {

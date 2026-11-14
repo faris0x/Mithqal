@@ -41,7 +41,7 @@ discriminant(x^2-4,x)                 -> 16
 
 ## Factoring coverage
 
-`factor` handles numeric content, common monomial content, univariate rational roots, univariate square-free decomposition, differences of squares, perfect square trinomials, sums of cubes, differences of cubes, homogeneous bivariate forms with rational ratio roots, bivariate quadratics with recursive coefficient constants, and grouping for four to eight even-term multivariate polynomials.
+`factor` handles numeric content, common monomial content, univariate rational roots, univariate square-free decomposition, bounded univariate Hensel lifting, differences of squares, perfect square trinomials, sums of cubes, differences of cubes, homogeneous bivariate forms with rational ratio roots, bivariate quadratics with recursive coefficient constants, evaluation and interpolation for linear splits, multivariate power extraction, and grouping for four to eight even-term multivariate polynomials.
 
 Univariate square-free decomposition uses polynomial gcds against the derivative. Repeated irreducible factors are separated and emitted with their multiplicities.
 
@@ -51,11 +51,11 @@ Homogeneous bivariate forms are factored by solving their ratio polynomial over 
 
 Bivariate quadratics are evaluated as a polynomial in one variable with coefficients in the other. The homogeneous part is factored first, then the constant coefficients of the two linear factors are solved and checked. Square homogeneous parts use a scalar ratio equation, which also handles distinct linear constants.
 
-The evaluation and interpolation stage factors monic bivariate polynomials that split into linear factors with polynomial coefficients. It samples the vertical variable, factors each univariate slice, interpolates each root branch, and verifies the reconstructed product exactly.
+The evaluation and interpolation stage factors monic bivariate polynomials that split into linear factors with polynomial coefficients. It also handles a constant rational leading coefficient by scaling to monic form and restoring the scalar on a factor. It samples the vertical variable, factors each univariate slice, interpolates each root branch, and verifies the reconstructed product exactly.
 
-The multivariate square-free stage extracts perfect squares of monic bivariate polynomials by taking square roots of sampled univariate slices, interpolating the root coefficients, and verifying the square.
+The multivariate power stage extracts powers from two through six of bivariate polynomials by taking exact univariate roots of sampled slices, interpolating the root coefficients, and verifying the full power.
 
-The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, evaluation and interpolation, square-free extraction for perfect squares, and grouping. Reserved stages cover higher multivariate powers and a broader multivariate Hensel hook.
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, evaluation and interpolation, power extraction, and grouping. Reserved stages cover non-constant polynomial leading coefficients and a broader multivariate Hensel hook.
 
 Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 

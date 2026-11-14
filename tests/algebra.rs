@@ -388,3 +388,33 @@ fn multivariate_square_free_factorization() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn higher_multivariate_powers() {
+    assert_eq!(text("factor((x^2+x*y+1)^3)"), "(1+x^2+x*y)^3");
+    assert_eq!(text("factor((x+y^2)^4)"), "(x+y^2)^4");
+    assert_eq!(text("factor((x^2+y^2)^3)"), "(x^2+y^2)^3");
+    for source in ["(x^2+x*y+1)^3", "(x+y^2)^4", "(x^2+y^2)^3"] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn non_monic_bivariate_splitting() {
+    assert_eq!(text("factor((2*x+y^2)*(x+y^3))"), "(x+y^3)*(y^2+2*x)");
+    assert_eq!(
+        text("factor((2*x+y^2+1)*(x+y^3+2))"),
+        "(1+y^2+2*x)*(2+x+y^3)"
+    );
+    assert_eq!(
+        text("factor((3*x+y^2)*(x+y)*(x+y^3))"),
+        "(x+y)*(x+y^3)*(y^2+3*x)"
+    );
+    for source in [
+        "(2*x+y^2)*(x+y^3)",
+        "(2*x+y^2+1)*(x+y^3+2)",
+        "(3*x+y^2)*(x+y)*(x+y^3)",
+    ] {
+        assert_factor_matches(source);
+    }
+}

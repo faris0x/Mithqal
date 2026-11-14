@@ -612,44 +612,105 @@ fn dense_power(base: &[Rat], exponent: u32) -> Vec<Rat> {
     result
 }
 
-fn dense_square_root(coefficients: &[Rat]) -> Option<Vec<Rat>> {
+fn dense_nth_root(coefficients: &[Rat], degree: u32) -> Option<Vec<Rat>> {
+    if degree < 2 {
+        return None;
+    }
     let coefficients = trim(coefficients.to_vec());
     if coefficients.is_empty() {
         return None;
     }
+    let degree_usize = degree as usize;
     let mut shift = 0usize;
     while coefficients.get(shift).is_some_and(Rat::is_zero) {
         shift += 1;
     }
-    if shift >= coefficients.len() || shift % 2 != 0 {
+    if shift >= coefficients.len() || !shift.is_multiple_of(degree_usize) {
         return None;
     }
     let core = &coefficients[shift..];
-    let constant = rational_sqrt(core.first()?)?;
-    let degree = core.len().checked_sub(1)?;
-    if degree % 2 != 0 {
+    let constant = rational_nth_root(core.first()?, degree)?;
+    if constant.is_zero() {
         return None;
     }
-    let degree = degree / 2;
-    let mut root = vec![Rat::zero(); degree + 1];
+    let core_degree = core.len().checked_sub(1)?;
+    if !core_degree.is_multiple_of(degree_usize) {
+        return None;
+    }
+    let root_degree = core_degree / degree_usize;
+    let mut root = vec![Rat::zero(); root_degree + 1];
     root[0] = constant.clone();
-    let two = Rat::from_i64(2, 1).ok()?;
-    for power in 1..=degree {
-        let mut sum = Rat::zero();
-        for index in 1..power {
-            if index < root.len() && power - index < root.len() {
-                sum = sum.add(&root[index].mul(&root[power - index]));
-            }
-        }
-        let numerator = core.get(power).cloned().unwrap_or_else(Rat::zero).sub(&sum);
-        root[power] = numerator.div(&constant.mul(&two)).ok()?;
+    let denominator = Rat::from_i64(degree as i64, 1)
+        .ok()?
+        .mul(&rat_power(&constant, degree - 1));
+    for power in 1..=root_degree {
+        let expansion = dense_power(&root, degree);
+        let target = core.get(power).cloned().unwrap_or_else(Rat::zero);
+        let current = expansion.get(power).cloned().unwrap_or_else(Rat::zero);
+        root[power] = target.sub(&current).div(&denominator).ok()?;
     }
-    if dense_multiply(&root, &root) != core {
+    if dense_power(&root, degree) != core {
         return None;
     }
-    let mut result = vec![Rat::zero(); shift / 2];
+    let mut result = vec![Rat::zero(); shift / degree_usize];
     result.extend(root);
     Some(result)
+}
+
+fn rat_power(value: &Rat, exponent: u32) -> Rat {
+    let mut result = Rat::one();
+    for _ in 0..exponent {
+        result = result.mul(value);
+    }
+    result
+}
+
+fn rational_nth_root(value: &Rat, degree: u32) -> Option<Rat> {
+    if degree == 0 {
+        return None;
+    }
+    let numerator = integer_nth_root(&value.num(), degree)?;
+    let denominator = integer_nth_root(&value.den(), degree)?;
+    if denominator.is_zero() {
+        return None;
+    }
+    Rat::from_ints(numerator, denominator).ok()
+}
+
+fn integer_nth_root(value: &Int, degree: u32) -> Option<Int> {
+    let value = value.to_i64()?;
+    if value == 0 {
+        return Some(Int::zero());
+    }
+    if value < 0 && degree.is_multiple_of(2) {
+        return None;
+    }
+    let magnitude = value.unsigned_abs() as i128;
+    let mut low = 0i128;
+    let mut high = magnitude;
+    let mut best = 0i128;
+    while low <= high {
+        let middle = low + (high - low) / 2;
+        let mut power = 1i128;
+        let mut overflow = false;
+        for _ in 0..degree {
+            match power.checked_mul(middle) {
+                Some(next) => power = next,
+                None => {
+                    overflow = true;
+                    break;
+                }
+            }
+        }
+        if overflow || power > magnitude {
+            high = middle - 1;
+        } else {
+            best = middle;
+            low = middle + 1;
+        }
+    }
+    let root = Int::from_i64(i64::try_from(best).ok()?);
+    Some(if value < 0 { root.neg() } else { root })
 }
 
 fn primitive_normalize(coefficients: &[Rat]) -> Vec<Rat> {
@@ -1284,7 +1345,8 @@ fn factor_univariate(
             }
         }
         if remaining.len() > 1 {
-            if let Some(parts) = hensel::factor_integer_polynomial(&remaining)
+            if remaining.len() > 4
+                && let Some(parts) = hensel::factor_integer_polynomial(&remaining)
                 && parts.len() > 1
             {
                 for part in parts {
@@ -1331,7 +1393,8 @@ fn factor_univariate(
         factors.push(expression_from_rat(arena, &scalar));
     }
     for (component, multiplicity) in components {
-        if let Some(parts) = hensel::factor_integer_polynomial(&component)
+        if component.len() > 4
+            && let Some(parts) = hensel::factor_integer_polynomial(&component)
             && parts.len() > 1
         {
             for part in parts {

@@ -19,7 +19,7 @@ const PRIMES: [i64; 5] = [2, 3, 5, 7, 11];
 pub(super) fn factor_integer_polynomial(coefficients: &[Rat]) -> Option<Vec<Vec<Rat>>> {
     let coefficients = trim(coefficients.to_vec());
     let degree = coefficients.len().checked_sub(1)?;
-    if degree < 2 || degree > MAX_DEGREE {
+    if !(4..=MAX_DEGREE).contains(&degree) {
         return None;
     }
     let (_, values) = integerize(&coefficients)?;
@@ -42,9 +42,7 @@ pub(super) fn factor_integer_polynomial(coefficients: &[Rat]) -> Option<Vec<Vec<
         if !mod_is_one(&mod_gcd(&reduced, &derivative, prime), prime) {
             continue;
         }
-        let Some((left, right)) = find_modular_factor(&reduced, prime) else {
-            continue;
-        };
+        let (left, right) = find_modular_factor(&reduced, prime)?;
         let Some((left, right)) = lift_pair(&values, &left, &right, prime, bound) else {
             continue;
         };
@@ -250,14 +248,14 @@ fn integer_multiply(left: &[i128], right: &[i128]) -> Vec<i128> {
 
 fn find_modular_factor(coefficients: &[i64], prime: i64) -> Option<(Vec<i64>, Vec<i64>)> {
     let degree = coefficients.len().checked_sub(1)?;
-    for candidate_degree in 1..=degree / 2 {
+    for candidate_degree in 2..=degree / 2 {
         let count = (prime as u64).checked_pow(candidate_degree as u32)?;
         for code in 0..count {
             let mut candidate = vec![0i64; candidate_degree + 1];
             candidate[candidate_degree] = 1;
             let mut value = code;
-            for index in 0..candidate_degree {
-                candidate[index] = (value % prime as u64) as i64;
+            for slot in candidate.iter_mut().take(candidate_degree) {
+                *slot = (value % prime as u64) as i64;
                 value /= prime as u64;
             }
             let (quotient, remainder) = mod_divide(coefficients, &candidate, prime)?;
@@ -306,9 +304,9 @@ fn mod_is_one(coefficients: &[i64], prime: i64) -> bool {
 fn mod_subtract(left: &[i64], right: &[i64], prime: i64) -> Vec<i64> {
     let length = left.len().max(right.len());
     let mut difference = vec![0i64; length];
-    for index in 0..length {
+    for (index, slot) in difference.iter_mut().enumerate() {
         let value = left.get(index).copied().unwrap_or(0) - right.get(index).copied().unwrap_or(0);
-        difference[index] = value.rem_euclid(prime);
+        *slot = value.rem_euclid(prime);
     }
     trim_mod(difference, prime)
 }
@@ -344,10 +342,10 @@ fn mod_divide(dividend: &[i64], divisor: &[i64], prime: i64) -> Option<(Vec<i64>
         let degree = remainder.len() - divisor_degree;
         let coefficient = mod_mul(*remainder.last()?, inverse, prime);
         quotient[degree] = coefficient;
-        for index in 0..divisor_degree {
+        for (index, divisor_coefficient) in divisor.iter().enumerate() {
             let position = degree + index;
             remainder[position] = (remainder[position]
-                - mod_mul(coefficient, divisor[index], prime))
+                - mod_mul(coefficient, *divisor_coefficient, prime))
             .rem_euclid(prime);
         }
         remainder = trim_mod(remainder, prime);
