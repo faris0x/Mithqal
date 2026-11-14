@@ -11,7 +11,7 @@ An expression is a term. The kernel has two term forms.
 
 Every compound term is represented as `Call(head, args)`. Symbols such as `plus`, `times`, `list`, `rule`, and `blank` are ordinary expressions. Nothing about a term's surface spelling changes its internal representation.
 
-Runtime values include symbolic terms and closures. A closure is a function value with captured lexical bindings. Closures are not symbolic terms and are never hash consed.
+Runtime values include symbolic terms and closures. A closure is represented as a protected `closure(params,body,environment)` call. The parameter list holds symbols, the body holds the expression to evaluate, and the environment holds a list of captured `set(name,value)` bindings. Closures are expressions and can be printed, stored, and hash consed like other calls.
 
 ## Exact numbers
 

@@ -25,8 +25,6 @@ pub enum ExprView<'a> {
         /// The argument expressions.
         args: &'a [ExprId],
     },
-    /// An opaque closure value.
-    Closure,
 }
 
 /// A symbolic math session.

@@ -4,7 +4,7 @@ This document defines the execution model.
 
 ## Implementation status
 
-The compiler and typed instruction machine are active. They execute `Const`, `Eval`, `CallSymbol`, jumps, `Return`, `Safepoint`, and `Budget`. The `if` form compiles to control flow. Calls into the rewrite engine remain the semantic path for symbolic work. Closures, call frames, `ApplyRules` as a dedicated instruction, and packed instruction encoding remain future work.
+The compiler and typed instruction machine are active. They execute `Const`, `Eval`, `CallSymbol`, jumps, `Return`, `Safepoint`, and `Budget`. The `if` form compiles to control flow. Calls into the rewrite engine remain the semantic path for symbolic work. Closures are active in the evaluator. Machine call frames, compiled closure bodies, `ApplyRules` as a dedicated instruction, and packed instruction encoding remain future work.
 
 ## Role of the virtual machine
 
@@ -28,11 +28,10 @@ enum Node {
     Rational(Rat),
     Symbol(SymbolId),
     Call { head: Value, args: ValueSlice },
-    Closure { code: CodeId, env: EnvId },
 }
 ```
 
-Integers, rationals, symbols, and calls are hash consed. A closure is allocated with a unique identity and is never interned. Two closures with the same body and different captured environments are different values.
+Closures are calls with the protected `closure` head. They carry a parameter list, a body expression, and a captured environment list. Because they are ordinary expressions, the collector reaches them through normal call arguments.
 
 `ValueSlice` points into the arena and is immutable.
 
@@ -76,7 +75,7 @@ Definitions are evaluated by the symbolic engine. Compiled top level statements 
 
 ## Frames and closures
 
-The current machine uses an operand stack and no call frames. Frame locals, closure capture, and environment objects are future work. Closures are represented as unevaluated `function` expressions by the evaluator at this stage.
+The current machine uses an operand stack and no machine call frames. Closures are evaluated by the symbolic engine into `closure` calls. Applying a closure builds a lexical frame from the captured environment and parameter bindings, evaluates the body in that frame, then restores the caller frame. Machine frames and compiled closure bodies are future work.
 
 Sequence pattern bindings are produced by the matcher and substituted into right hand sides. A local slot mapping for compiled right hand sides is future work.
 

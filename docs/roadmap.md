@@ -11,7 +11,7 @@ Included:
 - Source reader for whitespace free statements with newline separators and whole line comments.
 - Canonical and infix printers.
 - Fixed point evaluator with deterministic budgets.
-- Pattern matcher for the the current version pattern set.
+- Pattern matcher for the current pattern set.
 - Definitions, lexical `let`, closures, listable arithmetic, comparisons, and logic.
 - Symbolic `Q(i)` normalization.
 - Typed instruction virtual machine and a reference interpreter.

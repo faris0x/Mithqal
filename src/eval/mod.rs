@@ -8,7 +8,7 @@ mod definitions;
 mod pattern;
 
 use core::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode};
@@ -46,6 +46,8 @@ struct Heads {
     set: ExprId,
     set_delayed: ExprId,
     let_head: ExprId,
+    function: ExprId,
+    closure: ExprId,
     null: ExprId,
 }
 
@@ -118,6 +120,8 @@ impl<'a> Evaluator<'a> {
             set: head(arena, "set"),
             set_delayed: head(arena, "setDelayed"),
             let_head: head(arena, "let"),
+            function: head(arena, "function"),
+            closure: head(arena, "closure"),
             null: head(arena, "null"),
         };
         Evaluator {
@@ -169,6 +173,16 @@ impl<'a> Evaluator<'a> {
             Node::Call { head, args } => (*head, args.to_vec()),
         };
         let head = self.eval(head)?;
+        let closure = match self.arena.node(head) {
+            Node::Call {
+                head: closure_head,
+                args,
+            } if *closure_head == self.heads.closure => Some(args.to_vec()),
+            _ => None,
+        };
+        if let Some(closure) = closure {
+            return self.apply_closure(&closure, &args);
+        }
         if !matches!(self.arena.node(head), Node::Symbol(_)) {
             return Err(Diagnostic::eval(
                 ErrorCode::EvalNotCallable,
@@ -176,6 +190,9 @@ impl<'a> Evaluator<'a> {
             ));
         }
 
+        if head == self.heads.function {
+            return self.eval_function(&args);
+        }
         if head == self.heads.set {
             return self.eval_definition(&args, false);
         }
@@ -245,6 +262,128 @@ impl<'a> Evaluator<'a> {
         None
     }
 
+    fn eval_function(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.len() != 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "fn expects parameters and a body",
+            ));
+        }
+        self.parameter_list(args[0])?;
+        let captured: Vec<(SymbolId, ExprId)> = self
+            .locals
+            .iter()
+            .flat_map(|frame| frame.iter().map(|(symbol, value)| (*symbol, *value)))
+            .collect();
+        let mut bindings = Vec::with_capacity(captured.len());
+        for (symbol, value) in captured {
+            let name = self.arena.symbol_expr(symbol);
+            bindings.push(self.arena.intern_call(self.heads.set, &[name, value]));
+        }
+        let environment = self.arena.intern_call(self.heads.list, &bindings);
+        Ok(self
+            .arena
+            .intern_call(self.heads.closure, &[args[0], args[1], environment]))
+    }
+
+    fn apply_closure(
+        &mut self,
+        closure: &[ExprId],
+        call_args: &[ExprId],
+    ) -> Result<ExprId, Diagnostic> {
+        if closure.len() != 3 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                "malformed closure value",
+            ));
+        }
+        let params = self.parameter_list(closure[0])?;
+        if params.len() != call_args.len() {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "closure called with the wrong number of arguments",
+            ));
+        }
+        let mut frame = HashMap::new();
+        self.read_environment(closure[2], &mut frame)?;
+        for (symbol, argument) in params.into_iter().zip(call_args.iter()) {
+            let value = self.eval(*argument)?;
+            frame.insert(symbol, value);
+        }
+        let outer = core::mem::take(&mut self.locals);
+        self.locals.push(frame);
+        let result = self.eval(closure[1]);
+        self.locals = outer;
+        result
+    }
+
+    fn parameter_list(&self, expression: ExprId) -> Result<Vec<SymbolId>, Diagnostic> {
+        let args = match self.arena.node(expression) {
+            Node::Call { head, args } if *head == self.heads.list => args.to_vec(),
+            _ => {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "function parameters must be a list",
+                ));
+            }
+        };
+        let mut symbols = Vec::with_capacity(args.len());
+        let mut seen = HashSet::new();
+        for arg in args {
+            let Some(symbol) = self.arena.symbol_id(arg) else {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "function parameters must be symbols",
+                ));
+            };
+            if !seen.insert(symbol) {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "function parameters must be distinct",
+                ));
+            }
+            symbols.push(symbol);
+        }
+        Ok(symbols)
+    }
+
+    fn read_environment(
+        &self,
+        expression: ExprId,
+        frame: &mut HashMap<SymbolId, ExprId>,
+    ) -> Result<(), Diagnostic> {
+        let bindings = match self.arena.node(expression) {
+            Node::Call { head, args } if *head == self.heads.list => args.to_vec(),
+            _ => {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "closure environment must be a list",
+                ));
+            }
+        };
+        for binding in bindings {
+            let (name, value) = match self.arena.node(binding) {
+                Node::Call { head, args } if *head == self.heads.set && args.len() == 2 => {
+                    (args[0], args[1])
+                }
+                _ => {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        "closure environment binding is malformed",
+                    ));
+                }
+            };
+            let Some(symbol) = self.arena.symbol_id(name) else {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "closure environment name must be a symbol",
+                ));
+            };
+            frame.insert(symbol, value);
+        }
+        Ok(())
+    }
+
     fn eval_definition(&mut self, args: &[ExprId], delayed: bool) -> Result<ExprId, Diagnostic> {
         if args.len() != 2 {
             return Err(Diagnostic::eval(
@@ -283,30 +422,34 @@ impl<'a> Evaluator<'a> {
                 ));
             }
         };
-        let mut frame = HashMap::new();
-        for binding in bindings {
-            let (lhs, rhs) = match self.arena.node(binding) {
-                Node::Call { head, args } if *head == self.heads.set && args.len() == 2 => {
-                    (args[0], args[1])
-                }
-                _ => {
+        self.locals.push(HashMap::new());
+        let result = (|| {
+            for binding in bindings {
+                let (lhs, rhs) = match self.arena.node(binding) {
+                    Node::Call { head, args } if *head == self.heads.set && args.len() == 2 => {
+                        (args[0], args[1])
+                    }
+                    _ => {
+                        return Err(Diagnostic::eval(
+                            ErrorCode::EvalDefinition,
+                            "each let binding must use the form name=value",
+                        ));
+                    }
+                };
+                let Some(symbol) = self.arena.symbol_id(lhs) else {
                     return Err(Diagnostic::eval(
                         ErrorCode::EvalDefinition,
-                        "each let binding must use the form name=value",
+                        "a let binding name must be a symbol",
                     ));
-                }
-            };
-            let Some(symbol) = self.arena.symbol_id(lhs) else {
-                return Err(Diagnostic::eval(
-                    ErrorCode::EvalDefinition,
-                    "a let binding name must be a symbol",
-                ));
-            };
-            let value = self.eval(rhs)?;
-            frame.insert(symbol, value);
-        }
-        self.locals.push(frame);
-        let result = self.eval(args[1]);
+                };
+                let value = self.eval(rhs)?;
+                self.locals
+                    .last_mut()
+                    .expect("let frame exists")
+                    .insert(symbol, value);
+            }
+            self.eval(args[1])
+        })();
         self.locals.pop();
         result
     }

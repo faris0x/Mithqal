@@ -4,7 +4,7 @@ This document defines the stable library surface for the current version.
 
 ## Implementation status
 
-The session, parsing, printing, exact arithmetic, comparisons, logic, error values, definitions, pattern matching, lexical `let`, the typed instruction virtual machine, and the explicit collector are active. Closures are still being implemented. The example at the end of this document works with the current definition and pattern implementation.
+The session, parsing, printing, exact arithmetic, comparisons, logic, error values, definitions, pattern matching, lexical `let`, closures, the typed instruction virtual machine, and the explicit collector are active. The example at the end of this document works with the current definition and pattern implementation.
 
 ## Design rules
 
@@ -62,7 +62,7 @@ impl Session {
 pub struct ExprId(u32);
 ```
 
-Symbolic expressions are hash consed, so equal expressions have equal handles. Closures have unique handles and are never hash consed.
+Symbolic expressions are hash consed, so equal expressions have equal handles. Closures are expressions and follow the same interning rule.
 
 An `ExprId` that is not anchored by the session or by an explicit root can become invalid after `collect_garbage`.
 
@@ -74,11 +74,10 @@ pub enum ExprView<'a> {
     Rational(&'a Rat),
     Symbol(&'a str),
     Call { head: ExprId, args: &'a [ExprId] },
-    Closure,
 }
 ```
 
-`Closure` is opaque in the current version. A caller can pass a closure to another call, print it, and inspect its head through canonical output. Closure internals remain private.
+A closure is represented as a call with the protected `closure` head. Its parameters, body, and captured environment are ordinary arguments. A caller can inspect the closure through `ExprView::Call`.
 
 ## Numbers
 

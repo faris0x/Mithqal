@@ -19,5 +19,6 @@ Initial kernel work.
 - Added lexical `let` bindings with local shadowing.
 - Added an explicit non moving mark and sweep collector with root tracking, free slot reuse, and intern table rebuilding.
 - Added a typed instruction compiler and virtual machine with conditional control flow and a compiled session path.
-- Added integration tests for numbers, expressions, syntax, printing, evaluation, definitions, patterns, garbage collection, the compiled path, and the session API.
-- Expanded the suite to more than 220 tests covering normal behavior, boundaries, malformed input, and error propagation.
+- Added lexical closures with parameter binding, captured environments, nested closures, and recursive closure calls.
+- Added integration tests for numbers, expressions, syntax, printing, evaluation, definitions, patterns, closures, garbage collection, the compiled path, and the session API.
+- Expanded the suite to more than 230 tests covering normal behavior, boundaries, malformed input, and error propagation.
