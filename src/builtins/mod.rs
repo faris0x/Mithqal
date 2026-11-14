@@ -26,6 +26,7 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         "expand" | "factor" | "together" | "cancel" | "polynomialGcd" | "resultant" | "solve" => {
             A::new().with(A::PROTECTED)
         }
+        "differentiate" | "integrate" => A::new().with(A::PROTECTED),
         "pattern" | "blank" | "blankSequence" | "blankNullSequence" | "condition" => {
             A::new().with(A::PROTECTED)
         }

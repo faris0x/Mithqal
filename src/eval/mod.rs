@@ -128,6 +128,22 @@ impl AlgebraHead {
     }
 }
 
+#[derive(Copy, Clone)]
+enum CalculusHead {
+    Differentiate,
+    Integrate,
+}
+
+impl CalculusHead {
+    fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "differentiate" => Self::Differentiate,
+            "integrate" => Self::Integrate,
+            _ => return None,
+        })
+    }
+}
+
 struct Heads {
     plus: ExprId,
     times: ExprId,
@@ -1401,6 +1417,54 @@ impl<'a> Evaluator<'a> {
             if let Some(result) = self.apply_user(symbol, head, args)? {
                 return Ok(result);
             }
+        }
+        let calculus_head = self
+            .arena
+            .symbol_id(head)
+            .and_then(|symbol| CalculusHead::from_name(self.arena.symbol_name(symbol)));
+        if let Some(calculus_head) = calculus_head {
+            if args.len() != 2 {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalArity,
+                    "calculus function expects an expression and a variable",
+                ));
+            }
+            let original = self.arena.intern_call(head, args);
+            if self.arena.symbol_id(args[1]).is_none() {
+                return Ok(original);
+            }
+            let context = crate::calculus::Context {
+                plus: self.heads.plus,
+                times: self.heads.times,
+                power: self.heads.power,
+                negate: self.heads.negate,
+                list: self.heads.list,
+                equal: self.heads.equal,
+            };
+            let result = match calculus_head {
+                CalculusHead::Differentiate => {
+                    crate::calculus::differentiate(self.arena, args[0], args[1], &context)
+                }
+                CalculusHead::Integrate => {
+                    crate::calculus::integrate(self.arena, args[0], args[1], &context)
+                }
+            };
+            let result = result.map(|value| {
+                if matches!(calculus_head, CalculusHead::Differentiate) {
+                    let algebra = crate::algebra::Context {
+                        plus: self.heads.plus,
+                        times: self.heads.times,
+                        power: self.heads.power,
+                        negate: self.heads.negate,
+                        list: self.heads.list,
+                        equal: self.heads.equal,
+                    };
+                    crate::algebra::cancel(self.arena, value, &algebra).unwrap_or(value)
+                } else {
+                    value
+                }
+            });
+            return Ok(result.unwrap_or(original));
         }
         Ok(self.arena.intern_call(head, args))
     }

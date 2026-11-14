@@ -11,11 +11,13 @@
 mod algebra;
 pub mod api;
 pub mod builtins;
+mod calculus;
 pub mod config;
 pub mod diag;
 pub mod eval;
 pub mod expr;
 mod hash;
+pub mod ir;
 pub mod num;
 pub mod print;
 pub mod runtime;

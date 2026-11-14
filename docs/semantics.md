@@ -227,6 +227,16 @@ The algebra boundary provides these heads:
 
 The algebra layer rejects exponents above 4096, expanded forms above 20000 terms, and resultant inputs with a combined degree above 64. Products with more than two million coefficient pairs are rejected before multiplication starts. These limits keep a bad input from exhausting memory in a single evaluation. Rejected inputs stay in their original unevaluated form.
 
+## Symbolic calculus
+
+The calculus layer provides `differentiate` and `integrate`. Both take an expression and a variable.
+
+`differentiate` applies exact differentiation rules for sums, products, powers, the elementary functions, and the inverse trigonometric and hyperbolic functions. Unknown function calls remain unevaluated. A symbol other than the differentiation variable is treated as a constant.
+
+`integrate` covers polynomials, powers with constant exponents, linear substitutions, `exp`, `sin`, `cos`, `tan`, `sinh`, `cosh`, `tanh`, `ln`, and reciprocal linear terms. Products of dependent factors are expanded when the algebra layer can expand them. An antiderivative constant is omitted. Unsupported integrals remain unevaluated.
+
+Differentiation results are passed through rational cancellation so quotient rule results collapse to a single fraction. Integration does not attach branch conditions or assumptions.
+
 ## Exact complex normalization
 
 Expressions built from exact rationals and the unshadowed symbol `i` using `plus`, `times`, `negate`, integer `power`, and division are Gaussian rationals. They normalize automatically to the form `a+b*i`, where `a` and `b` are exact rationals.

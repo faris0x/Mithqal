@@ -77,6 +77,18 @@ fn main() {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 
+    let mut cold_arena = Arena::new();
+    measure("cold differentiate x^6", 2_000, || {
+        let parsed = parse_statement(&mut cold_arena, "differentiate(x^6,x)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold integrate polynomial", 1_000, || {
+        let parsed = parse_statement(&mut cold_arena, "integrate(x^3-2*x+1,x)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut session = Session::new();
     measure("cached parse and evaluate 1+2", 20_000, || {
         black_box(session.eval_statement("1+2").unwrap());
