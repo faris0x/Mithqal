@@ -10,10 +10,10 @@ mod pattern;
 use core::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
-use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
 use crate::hash::FnvBuildHasher;
+use crate::kernel::Heads;
 use crate::num::{ComplexMpc, Int, MPFR_RNDD, MPFR_RNDU, Rat, Real};
 
 use definitions::{Definitions, Rule};
@@ -50,6 +50,9 @@ enum NumericHead {
     Asinh,
     Acosh,
     Atanh,
+    Floor,
+    Ceil,
+    Round,
 }
 
 impl NumericHead {
@@ -76,6 +79,9 @@ impl NumericHead {
             "asinh" => Self::Asinh,
             "acosh" => Self::Acosh,
             "atanh" => Self::Atanh,
+            "floor" => Self::Floor,
+            "ceil" => Self::Ceil,
+            "round" => Self::Round,
             _ => return None,
         })
     }
@@ -98,6 +104,9 @@ impl NumericHead {
                 | Self::Asinh
                 | Self::Acosh
                 | Self::Atanh
+                | Self::Floor
+                | Self::Ceil
+                | Self::Round
         )
     }
 }
@@ -144,40 +153,30 @@ impl CalculusHead {
     }
 }
 
-struct Heads {
-    plus: ExprId,
-    times: ExprId,
-    power: ExprId,
-    negate: ExprId,
-    list: ExprId,
-    if_head: ExprId,
-    and: ExprId,
-    or: ExprId,
-    not: ExprId,
-    same: ExprId,
-    equal: ExprId,
-    not_equal: ExprId,
-    less: ExprId,
-    less_equal: ExprId,
-    greater: ExprId,
-    greater_equal: ExprId,
-    true_value: ExprId,
-    false_value: ExprId,
-    undefined: ExprId,
-    indeterminate: ExprId,
-    failed: ExprId,
-    imaginary: ExprId,
-    set: ExprId,
-    set_delayed: ExprId,
-    let_head: ExprId,
-    function: ExprId,
-    closure: ExprId,
-    approx: ExprId,
-    interval: ExprId,
-    complex: ExprId,
-    pi: ExprId,
-    e: ExprId,
-    null: ExprId,
+#[derive(Copy, Clone)]
+enum ExactNumericHead {
+    Gcd,
+    Lcm,
+    Factorial,
+    Binomial,
+    Floor,
+    Ceil,
+    Round,
+}
+
+impl ExactNumericHead {
+    fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "gcd" => Self::Gcd,
+            "lcm" => Self::Lcm,
+            "factorial" => Self::Factorial,
+            "binomial" => Self::Binomial,
+            "floor" => Self::Floor,
+            "ceil" => Self::Ceil,
+            "round" => Self::Round,
+            _ => return None,
+        })
+    }
 }
 
 /// Evaluate an expression to a normal form.
@@ -223,41 +222,7 @@ struct Evaluator<'a> {
 
 impl<'a> Evaluator<'a> {
     fn new(arena: &'a mut Arena, definitions: &'a mut Definitions) -> Self {
-        let heads = Heads {
-            plus: head(arena, "plus"),
-            times: head(arena, "times"),
-            power: head(arena, "power"),
-            negate: head(arena, "negate"),
-            list: head(arena, "list"),
-            if_head: head(arena, "if"),
-            and: head(arena, "and"),
-            or: head(arena, "or"),
-            not: head(arena, "not"),
-            same: head(arena, "same"),
-            equal: head(arena, "equal"),
-            not_equal: head(arena, "notEqual"),
-            less: head(arena, "less"),
-            less_equal: head(arena, "lessEqual"),
-            greater: head(arena, "greater"),
-            greater_equal: head(arena, "greaterEqual"),
-            true_value: head(arena, "true"),
-            false_value: head(arena, "false"),
-            undefined: head(arena, "undefined"),
-            indeterminate: head(arena, "indeterminate"),
-            failed: head(arena, "failed"),
-            imaginary: head(arena, "i"),
-            set: head(arena, "set"),
-            set_delayed: head(arena, "setDelayed"),
-            let_head: head(arena, "let"),
-            function: head(arena, "function"),
-            closure: head(arena, "closure"),
-            approx: head(arena, "approx"),
-            interval: head(arena, "interval"),
-            complex: head(arena, "complex"),
-            pi: head(arena, "pi"),
-            e: head(arena, "e"),
-            null: head(arena, "null"),
-        };
+        let heads = arena.heads();
         Evaluator {
             arena,
             definitions,
@@ -919,6 +884,9 @@ impl<'a> Evaluator<'a> {
                     NumericHead::Asinh => value.asinh(),
                     NumericHead::Acosh => value.acosh(),
                     NumericHead::Atanh => value.atanh(),
+                    NumericHead::Floor => value.floor(),
+                    NumericHead::Ceil => value.ceil(),
+                    NumericHead::Round => value.round(),
                     _ => return Ok(None),
                 };
                 if let Ok(real) = result {
@@ -1413,6 +1381,16 @@ impl<'a> Evaluator<'a> {
                 }
             }
         }
+        let numeric_function = self
+            .arena
+            .symbol_id(head)
+            .and_then(|symbol| ExactNumericHead::from_name(self.arena.symbol_name(symbol)));
+        if let Some(function) = numeric_function {
+            let original = self.arena.intern_call(head, args);
+            return Ok(self
+                .apply_exact_numeric(function, args)?
+                .unwrap_or(original));
+        }
         if let Some(symbol) = self.arena.symbol_id(head) {
             if let Some(result) = self.apply_user(symbol, head, args)? {
                 return Ok(result);
@@ -1492,6 +1470,93 @@ impl<'a> Evaluator<'a> {
         }
         let original = self.arena.intern_call(head, args);
         Ok(operation(self.arena, args[0], &context).unwrap_or(original))
+    }
+
+    fn apply_exact_numeric(
+        &mut self,
+        function: ExactNumericHead,
+        args: &[ExprId],
+    ) -> Result<Option<ExprId>, Diagnostic> {
+        let arity = match function {
+            ExactNumericHead::Gcd | ExactNumericHead::Lcm => {
+                if args.len() < 2 {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalArity,
+                        "gcd and lcm expect at least two integers",
+                    ));
+                }
+                return Ok(self.apply_fold_integer(function, args));
+            }
+            ExactNumericHead::Factorial => 1,
+            ExactNumericHead::Binomial => 2,
+            ExactNumericHead::Floor | ExactNumericHead::Ceil | ExactNumericHead::Round => 1,
+        };
+        if args.len() != arity {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "numeric function received the wrong number of arguments",
+            ));
+        }
+        Ok(self.apply_simple_numeric(function, args))
+    }
+
+    fn apply_fold_integer(
+        &mut self,
+        function: ExactNumericHead,
+        args: &[ExprId],
+    ) -> Option<ExprId> {
+        let mut value = exact_integer(&self.arena, args[0])?;
+        for arg in &args[1..] {
+            let next = exact_integer(&self.arena, *arg)?;
+            value = match function {
+                ExactNumericHead::Gcd => value.gcd(&next),
+                ExactNumericHead::Lcm => integer_lcm(&value, &next),
+                _ => return None,
+            };
+        }
+        Some(self.arena.intern_int(value))
+    }
+
+    fn apply_simple_numeric(
+        &mut self,
+        function: ExactNumericHead,
+        args: &[ExprId],
+    ) -> Option<ExprId> {
+        match function {
+            ExactNumericHead::Factorial => {
+                let value = exact_integer(&self.arena, args[0])?.to_i64()?;
+                if value < 0 || value > 10_000 {
+                    return None;
+                }
+                Some(self.arena.intern_int(integer_factorial(value)?))
+            }
+            ExactNumericHead::Binomial => {
+                let n = exact_integer(&self.arena, args[0])?.to_i64()?;
+                let k = exact_integer(&self.arena, args[1])?.to_i64()?;
+                if n < 0 || k < 0 {
+                    return None;
+                }
+                Some(self.arena.intern_int(integer_binomial(n, k)?))
+            }
+            ExactNumericHead::Floor | ExactNumericHead::Ceil | ExactNumericHead::Round => {
+                if let Node::Real(value) = self.arena.node(args[0]) {
+                    let result = match function {
+                        ExactNumericHead::Floor => value.floor(),
+                        ExactNumericHead::Ceil => value.ceil(),
+                        _ => value.round(),
+                    };
+                    return result.ok().map(|value| self.arena.intern_real(value));
+                }
+                let rational = exact_rational(&self.arena, args[0])?;
+                let value = match function {
+                    ExactNumericHead::Floor => rational.floor(),
+                    ExactNumericHead::Ceil => rational.ceil(),
+                    _ => rational.round(),
+                };
+                Some(self.arena.intern_int(value))
+            }
+            _ => None,
+        }
     }
 
     fn apply_user(
@@ -2186,6 +2251,65 @@ impl<'a> Evaluator<'a> {
     }
 }
 
+fn exact_integer(arena: &Arena, expression: ExprId) -> Option<Int> {
+    match arena.node(expression) {
+        Node::Int(value) => Some(value.clone()),
+        Node::Rat(value) if value.den().is_one() => Some(value.num()),
+        _ => None,
+    }
+}
+
+fn exact_rational(arena: &Arena, expression: ExprId) -> Option<Rat> {
+    match arena.node(expression) {
+        Node::Int(value) => Rat::from_ints(value.clone(), Int::one()).ok(),
+        Node::Rat(value) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn integer_lcm(left: &Int, right: &Int) -> Int {
+    if left.is_zero() || right.is_zero() {
+        return Int::zero();
+    }
+    let gcd = left.gcd(right);
+    left.mul(right)
+        .divrem(&gcd)
+        .map(|(quotient, _)| quotient.abs())
+        .unwrap_or_else(|_| Int::one())
+}
+
+fn integer_factorial(value: i64) -> Option<Int> {
+    let mut result = Int::one();
+    let mut factor = 2i64;
+    while factor <= value {
+        result = result.mul(&Int::from_i64(factor));
+        factor += 1;
+    }
+    Some(result)
+}
+
+fn integer_binomial(n: i64, k: i64) -> Option<Int> {
+    if k > n {
+        return Some(Int::zero());
+    }
+    let k = k.min(n - k);
+    if k > 100_000 {
+        return None;
+    }
+    let mut result = Int::one();
+    let mut index = 1i64;
+    while index <= k {
+        result = result.mul(&Int::from_i64(n - k + index));
+        let (quotient, remainder) = result.divrem(&Int::from_i64(index)).ok()?;
+        if !remainder.is_zero() {
+            return None;
+        }
+        result = quotient;
+        index += 1;
+    }
+    Some(result)
+}
+
 fn numeric_add(left: &Numeric, right: &Numeric) -> Option<Numeric> {
     match (left, right) {
         (Numeric::Error(value), _) | (_, Numeric::Error(value)) => Some(Numeric::Error(*value)),
@@ -2330,12 +2454,6 @@ fn numeric_pow(value: &Numeric, exponent: i64, digits: u32) -> Option<Numeric> {
             Some(result)
         }
     }
-}
-
-fn head(arena: &mut Arena, name: &str) -> ExprId {
-    let attrs = builtins::attributes(name).unwrap_or_else(Attributes::new);
-    let symbol = arena.intern_symbol(name, attrs);
-    arena.symbol_expr(symbol)
 }
 
 fn gaussian_pow(real: &Rat, imaginary: &Rat, power: i64) -> Option<(Rat, Rat)> {

@@ -10,7 +10,7 @@ use crate::hash::FnvBuildHasher;
 use crate::num::{Int, Rat};
 use crate::print;
 use crate::runtime;
-use crate::syntax;
+use crate::syntax::{self, ExprSource, Stmt};
 
 /// A view of an expression.
 #[derive(Clone, Copy, Debug)]
@@ -41,6 +41,7 @@ pub struct Session {
     compiled_cache: HashMap<ExprId, runtime::Code, FnvBuildHasher>,
     eval_cache: HashMap<(ExprId, u64), ExprId, FnvBuildHasher>,
     compiled_results: HashMap<(ExprId, u64), ExprId, FnvBuildHasher>,
+    output: Vec<String>,
     config: Config,
 }
 
@@ -60,6 +61,7 @@ impl Session {
             compiled_cache: HashMap::default(),
             eval_cache: HashMap::default(),
             compiled_results: HashMap::default(),
+            output: Vec::new(),
             config,
         }
     }
@@ -85,8 +87,118 @@ impl Session {
         self.eval(expression)
     }
 
+    /// Parse and evaluate a complete surface language module.
+    pub fn eval_language(&mut self, source: &str) -> Result<ExprId, Diagnostic> {
+        let program = syntax::parse_program(source)?;
+        self.eval_language_statements(&program.body)
+    }
+
+    /// Printed output produced by `prt` statements.
+    pub fn output(&self) -> &[String] {
+        &self.output
+    }
+
+    /// Take the printed output produced by `prt` statements.
+    pub fn take_output(&mut self) -> Vec<String> {
+        core::mem::take(&mut self.output)
+    }
+
+    fn eval_language_statements(&mut self, statements: &[Stmt]) -> Result<ExprId, Diagnostic> {
+        let mut last = None;
+        for statement in statements {
+            last = Some(self.eval_language_statement(statement)?);
+        }
+        Ok(last.unwrap_or_else(|| self.arena.builtin_head("null")))
+    }
+
+    fn eval_language_statement(&mut self, statement: &Stmt) -> Result<ExprId, Diagnostic> {
+        match statement {
+            Stmt::Def {
+                name,
+                parameters,
+                body,
+            } => {
+                let body = self.language_expression(body)?;
+                let blank_head = self.arena.builtin_head("blank");
+                let blank = self.arena.intern_call(blank_head, &[]);
+                let pattern_head = self.arena.builtin_head("pattern");
+                let mut patterns = Vec::with_capacity(parameters.len());
+                for parameter in parameters {
+                    let symbol = self.arena.symbol_or_intern(parameter);
+                    let name = self.arena.symbol_expr(symbol);
+                    patterns.push(self.arena.intern_call(pattern_head, &[name, blank]));
+                }
+                let symbol = self.arena.symbol_or_intern(name);
+                let head = self.arena.symbol_expr(symbol);
+                let lhs = self.arena.intern_call(head, &patterns);
+                self.definitions.define(&self.arena, lhs, body, true)?;
+                Ok(self.arena.builtin_head("null"))
+            }
+            Stmt::Let { name, body } => {
+                let value = self.language_expression(body)?;
+                let value = self.eval(value)?;
+                let symbol = self.arena.symbol_or_intern(name);
+                let target = self.arena.symbol_expr(symbol);
+                self.definitions.define(&self.arena, target, value, false)?;
+                Ok(value)
+            }
+            Stmt::If {
+                condition,
+                then_body,
+                else_body,
+            } => {
+                let condition = self.language_expression(condition)?;
+                let condition = self.eval(condition)?;
+                let truth = self.language_boolean(condition)?;
+                if truth {
+                    self.eval_language_statements(then_body)
+                } else {
+                    self.eval_language_statements(else_body)
+                }
+            }
+            Stmt::Print { body } => {
+                let value = self.language_expression(body)?;
+                let value = self.eval(value)?;
+                self.output.push(self.format_infix(value));
+                Ok(value)
+            }
+        }
+    }
+
+    fn language_expression(&mut self, source: &ExprSource) -> Result<ExprId, Diagnostic> {
+        match syntax::parse_statement(&mut self.arena, &source.text) {
+            Ok(expression) => Ok(expression),
+            Err(mut diagnostic) => {
+                if let Some(span) = diagnostic.span.as_mut() {
+                    if span.line == 1 {
+                        span.line = source.line;
+                        span.column = span.column.saturating_add(source.column - 1);
+                    }
+                }
+                Err(diagnostic)
+            }
+        }
+    }
+
+    fn language_boolean(&self, value: ExprId) -> Result<bool, Diagnostic> {
+        if let Node::Symbol(symbol) = self.arena.node(value) {
+            match self.arena.symbol_name(*symbol) {
+                "true" => return Ok(true),
+                "false" => return Ok(false),
+                _ => {}
+            }
+        }
+        Err(Diagnostic::eval(
+            crate::diag::ErrorCode::EvalDefinition,
+            "a conditional requires true or false",
+        ))
+    }
+
     /// Parse and evaluate every statement, returning the final value.
     pub fn eval_source(&mut self, source: &str) -> Result<ExprId, Diagnostic> {
+        if syntax::looks_like_language(source) {
+            return self.eval_language(source);
+        }
         let statements = self.parse_source(source)?;
         if statements.is_empty() {
             return Err(Diagnostic::parse(

@@ -593,6 +593,32 @@ impl Real {
         unsafe { ffi_mpfr::mpfr_nan_p(&self.inner) == 0 && ffi_mpfr::mpfr_inf_p(&self.inner) == 0 }
     }
 
+    /// The greatest integer not greater than the value.
+    pub fn floor(&self) -> Result<Real, NumError> {
+        self.round_integral(ffi_mpfr::mpfr_floor)
+    }
+
+    /// The least integer not less than the value.
+    pub fn ceil(&self) -> Result<Real, NumError> {
+        self.round_integral(ffi_mpfr::mpfr_ceil)
+    }
+
+    /// The nearest integer, with halves rounded away from zero.
+    pub fn round(&self) -> Result<Real, NumError> {
+        self.round_integral(ffi_mpfr::mpfr_round)
+    }
+
+    fn round_integral(
+        &self,
+        operation: unsafe extern "C" fn(*mut Mpfr, *const Mpfr) -> core::ffi::c_int,
+    ) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { operation(&mut out.inner, &self.inner) };
+        out.error = rounding_error(&out);
+        Ok(out)
+    }
+
     /// A stable identity string for interning.
     pub(crate) fn key_parts(&self) -> (u32, i8, i64, Box<[u64]>, u64) {
         if self.is_zero() {

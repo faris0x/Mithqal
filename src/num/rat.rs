@@ -258,6 +258,53 @@ impl Rat {
             self.clone()
         }
     }
+
+    /// The greatest integer not greater than the rational.
+    pub fn floor(&self) -> Int {
+        let (quotient, remainder) = self
+            .num()
+            .divrem(&self.den())
+            .expect("rational denominator is nonzero");
+        if self.sign() < 0 && !remainder.is_zero() {
+            quotient.sub(&Int::one())
+        } else {
+            quotient
+        }
+    }
+
+    /// The least integer not less than the rational.
+    pub fn ceil(&self) -> Int {
+        let (quotient, remainder) = self
+            .num()
+            .divrem(&self.den())
+            .expect("rational denominator is nonzero");
+        if self.sign() > 0 && !remainder.is_zero() {
+            quotient.add(&Int::one())
+        } else {
+            quotient
+        }
+    }
+
+    /// The nearest integer, with halves rounded away from zero.
+    pub fn round(&self) -> Int {
+        let (quotient, remainder) = self
+            .num()
+            .divrem(&self.den())
+            .expect("rational denominator is nonzero");
+        if remainder.is_zero() {
+            return quotient;
+        }
+        let twice = remainder.abs().mul(&Int::from_i64(2));
+        if twice.cmp(&self.den()) != Ordering::Less {
+            if self.sign() < 0 {
+                quotient.sub(&Int::one())
+            } else {
+                quotient.add(&Int::one())
+            }
+        } else {
+            quotient
+        }
+    }
 }
 
 impl Clone for Rat {

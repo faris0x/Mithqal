@@ -22,6 +22,7 @@ The current version supports exact integers and exact rationals.
 - A decimal literal is exact. `1.23` denotes `123/100`.
 - There is no approximate literal. Approximate values arrive through an explicit evaluation boundary in a later version.
 - Scientific notation is written with `10^`. The lexer has no exponent literal syntax.
+- Exact integer functions include `gcd`, `lcm`, `factorial`, `binomial`, `floor`, `ceil`, and `round`. The rounding functions also accept approximate reals.
 
 ## Approximate reals
 

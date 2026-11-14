@@ -95,6 +95,18 @@ fn main() {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 
+    let mut cold_arena = Arena::new();
+    measure("cold gcd 84 30", 10_000, || {
+        let parsed = parse_statement(&mut cold_arena, "gcd(84,30)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold factorial 10", 5_000, || {
+        let parsed = parse_statement(&mut cold_arena, "factorial(10)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut session = Session::new();
     measure("cached parse and evaluate 1+2", 20_000, || {
         black_box(session.eval_statement("1+2").unwrap());
@@ -139,6 +151,12 @@ fn main() {
     let mut session = Session::new();
     measure("cached compiled 1+2", 20_000, || {
         black_box(session.eval_compiled_statement("1+2").unwrap());
+    });
+
+    let program = "mod bench\ndef square(x)=x*x\nlet a=3\nprt square(a+1)\nend\n";
+    let mut session = Session::new();
+    measure("language module eval", 2_000, || {
+        black_box(session.eval_source(program).unwrap());
     });
 
     let mut session = Session::new();

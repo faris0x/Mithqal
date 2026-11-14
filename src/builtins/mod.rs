@@ -27,6 +27,9 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "differentiate" | "integrate" => A::new().with(A::PROTECTED),
+        "gcd" | "lcm" | "factorial" | "binomial" | "floor" | "ceil" | "round" => {
+            A::new().with(A::PROTECTED)
+        }
         "pattern" | "blank" | "blankSequence" | "blankNullSequence" | "condition" => {
             A::new().with(A::PROTECTED)
         }

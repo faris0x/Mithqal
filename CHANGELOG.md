@@ -56,4 +56,7 @@ Initial kernel work.
 - Added definite integration with exact endpoint substitution and symbolic bounds.
 - Added calculus simplification through rational cancellation and protected calculus symbols.
 - Added a versioned structured IR scaffold with typed arenas, lexical scopes, patterns, definitions, validation, and a builder.
-- Expanded the suite to more than 300 tests covering normal behavior, boundaries, malformed input, numeric significance, intervals, complex arithmetic, polynomial algebra, calculus, structured IR validation, and error propagation.
+- Added a line-based surface language with lowercase keywords, required modules, single-line definitions, eager bindings, conditionals, print statements, comments, and strict expression whitespace diagnostics.
+- Added exact `gcd`, `lcm`, `factorial`, `binomial`, `floor`, `ceil`, and `round` functions with approximate rounding at the numeric boundary.
+- Added arena-cached kernel head handles and session output collection.
+- Expanded the suite to more than 400 test functions and more than 1000 assertion sites, plus generated arithmetic, parser, numeric, and language corpora.

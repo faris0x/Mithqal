@@ -48,6 +48,8 @@ pub struct Arena {
     live: usize,
     symbols: Vec<SymbolInfo>,
     symbol_names: HashMap<String, SymbolId, FnvBuildHasher>,
+    builtin_heads: HashMap<&'static str, ExprId, FnvBuildHasher>,
+    heads: Option<crate::kernel::Heads>,
 }
 
 impl Arena {
@@ -60,6 +62,8 @@ impl Arena {
             live: 0,
             symbols: Vec::new(),
             symbol_names: HashMap::default(),
+            builtin_heads: HashMap::default(),
+            heads: None,
         }
     }
 
@@ -169,6 +173,28 @@ impl Arena {
             Node::Symbol(symbol) => self.symbol_attributes(*symbol),
             _ => Attributes::new(),
         }
+    }
+
+    /// Resolve and cache a built in head expression.
+    pub(crate) fn builtin_head(&mut self, name: &'static str) -> ExprId {
+        if let Some(head) = self.builtin_heads.get(name) {
+            return *head;
+        }
+        let attrs = crate::builtins::attributes(name).unwrap_or_else(Attributes::new);
+        let symbol = self.intern_symbol(name, attrs);
+        let head = self.symbol_expr(symbol);
+        self.builtin_heads.insert(name, head);
+        head
+    }
+
+    /// The cached core head handles.
+    pub(crate) fn heads(&mut self) -> crate::kernel::Heads {
+        if let Some(heads) = self.heads {
+            return heads;
+        }
+        let heads = crate::kernel::Heads::new(self);
+        self.heads = Some(heads);
+        heads
     }
 
     /// Intern a call, applying flatten and canonical sorting for the head.

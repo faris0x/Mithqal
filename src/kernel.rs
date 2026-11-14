@@ -1,0 +1,84 @@
+//! Cached kernel head expressions.
+//!
+//! An arena resolves this fixed set once. Later evaluator instances copy the
+//! cached handles instead of repeating symbol lookups.
+
+use crate::expr::{Arena, ExprId};
+
+/// Expression handles for the core kernel heads.
+#[derive(Copy, Clone)]
+pub(crate) struct Heads {
+    pub(crate) plus: ExprId,
+    pub(crate) times: ExprId,
+    pub(crate) power: ExprId,
+    pub(crate) negate: ExprId,
+    pub(crate) list: ExprId,
+    pub(crate) if_head: ExprId,
+    pub(crate) and: ExprId,
+    pub(crate) or: ExprId,
+    pub(crate) not: ExprId,
+    pub(crate) same: ExprId,
+    pub(crate) equal: ExprId,
+    pub(crate) not_equal: ExprId,
+    pub(crate) less: ExprId,
+    pub(crate) less_equal: ExprId,
+    pub(crate) greater: ExprId,
+    pub(crate) greater_equal: ExprId,
+    pub(crate) true_value: ExprId,
+    pub(crate) false_value: ExprId,
+    pub(crate) undefined: ExprId,
+    pub(crate) indeterminate: ExprId,
+    pub(crate) failed: ExprId,
+    pub(crate) imaginary: ExprId,
+    pub(crate) set: ExprId,
+    pub(crate) set_delayed: ExprId,
+    pub(crate) let_head: ExprId,
+    pub(crate) function: ExprId,
+    pub(crate) closure: ExprId,
+    pub(crate) approx: ExprId,
+    pub(crate) interval: ExprId,
+    pub(crate) complex: ExprId,
+    pub(crate) pi: ExprId,
+    pub(crate) e: ExprId,
+    pub(crate) null: ExprId,
+}
+
+impl Heads {
+    pub(crate) fn new(arena: &mut Arena) -> Self {
+        Heads {
+            plus: arena.builtin_head("plus"),
+            times: arena.builtin_head("times"),
+            power: arena.builtin_head("power"),
+            negate: arena.builtin_head("negate"),
+            list: arena.builtin_head("list"),
+            if_head: arena.builtin_head("if"),
+            and: arena.builtin_head("and"),
+            or: arena.builtin_head("or"),
+            not: arena.builtin_head("not"),
+            same: arena.builtin_head("same"),
+            equal: arena.builtin_head("equal"),
+            not_equal: arena.builtin_head("notEqual"),
+            less: arena.builtin_head("less"),
+            less_equal: arena.builtin_head("lessEqual"),
+            greater: arena.builtin_head("greater"),
+            greater_equal: arena.builtin_head("greaterEqual"),
+            true_value: arena.builtin_head("true"),
+            false_value: arena.builtin_head("false"),
+            undefined: arena.builtin_head("undefined"),
+            indeterminate: arena.builtin_head("indeterminate"),
+            failed: arena.builtin_head("failed"),
+            imaginary: arena.builtin_head("i"),
+            set: arena.builtin_head("set"),
+            set_delayed: arena.builtin_head("setDelayed"),
+            let_head: arena.builtin_head("let"),
+            function: arena.builtin_head("function"),
+            closure: arena.builtin_head("closure"),
+            approx: arena.builtin_head("approx"),
+            interval: arena.builtin_head("interval"),
+            complex: arena.builtin_head("complex"),
+            pi: arena.builtin_head("pi"),
+            e: arena.builtin_head("e"),
+            null: arena.builtin_head("null"),
+        }
+    }
+}
