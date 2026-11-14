@@ -123,6 +123,36 @@ impl Rat {
         String::from_utf8(buffer[..end].to_vec()).expect("GMP produced non UTF-8 digits")
     }
 
+    pub(crate) fn num_sign(&self) -> i8 {
+        // SAFETY: the field is initialized.
+        let order = unsafe { ffi::__gmpz_cmp_si(&self.inner.num, 0) };
+        match order.cmp(&0) {
+            Ordering::Less => -1,
+            Ordering::Equal => 0,
+            Ordering::Greater => 1,
+        }
+    }
+
+    pub(crate) fn num_limbs(&self) -> &[u64] {
+        let length = self.inner.num.size.unsigned_abs() as usize;
+        if length == 0 {
+            &[]
+        } else {
+            // SAFETY: GMP stores `length` initialized limbs for a nonzero value.
+            unsafe { core::slice::from_raw_parts(self.inner.num.limbs, length) }
+        }
+    }
+
+    pub(crate) fn den_limbs(&self) -> &[u64] {
+        let length = self.inner.den.size.unsigned_abs() as usize;
+        if length == 0 {
+            &[]
+        } else {
+            // SAFETY: GMP stores `length` initialized limbs for a nonzero value.
+            unsafe { core::slice::from_raw_parts(self.inner.den.limbs, length) }
+        }
+    }
+
     /// The numerator as an exact integer.
     pub fn num(&self) -> Int {
         Int::from_mpz_ref(&self.inner.num)

@@ -14,6 +14,7 @@ pub mod config;
 pub mod diag;
 pub mod eval;
 pub mod expr;
+mod hash;
 pub mod num;
 pub mod print;
 pub mod runtime;

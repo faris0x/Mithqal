@@ -99,6 +99,7 @@ impl Session {
             self.config.max_depth,
         )?;
         self.last_result = Some(value);
+        self.maybe_collect();
         Ok(value)
     }
 
@@ -113,7 +114,15 @@ impl Session {
             self.config.max_depth,
         )?;
         self.last_result = Some(value);
+        self.maybe_collect();
         Ok(value)
+    }
+
+    fn maybe_collect(&mut self) {
+        let threshold = (self.config.gc_threshold_bytes / 64).max(64);
+        if self.arena.len() > threshold {
+            self.collect_garbage(&[]);
+        }
     }
 
     /// Parse and evaluate a single statement through the compiled path.

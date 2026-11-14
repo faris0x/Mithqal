@@ -21,4 +21,7 @@ Initial kernel work.
 - Added a typed instruction compiler and virtual machine with conditional control flow and a compiled session path.
 - Added lexical closures with parameter binding, captured environments, nested closures, and recursive closure calls.
 - Added integration tests for numbers, expressions, syntax, printing, evaluation, definitions, patterns, closures, garbage collection, the compiled path, and the session API.
+- Added automatic top level collection when the live expression count crosses the configured threshold.
+- Optimized hot paths with binary limb keys for interning, FNV hashed maps, hash based like term and base collection, a head resolution fast path, and a release profile with thin LTO and one codegen unit.
+- Added a benchmark harness for parsing, evaluation, pattern calls, closure calls, compiled execution, and collection.
 - Expanded the suite to more than 230 tests covering normal behavior, boundaries, malformed input, and error propagation.

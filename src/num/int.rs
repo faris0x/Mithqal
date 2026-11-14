@@ -208,6 +208,17 @@ impl Int {
         }
     }
 
+    pub(crate) fn magnitude(&self) -> &[u64] {
+        let length = self.inner.size.unsigned_abs() as usize;
+        if length == 0 {
+            &[]
+        } else {
+            // SAFETY: GMP stores `length` initialized limbs at `limbs` for a
+            // nonzero value. The slice borrows the integer for its lifetime.
+            unsafe { core::slice::from_raw_parts(self.inner.limbs, length) }
+        }
+    }
+
     pub(crate) fn from_mpz_ref(source: &Mpz) -> Self {
         let mut out = Self::initialized();
         // SAFETY: both values are initialized.

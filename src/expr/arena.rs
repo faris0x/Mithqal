@@ -3,6 +3,7 @@
 use core::cmp::Ordering;
 use std::collections::HashMap;
 
+use crate::hash::FnvBuildHasher;
 use crate::num::{Int, Rat};
 
 use super::node::{Attributes, ExprId, Node, SymbolId};
@@ -10,10 +11,20 @@ use super::order::canonical_cmp;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 enum Key {
-    Int(String),
-    Rat(String),
+    Int {
+        sign: i8,
+        limbs: Box<[u64]>,
+    },
+    Rat {
+        sign: i8,
+        num: Box<[u64]>,
+        den: Box<[u64]>,
+    },
     Symbol(SymbolId),
-    Call { head: ExprId, args: Box<[ExprId]> },
+    Call {
+        head: ExprId,
+        args: Box<[ExprId]>,
+    },
 }
 
 struct SymbolInfo {
@@ -25,11 +36,11 @@ struct SymbolInfo {
 /// An arena of hash consed expression nodes and a symbol table.
 pub struct Arena {
     nodes: Vec<Option<Node>>,
-    intern: HashMap<Key, ExprId>,
+    intern: HashMap<Key, ExprId, FnvBuildHasher>,
     free: Vec<ExprId>,
     live: usize,
     symbols: Vec<SymbolInfo>,
-    symbol_names: HashMap<String, SymbolId>,
+    symbol_names: HashMap<String, SymbolId, FnvBuildHasher>,
 }
 
 impl Arena {
@@ -37,11 +48,11 @@ impl Arena {
     pub fn new() -> Self {
         Arena {
             nodes: Vec::new(),
-            intern: HashMap::new(),
+            intern: HashMap::default(),
             free: Vec::new(),
             live: 0,
             symbols: Vec::new(),
-            symbol_names: HashMap::new(),
+            symbol_names: HashMap::default(),
         }
     }
 
@@ -216,7 +227,7 @@ impl Arena {
             }
         }
 
-        let mut intern = HashMap::new();
+        let mut intern = HashMap::default();
         for (index, slot) in self.nodes.iter_mut().enumerate() {
             match slot {
                 Some(node) if marked[index] => {
@@ -265,8 +276,15 @@ impl Default for Arena {
 
 fn key_for(node: &Node) -> Key {
     match node {
-        Node::Int(value) => Key::Int(value.to_decimal()),
-        Node::Rat(value) => Key::Rat(value.to_decimal()),
+        Node::Int(value) => Key::Int {
+            sign: value.sign(),
+            limbs: value.magnitude().into(),
+        },
+        Node::Rat(value) => Key::Rat {
+            sign: value.num_sign(),
+            num: value.num_limbs().into(),
+            den: value.den_limbs().into(),
+        },
         Node::Symbol(symbol) => Key::Symbol(*symbol),
         Node::Call { head, args } => Key::Call {
             head: *head,

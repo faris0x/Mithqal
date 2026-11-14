@@ -102,6 +102,23 @@ fn collection_reuses_freed_slots() {
 }
 
 #[test]
+fn automatic_collection_keeps_memory_bounded() {
+    let config = cas::Config {
+        gc_threshold_bytes: 4096,
+        ..cas::Config::default()
+    };
+    let mut session = Session::with_config(config);
+    for value in 0..500 {
+        session.eval_statement(&format!("{}+1", value)).unwrap();
+    }
+    assert!(
+        session.live_expressions() < 200,
+        "live expressions {}",
+        session.live_expressions()
+    );
+}
+
+#[test]
 fn collection_of_empty_session_is_safe() {
     let mut session = Session::new();
     session.collect_garbage(&[]);

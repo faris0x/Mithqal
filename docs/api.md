@@ -52,7 +52,7 @@ impl Session {
 
 `eval_compiled` and `eval_compiled_statement` use the typed instruction compiler and machine. They share the arena and definitions with the symbolic path.
 
-`collect_garbage` marks definitions, the last result, symbol nodes, and the supplied roots. `live_expressions` reports the number of live expression nodes.
+`collect_garbage` marks definitions, the last result, symbol nodes, and the supplied roots. `live_expressions` reports the number of live expression nodes. The session also collects after a top level evaluation when the live node count exceeds the configured collection threshold.
 
 ## Expression handles
 

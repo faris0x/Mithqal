@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
+use crate::hash::FnvBuildHasher;
 use crate::num::{Int, Rat};
 
 use definitions::{Definitions, Rule};
@@ -172,7 +173,16 @@ impl<'a> Evaluator<'a> {
             }
             Node::Call { head, args } => (*head, args.to_vec()),
         };
-        let head = self.eval(head)?;
+        let head = if let Node::Symbol(symbol) = self.arena.node(head) {
+            let symbol = *symbol;
+            if self.local_value(symbol).is_none() && self.definitions.own_value(symbol).is_none() {
+                head
+            } else {
+                self.eval(head)?
+            }
+        } else {
+            self.eval(head)?
+        };
         let closure = match self.arena.node(head) {
             Node::Call {
                 head: closure_head,
@@ -676,24 +686,17 @@ impl<'a> Evaluator<'a> {
             return Ok(value);
         }
         let mut constant = Rat::zero();
-        let mut terms: Vec<(ExprId, Rat)> = Vec::new();
+        let mut terms: HashMap<ExprId, Rat, FnvBuildHasher> = HashMap::default();
         for arg in args {
             let (coefficient, body) = self.decompose_term(*arg)?;
             match body {
                 None => constant = constant.add(&coefficient),
-                Some(body) => {
-                    let mut found = false;
-                    for (existing, value) in &mut terms {
-                        if *existing == body {
-                            *value = value.add(&coefficient);
-                            found = true;
-                            break;
-                        }
+                Some(body) => match terms.get_mut(&body) {
+                    Some(value) => *value = value.add(&coefficient),
+                    None => {
+                        terms.insert(body, coefficient);
                     }
-                    if !found {
-                        terms.push((body, coefficient));
-                    }
-                }
+                },
             }
         }
 
@@ -733,7 +736,7 @@ impl<'a> Evaluator<'a> {
         }
 
         let mut coefficient = Rat::one();
-        let mut bases: Vec<(ExprId, Rat)> = Vec::new();
+        let mut bases: HashMap<ExprId, Rat, FnvBuildHasher> = HashMap::default();
         for arg in args {
             self.collect_factor(*arg, &mut coefficient, &mut bases)?;
         }
@@ -1055,7 +1058,7 @@ impl<'a> Evaluator<'a> {
         &mut self,
         id: ExprId,
         coefficient: &mut Rat,
-        bases: &mut Vec<(ExprId, Rat)>,
+        bases: &mut HashMap<ExprId, Rat, FnvBuildHasher>,
     ) -> Result<(), Diagnostic> {
         match self.arena.node(id) {
             Node::Int(value) => {
@@ -1095,14 +1098,18 @@ impl<'a> Evaluator<'a> {
         Ok(())
     }
 
-    fn add_base(&self, bases: &mut Vec<(ExprId, Rat)>, base: ExprId, exponent: Rat) {
-        for (existing, value) in bases.iter_mut() {
-            if *existing == base {
-                *value = value.add(&exponent);
-                return;
+    fn add_base(
+        &self,
+        bases: &mut HashMap<ExprId, Rat, FnvBuildHasher>,
+        base: ExprId,
+        exponent: Rat,
+    ) {
+        match bases.get_mut(&base) {
+            Some(value) => *value = value.add(&exponent),
+            None => {
+                bases.insert(base, exponent);
             }
         }
-        bases.push((base, exponent));
     }
 
     fn term(&mut self, body: ExprId, coefficient: Rat) -> ExprId {
