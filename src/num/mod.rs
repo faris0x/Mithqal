@@ -4,11 +4,14 @@
 //! and all public numeric values enforce GMP initialization and cleanup.
 
 mod ffi;
+mod ffi_mpfr;
 mod int;
 mod rat;
+mod real;
 
 pub use int::Int;
 pub use rat::Rat;
+pub use real::Real;
 
 use core::fmt;
 
@@ -21,6 +24,8 @@ pub enum NumError {
     DivisionByZero,
     /// A value did not fit the requested Rust integer type.
     Overflow,
+    /// A real operation left its domain.
+    Domain,
 }
 
 impl fmt::Display for NumError {
@@ -29,6 +34,7 @@ impl fmt::Display for NumError {
             NumError::Parse => write!(f, "invalid numeric literal"),
             NumError::DivisionByZero => write!(f, "division by zero"),
             NumError::Overflow => write!(f, "numeric value does not fit"),
+            NumError::Domain => write!(f, "value is outside the function domain"),
         }
     }
 }

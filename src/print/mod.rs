@@ -31,6 +31,9 @@ fn write_canonical(arena: &Arena, id: ExprId, out: &mut String) {
         Node::Rat(value) => {
             let _ = out.write_str(&value.to_decimal());
         }
+        Node::Real(value) => {
+            let _ = out.write_str(&value.to_decimal());
+        }
         Node::Symbol(symbol) => {
             let _ = out.write_str(arena.symbol_name(*symbol));
         }
@@ -80,6 +83,13 @@ fn precedence(arena: &Arena, id: ExprId) -> u8 {
             }
         }
         Node::Rat(_) => P_MUL,
+        Node::Real(value) => {
+            if value.sign() < 0 {
+                P_UNARY
+            } else {
+                P_ATOM
+            }
+        }
         Node::Symbol(_) => P_ATOM,
         Node::Call { .. } => match head_name(arena, id) {
             Some("set") | Some("setDelayed") => P_SET,
@@ -114,6 +124,9 @@ fn write_infix_inner(arena: &Arena, id: ExprId, out: &mut String) {
             let _ = out.write_str(&value.to_decimal());
         }
         Node::Rat(value) => {
+            let _ = out.write_str(&value.to_decimal());
+        }
+        Node::Real(value) => {
             let _ = out.write_str(&value.to_decimal());
         }
         Node::Symbol(symbol) => {

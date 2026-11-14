@@ -60,6 +60,11 @@ fn main() {
     });
 
     let mut session = Session::new();
+    measure("cached approx pi 30", 5_000, || {
+        black_box(session.eval_statement("approx(pi,30)").unwrap());
+    });
+
+    let mut session = Session::new();
     measure("cached compiled 1+2", 20_000, || {
         black_box(session.eval_compiled_statement("1+2").unwrap());
     });

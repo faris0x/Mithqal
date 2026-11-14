@@ -14,6 +14,7 @@ Included:
 - Pattern matcher for the current pattern set.
 - Definitions, lexical `let`, closures, listable arithmetic, comparisons, and logic.
 - Symbolic `Q(i)` normalization.
+- Approximate reals through MPFR with significance tracking and a numeric boundary.
 - Typed instruction virtual machine and a reference interpreter.
 - Explicit mark and sweep garbage collection.
 - Structured diagnostics with stable codes and source spans.
@@ -21,7 +22,7 @@ Included:
 
 Excluded:
 
-- Approximate numbers, significance arithmetic, and intervals.
+- Interval arithmetic and approximate complex numbers.
 - Calculus, algebra, linear algebra, and assumptions.
 - Strings, files, and sets beyond `emptyset`.
 - A command line interface.

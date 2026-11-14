@@ -14,7 +14,7 @@ use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
 use crate::hash::FnvBuildHasher;
-use crate::num::{Int, Rat};
+use crate::num::{Int, Rat, Real};
 
 use definitions::{Definitions, Rule};
 use pattern::{Bindings, match_pattern, substitute};
@@ -49,6 +49,9 @@ struct Heads {
     let_head: ExprId,
     function: ExprId,
     closure: ExprId,
+    approx: ExprId,
+    pi: ExprId,
+    e: ExprId,
     null: ExprId,
 }
 
@@ -123,6 +126,9 @@ impl<'a> Evaluator<'a> {
             let_head: head(arena, "let"),
             function: head(arena, "function"),
             closure: head(arena, "closure"),
+            approx: head(arena, "approx"),
+            pi: head(arena, "pi"),
+            e: head(arena, "e"),
             null: head(arena, "null"),
         };
         Evaluator {
@@ -160,7 +166,7 @@ impl<'a> Evaluator<'a> {
 
     fn eval_inner(&mut self, id: ExprId) -> Result<ExprId, Diagnostic> {
         let (head, args) = match self.arena.node(id) {
-            Node::Int(_) | Node::Rat(_) => return Ok(id),
+            Node::Int(_) | Node::Rat(_) | Node::Real(_) => return Ok(id),
             Node::Symbol(symbol) => {
                 let symbol = *symbol;
                 if let Some(value) = self.local_value(symbol) {
@@ -202,6 +208,9 @@ impl<'a> Evaluator<'a> {
 
         if head == self.heads.function {
             return self.eval_function(&args);
+        }
+        if head == self.heads.approx {
+            return self.eval_approx(&args);
         }
         if head == self.heads.set {
             return self.eval_definition(&args, false);
@@ -270,6 +279,218 @@ impl<'a> Evaluator<'a> {
             }
         }
         None
+    }
+
+    fn eval_approx(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.is_empty() || args.len() > 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "approx expects an expression and an optional digit count",
+            ));
+        }
+        let digits = if args.len() == 2 {
+            let value = self.eval(args[1])?;
+            match self.arena.node(value) {
+                Node::Int(value) => value.to_i64().unwrap_or(0),
+                _ => 0,
+            }
+        } else {
+            16
+        };
+        if digits <= 0 || digits > 10_000 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                "approx digit count must be between 1 and 10000",
+            ));
+        }
+        let expression = self.eval(args[0])?;
+        if let Some(value) = self.approximate(expression, digits as u32)? {
+            return Ok(value);
+        }
+        Ok(self.arena.intern_call(self.heads.approx, args))
+    }
+
+    fn approximate(
+        &mut self,
+        expression: ExprId,
+        digits: u32,
+    ) -> Result<Option<ExprId>, Diagnostic> {
+        match self.arena.node(expression) {
+            Node::Int(value) => {
+                let rational = Rat::from_ints(value.clone(), Int::one()).map_err(|_| {
+                    Diagnostic::eval(ErrorCode::NumericFailure, "rational conversion failed")
+                })?;
+                return self.real_from_rat(rational, digits);
+            }
+            Node::Rat(value) => return self.real_from_rat(value.clone(), digits),
+            Node::Real(_) => return Ok(Some(expression)),
+            Node::Symbol(_) => {
+                if expression == self.heads.pi {
+                    return self.real_node(Real::pi(digits));
+                }
+                if expression == self.heads.e {
+                    return self.real_node(Real::e(digits));
+                }
+                if self.is_error(expression) {
+                    return Ok(Some(expression));
+                }
+                return Ok(None);
+            }
+            Node::Call { head, args } => {
+                let head = *head;
+                let args = args.to_vec();
+                let name = self
+                    .arena
+                    .symbol_id(head)
+                    .map(|symbol| self.arena.symbol_name(symbol).to_string());
+                match name.as_deref() {
+                    Some("plus") => {
+                        let mut value = Real::from_rat(&Rat::zero(), digits).map_err(|_| {
+                            Diagnostic::eval(ErrorCode::NumericFailure, "real failed")
+                        })?;
+                        for arg in args {
+                            let Some(argument) = self.approximate(arg, digits)? else {
+                                return Ok(None);
+                            };
+                            let Node::Real(argument) = self.arena.node(argument) else {
+                                return Ok(None);
+                            };
+                            value = value.add(argument).map_err(|_| {
+                                Diagnostic::eval(ErrorCode::NumericFailure, "real addition failed")
+                            })?;
+                        }
+                        self.real_node(Ok(value))
+                    }
+                    Some("times") => {
+                        let mut value = Real::from_rat(&Rat::one(), digits).map_err(|_| {
+                            Diagnostic::eval(ErrorCode::NumericFailure, "real failed")
+                        })?;
+                        for arg in args {
+                            let Some(argument) = self.approximate(arg, digits)? else {
+                                return Ok(None);
+                            };
+                            let Node::Real(argument) = self.arena.node(argument) else {
+                                return Ok(None);
+                            };
+                            value = value.mul(argument).map_err(|_| {
+                                Diagnostic::eval(ErrorCode::NumericFailure, "real product failed")
+                            })?;
+                        }
+                        self.real_node(Ok(value))
+                    }
+                    Some("negate") if args.len() == 1 => {
+                        let Some(argument) = self.approximate(args[0], digits)? else {
+                            return Ok(None);
+                        };
+                        let Node::Real(argument) = self.arena.node(argument) else {
+                            return Ok(None);
+                        };
+                        self.real_node(argument.neg())
+                    }
+                    Some("power") if args.len() == 2 => {
+                        let exponent = match self.arena.node(args[1]) {
+                            Node::Int(value) => value.to_i64(),
+                            Node::Rat(value) if value.den().is_one() => value.num().to_i64(),
+                            _ => None,
+                        };
+                        let Some(exponent) = exponent else {
+                            return Ok(None);
+                        };
+                        let Some(base) = self.approximate(args[0], digits)? else {
+                            return Ok(None);
+                        };
+                        let Node::Real(base) = self.arena.node(base) else {
+                            return Ok(None);
+                        };
+                        if base.is_zero() {
+                            return Ok(None);
+                        }
+                        self.real_node(base.pow_si(exponent))
+                    }
+                    Some("sqrt") if args.len() == 1 => {
+                        let Some(argument) = self.approximate(args[0], digits)? else {
+                            return Ok(None);
+                        };
+                        let Node::Real(argument) = self.arena.node(argument) else {
+                            return Ok(None);
+                        };
+                        self.real_node(argument.sqrt())
+                    }
+                    Some("exp") if args.len() == 1 => {
+                        let Some(argument) = self.approximate(args[0], digits)? else {
+                            return Ok(None);
+                        };
+                        let Node::Real(argument) = self.arena.node(argument) else {
+                            return Ok(None);
+                        };
+                        self.real_node(argument.exp())
+                    }
+                    Some("ln") if args.len() == 1 => {
+                        let Some(argument) = self.approximate(args[0], digits)? else {
+                            return Ok(None);
+                        };
+                        let Node::Real(argument) = self.arena.node(argument) else {
+                            return Ok(None);
+                        };
+                        self.real_node(argument.ln())
+                    }
+                    Some("sin") if args.len() == 1 => {
+                        self.approximate_unary(args[0], digits, |value| value.sin())
+                    }
+                    Some("cos") if args.len() == 1 => {
+                        self.approximate_unary(args[0], digits, |value| value.cos())
+                    }
+                    Some("tan") if args.len() == 1 => {
+                        self.approximate_unary(args[0], digits, |value| value.tan())
+                    }
+                    Some("asin") if args.len() == 1 => {
+                        self.approximate_unary(args[0], digits, |value| value.asin())
+                    }
+                    Some("acos") if args.len() == 1 => {
+                        self.approximate_unary(args[0], digits, |value| value.acos())
+                    }
+                    Some("atan") if args.len() == 1 => {
+                        self.approximate_unary(args[0], digits, |value| value.atan())
+                    }
+                    Some("abs") if args.len() == 1 => {
+                        self.approximate_unary(args[0], digits, |value| value.abs())
+                    }
+                    _ => Ok(None),
+                }
+            }
+        }
+    }
+
+    fn approximate_unary(
+        &mut self,
+        argument: ExprId,
+        digits: u32,
+        operation: impl Fn(&Real) -> Result<Real, crate::num::NumError>,
+    ) -> Result<Option<ExprId>, Diagnostic> {
+        let Some(argument) = self.approximate(argument, digits)? else {
+            return Ok(None);
+        };
+        let Node::Real(argument) = self.arena.node(argument) else {
+            return Ok(None);
+        };
+        let value = operation(argument);
+        self.real_node(value)
+    }
+
+    fn real_from_rat(&mut self, value: Rat, digits: u32) -> Result<Option<ExprId>, Diagnostic> {
+        let real = Real::from_rat(&value, digits)
+            .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real conversion failed"))?;
+        Ok(Some(self.arena.intern_real(real)))
+    }
+
+    fn real_node(
+        &mut self,
+        value: Result<Real, crate::num::NumError>,
+    ) -> Result<Option<ExprId>, Diagnostic> {
+        match value {
+            Ok(value) => Ok(Some(self.arena.intern_real(value))),
+            Err(_) => Ok(None),
+        }
     }
 
     fn eval_function(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -1024,6 +1245,7 @@ impl<'a> Evaluator<'a> {
                 None,
             )),
             Node::Rat(value) => Ok((value.clone(), None)),
+            Node::Real(_) => Ok((Rat::one(), Some(id))),
             Node::Call { head, args } => {
                 let head = *head;
                 let args = args.to_vec();
@@ -1070,6 +1292,7 @@ impl<'a> Evaluator<'a> {
             Node::Rat(value) => {
                 *coefficient = coefficient.mul(value);
             }
+            Node::Real(_) => self.add_base(bases, id, Rat::one()),
             Node::Symbol(_) => self.add_base(bases, id, Rat::one()),
             Node::Call { head, args } => {
                 let head = *head;
@@ -1151,6 +1374,7 @@ impl<'a> Evaluator<'a> {
                 Some((real, Rat::zero()))
             }
             Node::Rat(value) => Some((value.clone(), Rat::zero())),
+            Node::Real(_) => None,
             Node::Symbol(_) => {
                 if id == self.heads.imaginary {
                     Some((Rat::zero(), Rat::one()))
@@ -1217,6 +1441,7 @@ impl<'a> Evaluator<'a> {
         match self.arena.node(id) {
             Node::Int(value) => Rat::from_ints(value.clone(), Int::one()).ok(),
             Node::Rat(value) => Some(value.clone()),
+            Node::Real(_) => None,
             _ => None,
         }
     }

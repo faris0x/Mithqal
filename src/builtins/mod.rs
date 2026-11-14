@@ -21,7 +21,7 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "map" | "apply" | "fold" | "nest" => A::new().with(A::PROTECTED),
-        "function" | "let" | "closure" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
+        "function" | "let" | "closure" | "approx" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "pattern" | "blank" | "blankSequence" | "blankNullSequence" | "condition" => {
             A::new().with(A::PROTECTED)
         }

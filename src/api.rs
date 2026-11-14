@@ -19,6 +19,8 @@ pub enum ExprView<'a> {
     Integer(&'a Int),
     /// An exact rational.
     Rational(&'a Rat),
+    /// An approximate real.
+    Real(&'a crate::num::Real),
     /// A symbol.
     Symbol(&'a str),
     /// A call.
@@ -180,6 +182,7 @@ impl Session {
         match self.arena.node(expression) {
             Node::Int(value) => ExprView::Integer(value),
             Node::Rat(value) => ExprView::Rational(value),
+            Node::Real(value) => ExprView::Real(value),
             Node::Symbol(symbol) => ExprView::Symbol(self.arena.symbol_name(*symbol)),
             Node::Call { head, args } => ExprView::Call {
                 head: *head,

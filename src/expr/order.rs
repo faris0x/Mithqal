@@ -9,8 +9,9 @@ fn rank(node: &Node) -> u8 {
     match node {
         Node::Int(_) => 0,
         Node::Rat(_) => 1,
-        Node::Symbol(_) => 2,
-        Node::Call { .. } => 3,
+        Node::Real(_) => 2,
+        Node::Symbol(_) => 3,
+        Node::Call { .. } => 4,
     }
 }
 
@@ -29,6 +30,7 @@ pub(crate) fn canonical_cmp(arena: &Arena, left: ExprId, right: ExprId) -> Order
     match (left_node, right_node) {
         (Node::Int(a), Node::Int(b)) => a.cmp(b),
         (Node::Rat(a), Node::Rat(b)) => a.cmp(b),
+        (Node::Real(a), Node::Real(b)) => a.cmp(b),
         (Node::Symbol(a), Node::Symbol(b)) => arena.symbol_name(*a).cmp(arena.symbol_name(*b)),
         (
             Node::Call {

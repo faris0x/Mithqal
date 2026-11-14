@@ -24,4 +24,4 @@ pub use api::{ExprView, Session};
 pub use config::Config;
 pub use diag::{Diagnostic, ErrorCode, ErrorKind, Frame, Span};
 pub use expr::ExprId;
-pub use num::{Int, NumError, Rat};
+pub use num::{Int, NumError, Rat, Real};

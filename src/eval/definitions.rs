@@ -121,7 +121,7 @@ impl Definitions {
 
 fn specificity(arena: &Arena, pattern: ExprId) -> u32 {
     match arena.node(pattern) {
-        Node::Int(_) | Node::Rat(_) => 1000,
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) => 1000,
         Node::Symbol(_) => 1000,
         Node::Call { head, args } => {
             let name = arena

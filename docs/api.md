@@ -74,6 +74,7 @@ An `ExprId` that is not anchored by the session or by an explicit root can becom
 pub enum ExprView<'a> {
     Integer(&'a Int),
     Rational(&'a Rat),
+    Real(&'a Real),
     Symbol(&'a str),
     Call { head: ExprId, args: &'a [ExprId] },
 }
@@ -91,6 +92,14 @@ pub struct Rat { /* GMP mpq */ }
 `Int` and `Rat` implement `Clone`, `Debug`, and equality with the same type. They are not `Copy` because they own GMP storage. The API provides construction from Rust integer types and decimal string conversion.
 
 The numeric wrappers enforce GMP initialization and cleanup through `Drop`. No public method exposes a raw pointer.
+
+```rust
+pub struct Real { /* MPFR value, binary precision, absolute error */ }
+```
+
+`Real` exposes `to_decimal`, `precision_digits`, `accuracy_digits`, `is_zero`, `sign`, and arithmetic operations. It is created by `approx` or by the public constructors `Real::from_rat`, `Real::pi`, and `Real::e`. It enforces MPFR initialization and cleanup through `Drop`.
+
+`approx(expression,digits)` is the session level numeric boundary. It returns a `Real` expression when the input can be evaluated numerically.
 
 ## Diagnostics
 

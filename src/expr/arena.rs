@@ -4,7 +4,7 @@ use core::cmp::Ordering;
 use std::collections::HashMap;
 
 use crate::hash::FnvBuildHasher;
-use crate::num::{Int, Rat};
+use crate::num::{Int, Rat, Real};
 
 use super::node::{Attributes, ExprId, Node, SymbolId};
 use super::order::canonical_cmp;
@@ -20,6 +20,7 @@ enum Key {
         num: Box<[u64]>,
         den: Box<[u64]>,
     },
+    Real(String),
     Symbol(SymbolId),
     Call {
         head: ExprId,
@@ -85,6 +86,11 @@ impl Arena {
         } else {
             self.intern_node(Node::Rat(value))
         }
+    }
+
+    /// Intern an approximate real.
+    pub fn intern_real(&mut self, value: Real) -> ExprId {
+        self.intern_node(Node::Real(value))
     }
 
     /// Intern a symbol name and set its attributes.
@@ -285,6 +291,7 @@ fn key_for(node: &Node) -> Key {
             num: value.num_limbs().into(),
             den: value.den_limbs().into(),
         },
+        Node::Real(value) => Key::Real(value.key()),
         Node::Symbol(symbol) => Key::Symbol(*symbol),
         Node::Call { head, args } => Key::Call {
             head: *head,

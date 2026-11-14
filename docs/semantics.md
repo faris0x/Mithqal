@@ -23,6 +23,28 @@ The current version supports exact integers and exact rationals.
 - There is no approximate literal. Approximate values arrive through an explicit evaluation boundary in a later version.
 - Scientific notation is written with `10^`. The lexer has no exponent literal syntax.
 
+## Approximate reals
+
+Approximate values are `Real` atoms backed by MPFR. Each value carries an absolute error estimate in addition to its binary precision.
+
+`approx(expression,digits)` is the numeric boundary. It evaluates its argument exactly first, then converts numeric subexpressions to `Real` values. The digit count defaults to 16 when omitted.
+
+The numeric boundary handles exact integers and rationals, `pi`, `e`, `plus`, `times`, `negate`, integer `power`, `sqrt`, `exp`, `ln`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, and `abs`. A symbolic argument that cannot be converted leaves the `approx` call unevaluated.
+
+Significance propagation uses first order error estimates:
+
+- Addition and subtraction combine absolute errors in quadrature.
+- Multiplication and division combine relative errors in quadrature.
+- Integer powers scale relative error by the exponent.
+- Elementary functions use their local derivative to propagate error.
+- Rounding error from the target precision is added at each operation.
+
+`Real::precision_digits` reports relative decimal precision. `Real::accuracy_digits` reports absolute decimal accuracy. An exact zero has unbounded accuracy when its stored error is zero.
+
+Approximate values are printed as decimal output. They are not accepted as source literals in the current version, and the printer does not provide a round trip for approximate values.
+
+Interval arithmetic is not implemented yet. The MPFR and MPC libraries are vendored so the interval and approximate complex layers can be added without changing the build model.
+
 ## Symbolic constants
 
 The constants are `i`, `pi`, `e`, and `inf`.

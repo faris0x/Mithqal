@@ -33,7 +33,7 @@ pub(crate) fn match_pattern(
     conditions: &mut Vec<ExprId>,
 ) -> bool {
     match arena.node(pattern) {
-        Node::Int(_) | Node::Rat(_) | Node::Symbol(_) => pattern == value,
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) | Node::Symbol(_) => pattern == value,
         Node::Call { head, args } => {
             let name = head_name(arena, *head);
             match name {
@@ -241,7 +241,7 @@ pub(crate) fn substitute(arena: &mut Arena, expression: ExprId, bindings: &Bindi
             Some(Binding::One(value)) => *value,
             _ => expression,
         },
-        Node::Int(_) | Node::Rat(_) => expression,
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) => expression,
         Node::Call { head, args } => {
             let head = *head;
             let args = args.to_vec();

@@ -14,6 +14,10 @@ Initial kernel work.
 - Added canonical and infix printers with round trip tests.
 - Added the exact arithmetic evaluator with listable threading, comparisons, logic, error values, and Gaussian rational normalization.
 - Added the public `Session`, `ExprId`, `ExprView`, `Config`, and diagnostic surface.
+- Added vendored MPFR and MPC sources with static linking in the build script.
+- Added approximate `Real` values with MPFR storage, significance tracking, precision and accuracy reporting, and first order error propagation.
+- Added the `approx` numeric boundary with exact rational conversion, `pi` and `e`, arithmetic, powers, roots, exponentials, logarithms, and trigonometric functions.
+- Added approximate value views, printing, collection, compiled path support, and numeric tests.
 - Added own values, down values, protected symbol checks, definition specificity, and immediate and delayed definitions.
 - Added pattern matching for blanks, named patterns, sequence patterns, repeated variables, and conditions.
 - Added lexical `let` bindings with local shadowing.
@@ -27,4 +31,4 @@ Initial kernel work.
 - Added constant folding of numeric atoms in the compiler so integer and rational literals avoid an evaluation instruction.
 - Added a machine call frame stack that isolates caller and callee operand stack regions for symbol calls.
 - Added a benchmark harness for cold parsing, cached evaluation, pattern calls, closure calls, compiled execution, and collection.
-- Expanded the suite to more than 230 tests covering normal behavior, boundaries, malformed input, and error propagation.
+- Expanded the suite to more than 250 tests covering normal behavior, boundaries, malformed input, numeric significance, and error propagation.

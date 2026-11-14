@@ -1,6 +1,6 @@
 //! Expression nodes, symbols, and attributes.
 
-use crate::num::{Int, Rat};
+use crate::num::{Int, Rat, Real};
 
 /// A handle to an expression in the arena.
 pub type ExprId = u32;
@@ -58,6 +58,8 @@ pub enum Node {
     Int(Int),
     /// An exact rational with a denominator other than one.
     Rat(Rat),
+    /// An approximate real with a significance estimate.
+    Real(Real),
     /// A symbol.
     Symbol(SymbolId),
     /// A call with a head and arguments.

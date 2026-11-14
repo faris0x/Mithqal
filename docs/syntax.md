@@ -250,6 +250,19 @@ fn(x,y)=>x+y
 
 `let` and `fn` are syntax forms. Their canonical heads are `let` and `function`.
 
+## Numeric approximation
+
+`approx(expression,digits)` converts a numeric expression to an approximate real with a requested decimal digit count.
+
+```text
+approx(1/3,30)
+approx(pi,30)
+approx(sqrt(2),40)
+approx(sin(pi/6),30)
+```
+
+The digit count is optional and defaults to 16. Approximate values print as decimal output. They do not have a source literal syntax in the current version.
+
 ## Control forms
 
 `if` is a normal call with three arguments. It holds the branch arguments.
