@@ -141,6 +141,23 @@ fn error_code_kinds_are_stable() {
 }
 
 #[test]
+fn parse_cache_returns_the_same_handle() {
+    let mut session = Session::new();
+    let first = session.parse_statement("x+y").unwrap();
+    let second = session.parse_statement("x+y").unwrap();
+    assert_eq!(first, second);
+}
+
+#[test]
+fn caches_are_cleared_after_collection() {
+    let mut session = Session::new();
+    let first = session.eval_statement("x+y").unwrap();
+    session.collect_garbage(&[first]);
+    let second = session.eval_statement("x+y").unwrap();
+    assert_eq!(first, second);
+}
+
+#[test]
 fn parse_statement_rejects_two_statements_in_a_session() {
     let mut session = Session::new();
     let error = session.parse_statement("1\n2\n").unwrap_err();

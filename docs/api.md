@@ -54,6 +54,8 @@ impl Session {
 
 `collect_garbage` marks definitions, the last result, symbol nodes, and the supplied roots. `live_expressions` reports the number of live expression nodes. The session also collects after a top level evaluation when the live node count exceeds the configured collection threshold.
 
+The session caches parsed statements, compiled code, and evaluation results. Evaluation caches are keyed by the current definition version, so installing or changing a definition invalidates them. Collection clears all caches because their handles are not extra roots.
+
 ## Expression handles
 
 ```rust

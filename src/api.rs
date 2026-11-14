@@ -1,9 +1,12 @@
 //! Public session and expression handle API.
 
+use std::collections::HashMap;
+
 use crate::config::Config;
 use crate::diag::{Diagnostic, ErrorCode, Span};
 use crate::eval::{SessionDefinitions, evaluate_with_definitions};
 use crate::expr::{Arena, ExprId, Node};
+use crate::hash::FnvBuildHasher;
 use crate::num::{Int, Rat};
 use crate::print;
 use crate::runtime;
@@ -32,6 +35,10 @@ pub struct Session {
     arena: Arena,
     definitions: SessionDefinitions,
     last_result: Option<ExprId>,
+    parse_cache: HashMap<String, ExprId, FnvBuildHasher>,
+    compiled_cache: HashMap<ExprId, runtime::Code, FnvBuildHasher>,
+    eval_cache: HashMap<(ExprId, u64), ExprId, FnvBuildHasher>,
+    compiled_results: HashMap<(ExprId, u64), ExprId, FnvBuildHasher>,
     config: Config,
 }
 
@@ -47,13 +54,22 @@ impl Session {
             arena: Arena::new(),
             definitions: SessionDefinitions::new(),
             last_result: None,
+            parse_cache: HashMap::default(),
+            compiled_cache: HashMap::default(),
+            eval_cache: HashMap::default(),
+            compiled_results: HashMap::default(),
             config,
         }
     }
 
     /// Parse a single statement.
     pub fn parse_statement(&mut self, source: &str) -> Result<ExprId, Diagnostic> {
-        syntax::parse_statement(&mut self.arena, source)
+        if let Some(expression) = self.parse_cache.get(source) {
+            return Ok(*expression);
+        }
+        let expression = syntax::parse_statement(&mut self.arena, source)?;
+        self.parse_cache.insert(source.to_string(), expression);
+        Ok(expression)
     }
 
     /// Parse one expression per statement.
@@ -91,6 +107,11 @@ impl Session {
 
     /// Evaluate an expression to a normal form.
     pub fn eval(&mut self, expression: ExprId) -> Result<ExprId, Diagnostic> {
+        let version = self.definitions.version();
+        if let Some(value) = self.eval_cache.get(&(expression, version)) {
+            self.last_result = Some(*value);
+            return Ok(*value);
+        }
         let value = evaluate_with_definitions(
             &mut self.arena,
             &mut self.definitions,
@@ -98,6 +119,7 @@ impl Session {
             self.config.max_steps,
             self.config.max_depth,
         )?;
+        self.eval_cache.insert((expression, version), value);
         self.last_result = Some(value);
         self.maybe_collect();
         Ok(value)
@@ -105,7 +127,18 @@ impl Session {
 
     /// Evaluate an expression through the compiled instruction path.
     pub fn eval_compiled(&mut self, expression: ExprId) -> Result<ExprId, Diagnostic> {
-        let code = runtime::compile(&mut self.arena, expression)?;
+        let version = self.definitions.version();
+        if let Some(value) = self.compiled_results.get(&(expression, version)) {
+            self.last_result = Some(*value);
+            return Ok(*value);
+        }
+        let code = if let Some(code) = self.compiled_cache.get(&expression) {
+            code.clone()
+        } else {
+            let code = runtime::compile(&mut self.arena, expression)?;
+            self.compiled_cache.insert(expression, code.clone());
+            code
+        };
         let value = runtime::execute(
             &mut self.arena,
             &mut self.definitions,
@@ -113,6 +146,7 @@ impl Session {
             self.config.max_steps,
             self.config.max_depth,
         )?;
+        self.compiled_results.insert((expression, version), value);
         self.last_result = Some(value);
         self.maybe_collect();
         Ok(value)
@@ -163,6 +197,10 @@ impl Session {
         }
         self.definitions.roots(&mut all);
         self.arena.collect(&all);
+        self.parse_cache.clear();
+        self.compiled_cache.clear();
+        self.eval_cache.clear();
+        self.compiled_results.clear();
     }
 
     /// Number of live expression nodes in the session arena.

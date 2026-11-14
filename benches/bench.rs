@@ -2,6 +2,9 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use cas::Session;
+use cas::eval::evaluate;
+use cas::expr::Arena;
+use cas::syntax::parse_statement;
 
 fn measure(name: &str, iterations: u32, mut action: impl FnMut()) {
     let start = Instant::now();
@@ -14,24 +17,30 @@ fn measure(name: &str, iterations: u32, mut action: impl FnMut()) {
 }
 
 fn main() {
+    let mut cold_arena = Arena::new();
+    measure("cold parse and evaluate 1+2", 20_000, || {
+        let parsed = parse_statement(&mut cold_arena, "1+2").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut session = Session::new();
-    measure("parse and evaluate 1+2", 20_000, || {
+    measure("cached parse and evaluate 1+2", 20_000, || {
         black_box(session.eval_statement("1+2").unwrap());
     });
 
     let mut session = Session::new();
-    measure("parse and evaluate x+x", 20_000, || {
+    measure("cached parse and evaluate x+x", 20_000, || {
         black_box(session.eval_statement("x+x").unwrap());
     });
 
     let mut session = Session::new();
-    measure("parse and evaluate 2/3+1/6", 20_000, || {
+    measure("cached parse and evaluate 2/3+1/6", 20_000, || {
         black_box(session.eval_statement("2/3+1/6").unwrap());
     });
 
     let mut session = Session::new();
     session.eval_statement("f(x_):=x^2").unwrap();
-    measure("pattern call f(3)", 20_000, || {
+    measure("cached pattern call f(3)", 20_000, || {
         black_box(session.eval_statement("f(3)").unwrap());
     });
 
@@ -40,18 +49,18 @@ fn main() {
     for _ in 0..50 {
         source.push_str("+x");
     }
-    measure("evaluate 50 like terms", 2_000, || {
+    measure("cached evaluate 50 like terms", 2_000, || {
         black_box(session.eval_statement(&source).unwrap());
     });
 
     let mut session = Session::new();
     session.eval_statement("f=fn(x)=>x+1").unwrap();
-    measure("closure call f(3)", 20_000, || {
+    measure("cached closure call f(3)", 20_000, || {
         black_box(session.eval_statement("f(3)").unwrap());
     });
 
     let mut session = Session::new();
-    measure("compiled 1+2", 20_000, || {
+    measure("cached compiled 1+2", 20_000, || {
         black_box(session.eval_compiled_statement("1+2").unwrap());
     });
 

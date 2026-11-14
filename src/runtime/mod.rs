@@ -8,4 +8,5 @@ mod instr;
 mod vm;
 
 pub(crate) use compiler::compile;
+pub(crate) use instr::Code;
 pub(crate) use vm::execute;

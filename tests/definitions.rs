@@ -210,6 +210,25 @@ fn shadowing_i_disables_gaussian_normalization() {
 }
 
 #[test]
+fn result_caches_invalidate_when_definitions_change() {
+    let mut session = session();
+    assert_eq!(eval(&mut session, "x+1"), "1+x");
+    assert_eq!(eval(&mut session, "x+1"), "1+x");
+    session.eval_statement("x=1").unwrap();
+    assert_eq!(eval(&mut session, "x+1"), "2");
+}
+
+#[test]
+fn compiled_result_caches_invalidate_when_definitions_change() {
+    let mut session = session();
+    let first = session.eval_compiled_statement("x+1").unwrap();
+    assert_eq!(session.format_infix(first), "1+x");
+    session.eval_statement("x=1").unwrap();
+    let second = session.eval_compiled_statement("x+1").unwrap();
+    assert_eq!(session.format_infix(second), "2");
+}
+
+#[test]
 fn call_heads_are_evaluated() {
     let mut session = session();
     session.eval_statement("f=plus").unwrap();

@@ -27,6 +27,7 @@ pub(crate) struct Definitions {
     own: HashMap<SymbolId, OwnValue>,
     down: HashMap<SymbolId, Vec<Rule>>,
     next_order: u64,
+    version: u64,
 }
 
 impl Definitions {
@@ -40,6 +41,10 @@ impl Definitions {
 
     pub(crate) fn rules(&self, symbol: SymbolId) -> &[Rule] {
         self.down.get(&symbol).map(Vec::as_slice).unwrap_or(&[])
+    }
+
+    pub(crate) fn version(&self) -> u64 {
+        self.version
     }
 
     pub(crate) fn roots(&self, roots: &mut Vec<ExprId>) {
@@ -65,6 +70,7 @@ impl Definitions {
             Node::Symbol(symbol) => {
                 self.check_protected(arena, *symbol)?;
                 self.own.insert(*symbol, OwnValue { value: rhs });
+                self.version = self.version.wrapping_add(1);
                 Ok(())
             }
             Node::Call { head, .. } => {
@@ -91,6 +97,7 @@ impl Definitions {
                         .cmp(&left.specificity)
                         .then(left.order.cmp(&right.order))
                 });
+                self.version = self.version.wrapping_add(1);
                 Ok(())
             }
             _ => Err(Diagnostic::eval(
