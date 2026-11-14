@@ -580,6 +580,121 @@ fn dense_eval(coefficients: &[Rat], value: &Rat) -> Rat {
     result
 }
 
+fn dense_derivative(coefficients: &[Rat]) -> Vec<Rat> {
+    let mut derivative = Vec::with_capacity(coefficients.len().saturating_sub(1));
+    for (index, coefficient) in coefficients.iter().enumerate().skip(1) {
+        let factor = Rat::from_i64(index as i64, 1).unwrap_or_else(|_| Rat::one());
+        derivative.push(coefficient.mul(&factor));
+    }
+    trim(derivative)
+}
+
+fn dense_multiply(left: &[Rat], right: &[Rat]) -> Vec<Rat> {
+    if left.is_empty() || right.is_empty() {
+        return Vec::new();
+    }
+    let mut product = vec![Rat::zero(); left.len() + right.len() - 1];
+    for (left_index, left_coefficient) in left.iter().enumerate() {
+        for (right_index, right_coefficient) in right.iter().enumerate() {
+            let index = left_index + right_index;
+            product[index] = product[index].add(&left_coefficient.mul(right_coefficient));
+        }
+    }
+    trim(product)
+}
+
+fn dense_power(base: &[Rat], exponent: u32) -> Vec<Rat> {
+    let mut result = vec![Rat::one()];
+    for _ in 0..exponent {
+        result = dense_multiply(&result, base);
+    }
+    result
+}
+
+fn primitive_normalize(coefficients: &[Rat]) -> Vec<Rat> {
+    let Some((_, values)) = integerize(coefficients) else {
+        return trim(coefficients.to_vec());
+    };
+    let mut values: Vec<Rat> = values
+        .into_iter()
+        .map(|value| Rat::from_ints(value, Int::one()).unwrap_or_else(|_| Rat::zero()))
+        .collect();
+    if values.last().is_some_and(|value| value.sign() < 0) {
+        values = values.iter().map(Rat::neg).collect();
+    }
+    trim(values)
+}
+
+fn merge_dense_factor(factors: &mut Vec<(Vec<Rat>, u32)>, polynomial: Vec<Rat>, multiplicity: u32) {
+    if polynomial.is_empty() {
+        return;
+    }
+    for (existing, current) in factors.iter_mut() {
+        if *existing == polynomial {
+            *current += multiplicity;
+            return;
+        }
+    }
+    factors.push((polynomial, multiplicity));
+}
+
+fn factor_square_free_by_roots(coefficients: Vec<Rat>) -> Vec<(Vec<Rat>, u32)> {
+    let (roots, remaining) = rational_roots(&coefficients);
+    let mut factors = Vec::new();
+    for (root, multiplicity) in roots {
+        let linear = vec![
+            Rat::from_ints(root.num().neg(), Int::one()).unwrap_or_else(|_| Rat::zero()),
+            Rat::from_ints(root.den(), Int::one()).unwrap_or_else(|_| Rat::one()),
+        ];
+        merge_dense_factor(&mut factors, primitive_normalize(&linear), multiplicity);
+    }
+    if remaining.len() > 1 {
+        merge_dense_factor(&mut factors, primitive_normalize(&remaining), 1);
+    }
+    factors
+}
+
+fn factor_dense_square_free(coefficients: &[Rat]) -> Option<Vec<(Vec<Rat>, u32)>> {
+    let coefficients = trim(coefficients.to_vec());
+    if coefficients.len() <= 1 {
+        return Some(Vec::new());
+    }
+    if coefficients.len() == 2 {
+        return Some(vec![(primitive_normalize(&coefficients), 1)]);
+    }
+    let derivative = dense_derivative(&coefficients);
+    if derivative.is_empty() {
+        return Some(vec![(primitive_normalize(&coefficients), 1)]);
+    }
+    let gcd = dense_gcd(&coefficients, &derivative);
+    if gcd.len() <= 1 {
+        return Some(factor_square_free_by_roots(coefficients));
+    }
+    let (quotient, remainder) = dense_div_rem(&coefficients, &gcd)?;
+    if !remainder.is_empty() {
+        return None;
+    }
+    let mut factors = factor_square_free_by_roots(quotient);
+    let inner = factor_dense_square_free(&gcd)?;
+    for (polynomial, multiplicity) in inner {
+        merge_dense_factor(&mut factors, polynomial, multiplicity);
+    }
+    Some(factors)
+}
+
+fn reconstruct_scalar(coefficients: &[Rat], factors: &[(Vec<Rat>, u32)]) -> Option<Rat> {
+    let mut product = vec![Rat::one()];
+    for (polynomial, multiplicity) in factors {
+        let power = dense_power(polynomial, *multiplicity);
+        product = dense_multiply(&product, &power);
+    }
+    let (quotient, remainder) = dense_div_rem(coefficients, &product)?;
+    if !remainder.is_empty() || quotient.len() > 1 {
+        return None;
+    }
+    Some(quotient.first().cloned().unwrap_or_else(Rat::one))
+}
+
 fn lcm(left: &Int, right: &Int) -> Int {
     if left.is_zero() || right.is_zero() {
         return Int::zero();
@@ -1077,44 +1192,89 @@ fn factor_univariate(
     context: &Context,
 ) -> Vec<ExprId> {
     let mut factors = Vec::new();
-    let negated: Vec<Rat>;
-    let coefficients = if coefficients
+    let mut coefficients = trim(coefficients.to_vec());
+    if coefficients
         .last()
         .is_some_and(|coefficient| coefficient.sign() < 0)
     {
-        negated = coefficients.iter().map(Rat::neg).collect();
         factors.push(arena.intern_int(Int::from_i64(-1)));
-        negated.as_slice()
-    } else {
-        coefficients
+        coefficients = coefficients.iter().map(Rat::neg).collect();
+    }
+    let derivative = dense_derivative(&coefficients);
+    if derivative.is_empty() || dense_gcd(&coefficients, &derivative).len() <= 1 {
+        let (roots, remaining) = rational_roots(&coefficients);
+        for (root, multiplicity) in roots {
+            let numerator = root.num();
+            let denominator = root.den();
+            let factor = Poly::from_dense(
+                variable,
+                &[
+                    Rat::from_ints(numerator.neg(), Int::one()).unwrap_or_else(|_| Rat::zero()),
+                    Rat::from_ints(denominator, Int::one()).unwrap_or_else(|_| Rat::one()),
+                ],
+            );
+            let factor = expression_from_poly(arena, &factor, context);
+            if multiplicity == 1 {
+                factors.push(factor);
+            } else {
+                let exponent = arena.intern_int(Int::from_u64(multiplicity as u64));
+                factors.push(arena.intern_call(context.power, &[factor, exponent]));
+            }
+        }
+        if remaining.len() > 1 {
+            let polynomial = Poly::from_dense(variable, &remaining);
+            factors.push(expression_from_poly(arena, &polynomial, context));
+        }
+        if factors.is_empty() {
+            factors.push(expression_from_poly(
+                arena,
+                &Poly::from_dense(variable, &coefficients),
+                context,
+            ));
+        }
+        return factors;
+    }
+    let Some(components) = factor_dense_square_free(&coefficients) else {
+        factors.push(expression_from_poly(
+            arena,
+            &Poly::from_dense(variable, &coefficients),
+            context,
+        ));
+        return factors;
     };
-    let (roots, remaining) = rational_roots(coefficients);
-    for (root, multiplicity) in roots {
-        let numerator = root.num();
-        let denominator = root.den();
-        let factor = Poly::from_dense(
-            variable,
-            &[
-                Rat::from_ints(numerator.neg(), Int::one()).unwrap_or_else(|_| Rat::zero()),
-                Rat::from_ints(denominator, Int::one()).unwrap_or_else(|_| Rat::one()),
-            ],
-        );
-        let factor = expression_from_poly(arena, &factor, context);
-        if multiplicity == 1 {
-            factors.push(factor);
+    if components.is_empty() {
+        factors.push(expression_from_poly(
+            arena,
+            &Poly::from_dense(variable, &coefficients),
+            context,
+        ));
+        return factors;
+    }
+    let Some(scalar) = reconstruct_scalar(&coefficients, &components) else {
+        factors.push(expression_from_poly(
+            arena,
+            &Poly::from_dense(variable, &coefficients),
+            context,
+        ));
+        return factors;
+    };
+    if !scalar.is_one() {
+        factors.push(expression_from_rat(arena, &scalar));
+    }
+    for (component, multiplicity) in components {
+        let polynomial = Poly::from_dense(variable, &component);
+        let expression = expression_from_poly(arena, &polynomial, context);
+        if multiplicity <= 1 {
+            factors.push(expression);
         } else {
             let exponent = arena.intern_int(Int::from_u64(multiplicity as u64));
-            factors.push(arena.intern_call(context.power, &[factor, exponent]));
+            factors.push(arena.intern_call(context.power, &[expression, exponent]));
         }
-    }
-    if remaining.len() > 1 {
-        let poly = Poly::from_dense(variable, &remaining);
-        factors.push(expression_from_poly(arena, &poly, context));
     }
     if factors.is_empty() {
         factors.push(expression_from_poly(
             arena,
-            &Poly::from_dense(variable, coefficients),
+            &Poly::from_dense(variable, &coefficients),
             context,
         ));
     }

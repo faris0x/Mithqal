@@ -295,3 +295,48 @@ fn binary_quadratic_factorization() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn recursive_bivariate_quadratic_factorization() {
+    assert_eq!(text("factor(x^2+2*x*y+y^2+2*x+2*y+1)"), "(1+x+y)^2");
+    assert_eq!(text("factor(x^2-y^2+2*x+1)"), "(1+x+y)*(1+x-y)");
+    assert_eq!(text("factor(x^2+2*x*y+y^2+2*x+2*y)"), "(x+y)*(2+x+y)");
+    assert_eq!(text("factor(x^2+2*x*y+y^2+3*x+3*y+2)"), "(1+x+y)*(2+x+y)");
+    for source in [
+        "x^2+2*x*y+y^2+2*x+2*y+1",
+        "x^2-y^2+2*x+1",
+        "x^2+2*x*y+y^2+2*x+2*y",
+        "x^2+2*x*y+y^2+3*x+3*y+2",
+    ] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn homogeneous_bivariate_factorization() {
+    assert_eq!(text("factor(x^3+3*x^2*y+3*x*y^2+y^3)"), "(x+y)^3");
+    assert_eq!(text("factor(x^3-y^3)"), "(x-y)*(x^2+y^2+x*y)");
+    assert_eq!(text("factor(x^4+4*x^3*y+6*x^2*y^2+4*x*y^3+y^4)"), "(x+y)^4");
+    assert_eq!(
+        text("factor(x^4+3*x^3*y+3*x^2*y^2+3*x*y^3+2*y^4)"),
+        "(x+y)*(x+2*y)*(x^2+y^2)"
+    );
+    for source in [
+        "x^3+3*x^2*y+3*x*y^2+y^3",
+        "x^3-y^3",
+        "x^4+4*x^3*y+6*x^2*y^2+4*x*y^3+y^4",
+        "x^4+3*x^3*y+3*x^2*y^2+3*x*y^3+2*y^4",
+    ] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn square_free_univariate_factorization() {
+    assert_eq!(text("factor((x^2+1)^3)"), "(1+x^2)^3");
+    assert_eq!(text("factor((x-1)^3*(x^2+1)^2)"), "(-1+x)^3*(1+x^2)^2");
+    assert_eq!(text("factor((2*x^2+2*x+1)^2)"), "(1+2*x+2*x^2)^2");
+    for source in ["(x^2+1)^3", "(x-1)^3*(x^2+1)^2", "(2*x^2+2*x+1)^2"] {
+        assert_factor_matches(source);
+    }
+}

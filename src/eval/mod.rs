@@ -2344,6 +2344,9 @@ impl<'a> Evaluator<'a> {
         let context = self.calculus_context();
         let antiderivative =
             crate::calculus::integrate(self.arena, expression, variable, &context)?;
+        if self.has_transcendental_singularity(antiderivative, variable, lower, upper) {
+            return None;
+        }
         let lower_value = self.endpoint_limit(antiderivative, variable, lower, LimitSide::Right)?;
         let upper_value = self.endpoint_limit(antiderivative, variable, upper, LimitSide::Left)?;
         let negative_lower = self.negate_limit_value(lower_value);
@@ -2351,6 +2354,113 @@ impl<'a> Evaluator<'a> {
             LimitValue::Finite(value) => Some(value),
             _ => None,
         }
+    }
+
+    fn has_transcendental_singularity(
+        &mut self,
+        antiderivative: ExprId,
+        variable: ExprId,
+        lower: ExprId,
+        upper: ExprId,
+    ) -> bool {
+        let (Some(lower), Some(upper)) = (self.as_rat(lower), self.as_rat(upper)) else {
+            return false;
+        };
+        let (lower, upper) = if lower <= upper {
+            (lower, upper)
+        } else {
+            (upper, lower)
+        };
+        let mut arguments = Vec::new();
+        self.collect_singularity_arguments(antiderivative, variable, &mut arguments);
+        arguments
+            .into_iter()
+            .any(|argument| self.argument_has_interior_zero(argument, variable, &lower, &upper))
+    }
+
+    fn collect_singularity_arguments(
+        &self,
+        expression: ExprId,
+        variable: ExprId,
+        arguments: &mut Vec<ExprId>,
+    ) {
+        let Node::Call { head, args } = self.arena.node(expression) else {
+            return;
+        };
+        let name = self
+            .arena
+            .symbol_id(*head)
+            .map(|symbol| self.arena.symbol_name(symbol));
+        if name == Some("ln") && args.len() == 1 && self.expression_contains(args[0], variable) {
+            let argument = self.abs_argument(args[0]).unwrap_or(args[0]);
+            arguments.push(argument);
+        }
+        if name == Some("power")
+            && args.len() == 2
+            && self.expression_contains(args[0], variable)
+            && self
+                .exact_constant_value(args[1])
+                .is_some_and(|exponent| exponent.sign() < 0)
+        {
+            arguments.push(args[0]);
+        }
+        for argument in args.iter() {
+            self.collect_singularity_arguments(*argument, variable, arguments);
+        }
+    }
+
+    fn argument_has_interior_zero(
+        &mut self,
+        argument: ExprId,
+        variable: ExprId,
+        lower: &Rat,
+        upper: &Rat,
+    ) -> bool {
+        let context = self.algebra_context();
+        if let Some(roots) = crate::algebra::univariate_rational_root_multiplicities(
+            self.arena, argument, variable, &context,
+        ) && roots
+            .iter()
+            .any(|(root, _)| *root > *lower && *root < *upper)
+        {
+            return true;
+        }
+        let samples = 16i64;
+        let denominator = Rat::from_i64(samples + 1, 1).ok();
+        let span = upper.sub(lower);
+        let Some(denominator) = denominator else {
+            return false;
+        };
+        let mut previous_sign = 0i8;
+        for index in 1..=samples {
+            let fraction = Rat::from_i64(index, 1)
+                .ok()
+                .and_then(|value| value.div(&denominator).ok());
+            let Some(fraction) = fraction else {
+                return false;
+            };
+            let point = lower.add(&span.mul(&fraction));
+            let point_expression = self.rat_expression(&point);
+            let substituted = self.substitute_bound(argument, variable, point_expression);
+            let Ok(value) = self.eval(substituted) else {
+                return false;
+            };
+            let Ok(approximate) = self.approximate(value, 30) else {
+                return false;
+            };
+            let Some(Numeric::Real(real)) = approximate else {
+                return matches!(approximate, Some(Numeric::Complex(_, _)));
+            };
+            let sign = real.sign();
+            if sign == 0 {
+                return true;
+            }
+            if previous_sign != 0 && sign != previous_sign {
+                return true;
+            }
+            previous_sign = sign;
+        }
+        false
     }
 
     fn interval_has_interior_pole(

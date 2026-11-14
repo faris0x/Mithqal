@@ -222,3 +222,16 @@ fn divergent_integrals_with_finite_singularities_stay_unevaluated() {
         assert!(result.contains("integrate"), "{source} => {result}");
     }
 }
+
+#[test]
+fn transcendental_interior_singularities_stay_unevaluated() {
+    for source in [
+        "integrate(tan(x),x,0,2)",
+        "integrate(tan(x),x,0,3)",
+        "integrate(ln(cos(x)),x,0,2)",
+    ] {
+        let result = text(source);
+        assert!(result.contains("integrate"), "{source} => {result}");
+    }
+    assert_eq!(text("integrate(tan(x),x,0,1)"), "-ln(abs(cos(1)))");
+}

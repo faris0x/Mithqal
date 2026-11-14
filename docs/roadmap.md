@@ -21,7 +21,7 @@ Included:
 - Exact symbolic differentiation, integration by parts, partial fractions, and definite and simple improper integrals.
 - Exact limits at finite points and at infinity, one sided limits, truncated Taylor series, and limit convergence checks.
 - Principal branch conventions for complex logarithms, powers, and inverse functions.
-- One-sided endpoint limits for improper integrals and a staged multivariate factorization scaffold.
+- One-sided endpoint limits for improper integrals, transcendental interior singularity checks, and a staged multivariate factorization scaffold with binary, homogeneous, and recursive quadratic stages.
 - Local sign assumptions and conditional simplification.
 - A line based surface language with modules, definitions, literal patterns, guards, lexical bindings, conditionals, match blocks, and print statements.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
@@ -39,7 +39,7 @@ Included:
 
 Excluded:
 
-- Full multivariate factorization and singularities beyond rational denominators.
+- Full multivariate factorization beyond the staged quadratic and homogeneous coverage, plus evaluation and interpolation and Hensel lifting.
 - Further matrix decompositions and wider assumption domains.
 - Strings, files, and sets beyond `emptyset`.
 - A command line interface.
