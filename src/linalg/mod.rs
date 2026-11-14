@@ -966,31 +966,68 @@ pub(crate) fn eigenvectors(arena: &mut Arena, expression: ExprId) -> Option<Expr
         .sub(&matrix.get(0, 1).mul(&matrix.get(1, 0)));
     let four = Rat::from_i64(4, 1).ok()?;
     let discriminant = trace.mul(&trace).sub(&four.mul(&determinant));
-    if discriminant.sign() < 0 {
-        return None;
+    if discriminant.sign() >= 0 {
+        if let Some(root) = rational_square_root(&discriminant) {
+            let two = Rat::from_i64(2, 1).ok()?;
+            let first = trace.sub(&root).div(&two).ok()?;
+            let second = trace.add(&root).div(&two).ok()?;
+            let mut vectors = Vec::with_capacity(2);
+            for eigenvalue in [first, second] {
+                let a = matrix.get(0, 0).sub(&eigenvalue);
+                let b = matrix.get(0, 1);
+                let c = matrix.get(1, 0);
+                let d = matrix.get(1, 1).sub(&eigenvalue);
+                let values = if !b.is_zero() {
+                    vec![b, eigenvalue.sub(&matrix.get(0, 0))]
+                } else if !c.is_zero() {
+                    vec![eigenvalue.sub(&matrix.get(1, 1)), c.neg()]
+                } else if a.is_zero() {
+                    vec![Rat::one(), Rat::zero()]
+                } else if d.is_zero() {
+                    vec![Rat::zero(), Rat::one()]
+                } else {
+                    vec![Rat::one(), Rat::zero()]
+                };
+                vectors.push(vector_expression(arena, &values));
+            }
+            return Some(arena.intern_call(list, &vectors));
+        }
     }
-    let root = rational_square_root(&discriminant)?;
-    let two = Rat::from_i64(2, 1).ok()?;
-    let first = trace.sub(&root).div(&two).ok()?;
-    let second = trace.add(&root).div(&two).ok()?;
+
+    let trace_expression = rational_expression(arena, &trace);
+    let discriminant_expression = rational_expression(arena, &discriminant);
+    let root = if discriminant.sign() >= 0 {
+        sqrt_expression_simplified(arena, discriminant_expression)
+    } else {
+        let magnitude = rational_expression(arena, &discriminant.neg());
+        let sqrt = sqrt_expression_simplified(arena, magnitude);
+        let imaginary_symbol = arena.symbol_or_intern("i");
+        let imaginary = arena.symbol_expr(imaginary_symbol);
+        expression_multiply(arena, imaginary, sqrt)
+    };
+    let two = arena.intern_int(Int::from_i64(2));
+    let half = expression_reciprocal(arena, two);
+    let first_numerator = expression_subtract(arena, trace_expression, root);
+    let first = expression_multiply(arena, first_numerator, half);
+    let second_numerator = expression_add(arena, trace_expression, root);
+    let second = expression_multiply(arena, second_numerator, half);
+    let a = rational_expression(arena, &matrix.get(0, 0));
+    let b = rational_expression(arena, &matrix.get(0, 1));
+    let c = rational_expression(arena, &matrix.get(1, 0));
+    let d = rational_expression(arena, &matrix.get(1, 1));
     let mut vectors = Vec::with_capacity(2);
     for eigenvalue in [first, second] {
-        let a = matrix.get(0, 0).sub(&eigenvalue);
-        let b = matrix.get(0, 1);
-        let c = matrix.get(1, 0);
-        let d = matrix.get(1, 1).sub(&eigenvalue);
-        let values = if !b.is_zero() {
-            vec![b, eigenvalue.sub(&matrix.get(0, 0))]
-        } else if !c.is_zero() {
-            vec![eigenvalue.sub(&matrix.get(1, 1)), c.neg()]
-        } else if a.is_zero() {
-            vec![Rat::one(), Rat::zero()]
-        } else if d.is_zero() {
-            vec![Rat::zero(), Rat::one()]
+        let values = if !matrix.get(0, 1).is_zero() {
+            let component = expression_subtract(arena, eigenvalue, a);
+            vec![b, component]
+        } else if !matrix.get(1, 0).is_zero() {
+            let component = expression_subtract(arena, eigenvalue, d);
+            let negative = expression_negate(arena, c);
+            vec![component, negative]
         } else {
-            vec![Rat::one(), Rat::zero()]
+            vec![arena.intern_int(Int::one()), arena.intern_int(Int::zero())]
         };
-        vectors.push(vector_expression(arena, &values));
+        vectors.push(arena.intern_call(list, &values));
     }
     Some(arena.intern_call(list, &vectors))
 }

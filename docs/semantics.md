@@ -50,7 +50,7 @@ An interval is a call with the protected `interval(low,high)` head. Endpoints ma
 
 Interval arithmetic is available for addition, multiplication, negation, and integer powers. Scalar values combine with intervals by treating the scalar as a zero width interval. Multiplication evaluates the four endpoint products and takes the minimum and maximum. Even powers that cross zero produce a lower bound of zero. A negative power requires an interval that does not contain zero.
 
-Interval endpoints are converted to `Real` with a default precision for the operation. Endpoint arithmetic uses MPFR directed rounding: lower bounds round down, upper bounds round up, and products evaluate all four endpoint combinations with directed rounding before selecting the extrema. Endpoints also widen by their stored significance error. The result is a conservative enclosure for the modeled error estimates. Fully rigorous enclosures from arbitrary real inputs remain a later refinement because significance estimates are themselves approximate.
+Interval endpoints are converted to `Real` with a default precision for the operation. Endpoint arithmetic uses MPFR directed rounding: lower bounds round down, upper bounds round up, and products evaluate all four endpoint combinations with directed rounding before selecting the extrema. Interval `sqrt`, `exp`, `ln`, and `abs` use monotonic endpoint rules. Interval `sin` and `cos` conservatively return `[-1,1]`. Endpoints also widen by their stored significance error. The result is a conservative enclosure for the modeled error estimates. Fully rigorous enclosures from arbitrary real inputs remain a later refinement because significance estimates are themselves approximate.
 
 ## Approximate complex values
 
@@ -235,9 +235,9 @@ The calculus layer provides `differentiate` and `integrate`. Both take an expres
 
 `differentiate` applies exact differentiation rules for sums, products, powers, the elementary functions, and the inverse trigonometric and hyperbolic functions. Unknown function calls remain unevaluated. A symbol other than the differentiation variable is treated as a constant.
 
-`integrate` covers polynomials, powers with constant exponents, linear substitutions, `exp`, `sin`, `cos`, `tan`, `sinh`, `cosh`, `tanh`, `ln`, reciprocal linear terms, `1/(1+x^2)`, and `1/sqrt(1-x^2)`. Products of dependent factors are expanded when the algebra layer can expand them. An antiderivative constant is omitted. Unsupported integrals remain unevaluated.
+`integrate` covers polynomials, powers with constant exponents, linear substitutions, `exp`, `sin`, `cos`, `tan`, `sinh`, `cosh`, `tanh`, `ln`, reciprocal linear terms, `1/(1+x^2)`, and `1/sqrt(1-x^2)`. It also performs integration by parts for polynomial and elementary factor products, and partial fractions for reciprocal polynomials with distinct rational roots. Products of dependent factors are expanded when the algebra layer can expand them. An antiderivative constant is omitted. Unsupported integrals remain unevaluated.
 
-`integrate` also accepts lower and upper bounds as extra arguments. The definite form substitutes the endpoints into the antiderivative and forms the difference. Symbolic bounds are allowed. Bounds are not checked for singularities, and improper integrals remain unsupported.
+`integrate` also accepts lower and upper bounds as extra arguments. The definite form substitutes the endpoints into the antiderivative and forms the difference. Symbolic bounds are allowed. Simple improper integrals with `inf` or `-inf` endpoints use limit rules for decaying exponentials, negative powers, and arctangents. Divergent improper integrals remain unevaluated.
 
 Differentiation results are passed through rational cancellation so quotient rule results collapse to a single fraction. Integration does not attach branch conditions or assumptions.
 

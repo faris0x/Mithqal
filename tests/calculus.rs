@@ -147,16 +147,53 @@ fn definite_integrals() {
     assert_eq!(text("integrate(2*x+1,x,1,2)"), "4");
     assert_eq!(text("integrate(x^3-2*x+1,x,0,1)"), "1/4");
     assert_eq!(text("integrate(x^2,x,1,0)"), "-1/3");
-    assert_eq!(text("integrate(1/x,x,1,2)"), "ln(abs(2))-ln(abs(1))");
+    assert_eq!(text("integrate(1/x,x,1,2)"), "ln(2)");
 }
 
 #[test]
 fn definite_integrals_accept_symbolic_bounds() {
     assert_eq!(text("integrate(x^2,x,a,b)"), "-(1/3)*a^3+(1/3)*b^3");
-    assert_eq!(text("integrate(sin(x),x,0,1)"), "cos(0)-cos(1)");
+    assert_eq!(text("integrate(sin(x),x,0,1)"), "1-cos(1)");
 }
 
 #[test]
 fn definite_integrals_leave_unsupported_forms_unevaluated() {
     assert!(text("integrate(f(x),x,0,1)").contains("integrate"));
+}
+
+#[test]
+fn integration_by_parts() {
+    assert_eq!(text("integrate(x*exp(x),x)"), "-exp(x)+x*exp(x)");
+    assert_eq!(text("integrate(x*sin(x),x)"), "-x*cos(x)+sin(x)");
+    assert_eq!(text("integrate(x*ln(x),x)"), "-(1/4)*x^2+(1/2)*ln(x)*x^2");
+    assert_eq!(
+        text("integrate(x^2*exp(x),x)"),
+        "-2*(-exp(x)+x*exp(x))+exp(x)*x^2"
+    );
+}
+
+#[test]
+fn partial_fraction_integrals() {
+    assert_eq!(
+        text("integrate(1/(x^2-1),x)"),
+        "-(1/2)*ln(abs(1+x))+(1/2)*ln(abs(-1+x))"
+    );
+    assert_eq!(
+        text("integrate(1/((x-1)*(x-2)),x)"),
+        "ln(abs(-2+x))-ln(abs(-1+x))"
+    );
+    assert_eq!(
+        text("integrate(1/(2*x^2-2),x)"),
+        "-(1/4)*ln(abs(1+x))+(1/4)*ln(abs(-1+x))"
+    );
+}
+
+#[test]
+fn improper_integrals() {
+    assert_eq!(text("integrate(exp(-x),x,0,inf)"), "1");
+    assert_eq!(text("integrate(1/x^2,x,1,inf)"), "1");
+    assert_eq!(text("integrate(1/(1+x^2),x,0,inf)"), "(1/2)*pi");
+    assert_eq!(text("integrate(x*exp(-x),x,0,inf)"), "1");
+    assert!(text("integrate(1/x,x,1,inf)").contains("integrate"));
+    assert!(text("integrate(exp(x),x,0,inf)").contains("integrate"));
 }

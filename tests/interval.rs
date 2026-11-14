@@ -6,6 +6,11 @@ fn evaluate(source: &str) -> (Session, u32) {
     (session, value)
 }
 
+fn text(source: &str) -> String {
+    let (session, value) = evaluate(source);
+    session.format_infix(value)
+}
+
 fn interval_bounds(session: &Session, id: u32) -> (f64, f64) {
     let (head, args) = match session.view(id) {
         ExprView::Call { head, args } => (head, args),
@@ -224,4 +229,28 @@ fn intervals_survive_collection() {
     let (low, high) = interval_bounds(&session, value);
     assert!((low - 4.0).abs() < 1e-9);
     assert!((high - 5.0).abs() < 1e-9);
+}
+
+#[test]
+fn interval_elementary_functions() {
+    let (session, value) = evaluate("sqrt(interval(1,4))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= 1.0 + 1e-12 && high >= 2.0 - 1e-12);
+    let (session, value) = evaluate("exp(interval(0,1))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= 1.0 + 1e-12 && high >= std::f64::consts::E - 1e-12);
+    let (session, value) = evaluate("ln(interval(1,2))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= 1e-12 && high >= 2f64.ln() - 1e-12);
+    let (session, value) = evaluate("abs(interval(-2,3))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= 0.0 && high >= 3.0 - 1e-12);
+    let (session, value) = evaluate("sin(interval(0,1))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= -1.0 + 1e-12 && high >= 1.0 - 1e-12);
+    let (session, value) = evaluate("cos(interval(0,1))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= -1.0 + 1e-12 && high >= 1.0 - 1e-12);
+    assert!(text("ln(interval(-1,2))").contains("ln"));
+    assert!(text("sqrt(interval(-4,-1))").contains("sqrt"));
 }

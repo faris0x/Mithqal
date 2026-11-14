@@ -769,6 +769,61 @@ fn factor_sum_of_cubes(poly: &Poly) -> Option<(Poly, Poly)> {
     Some((first, second))
 }
 
+fn term_poly(monomial: &Monomial, coefficient: &Rat) -> Poly {
+    Poly {
+        terms: BTreeMap::from([(monomial.clone(), coefficient.clone())]),
+    }
+}
+
+fn extract_common_factor(poly: &Poly) -> Option<(Poly, Poly)> {
+    let content = poly.content()?;
+    let scaled = poly.scale(&Rat::one().div(&content).ok()?);
+    let monomial = scaled.monomial_content()?;
+    let residual = scaled.divide_monomial(&monomial)?;
+    let factor = if monomial.is_one() {
+        Poly::constant(content)
+    } else {
+        Poly {
+            terms: BTreeMap::from([(monomial, content)]),
+        }
+    };
+    Some((factor, residual))
+}
+
+fn factor_by_grouping(poly: &Poly) -> Option<(Poly, Poly)> {
+    let size = poly.terms.len();
+    if size < 4 || size > 8 || size % 2 != 0 {
+        return None;
+    }
+    let terms: Vec<(&Monomial, &Rat)> = poly.terms.iter().collect();
+    let half = size / 2;
+    let limit = 1usize << size;
+    for mask in 0..limit {
+        if mask & 1 == 0 || mask.count_ones() as usize != half {
+            continue;
+        }
+        let mut left = Poly::zero();
+        let mut right = Poly::zero();
+        for (index, (monomial, coefficient)) in terms.iter().enumerate() {
+            let term = term_poly(monomial, coefficient);
+            if mask & (1 << index) != 0 {
+                left = left.add(&term);
+            } else {
+                right = right.add(&term);
+            }
+        }
+        let (Some((left_factor, left_residual)), Some((right_factor, right_residual))) =
+            (extract_common_factor(&left), extract_common_factor(&right))
+        else {
+            continue;
+        };
+        if left_residual == right_residual && !left_residual.is_constant() {
+            return Some((left_factor.add(&right_factor), left_residual));
+        }
+    }
+    None
+}
+
 fn factor_perfect_square(poly: &Poly) -> Option<Poly> {
     if poly.terms.len() != 3 {
         return None;
@@ -995,6 +1050,9 @@ pub(crate) fn factor(arena: &mut Arena, expression: ExprId, context: &Context) -
             factors.push(expression_from_poly(arena, &left, context));
             factors.push(expression_from_poly(arena, &right, context));
         } else if let Some((left, right)) = factor_sum_of_cubes(&remaining) {
+            factors.push(expression_from_poly(arena, &left, context));
+            factors.push(expression_from_poly(arena, &right, context));
+        } else if let Some((left, right)) = factor_by_grouping(&remaining) {
             factors.push(expression_from_poly(arena, &left, context));
             factors.push(expression_from_poly(arena, &right, context));
         } else if let Some(base) = factor_perfect_square(&remaining) {
@@ -1652,4 +1710,23 @@ pub(crate) fn discriminant(
         _ => return None,
     };
     Some(expression_from_rat(arena, &value))
+}
+
+pub(crate) fn univariate_rational_roots(
+    arena: &Arena,
+    expression: ExprId,
+    variable: ExprId,
+    context: &Context,
+) -> Option<(Vec<Rat>, Rat)> {
+    let variable = variable_argument(arena, variable)?;
+    let coefficients = poly_from_expr(arena, context, expression)?.dense_in(variable)?;
+    let leading = coefficients.last()?.clone();
+    let (roots, remaining) = rational_roots(&coefficients);
+    if remaining.len() > 1 {
+        return None;
+    }
+    if roots.iter().any(|(_, multiplicity)| *multiplicity != 1) {
+        return None;
+    }
+    Some((roots.into_iter().map(|(root, _)| root).collect(), leading))
 }

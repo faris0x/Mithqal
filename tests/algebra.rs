@@ -269,3 +269,13 @@ fn sum_and_difference_of_cubes() {
     assert_factor_matches("27*x^3-64*y^3");
     assert_eq!(text("factor(x^3+y^3)"), "(x+y)*(-x*y+x^2+y^2)");
 }
+
+#[test]
+fn multivariate_grouping_factorization() {
+    assert_eq!(text("factor(a*x+a*y+b*x+b*y)"), "(a+b)*(x+y)");
+    assert_eq!(text("factor(x*y+x*z+y*w+z*w)"), "(w+x)*(y+z)");
+    assert_eq!(text("factor(a*x+a*y+b*x+b*y+c*x+c*y)"), "(x+y)*(a+b+c)");
+    assert_factor_matches("a*x+a*y+b*x+b*y");
+    assert_factor_matches("x*y+x*z+y*w+z*w");
+    assert_factor_matches("a*x+a*y+b*x+b*y+c*x+c*y");
+}

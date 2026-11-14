@@ -82,6 +82,6 @@ Dimension mismatches and non-square inputs also leave the call unevaluated. Wron
 - `identity` accepts sizes from zero to 256.
 - `eigenvalues` supports one by one and two by two exact or symbolic matrices, plus diagonal and triangular matrices of any size accepted by the layer.
 - `nullspace` and `kernel` accept exact rational matrices.
-- `eigenvectors` supports exact two by two matrices with rational eigenvalues, plus diagonal and triangular matrices.
+- `eigenvectors` supports exact two by two matrices with rational, irrational, or complex eigenvalues, plus diagonal and triangular matrices.
 - `qr` accepts exact matrices with full column rank and up to six columns.
 - Sparse matrices and further decompositions arrive in later work.

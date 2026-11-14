@@ -10,6 +10,7 @@ This repository is in early development. The exact number layer, approximate rea
 
 - [Language](docs/language.md)
 - [Algebra](docs/algebra.md)
+- [Assumptions](docs/assumptions.md)
 - [Linear algebra](docs/linalg.md)
 - [Number theory](docs/numbertheory.md)
 - [Statistics](docs/statistics.md)

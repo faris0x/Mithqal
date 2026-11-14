@@ -28,6 +28,7 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "differentiate" | "integrate" => A::new().with(A::PROTECTED),
+        "assume" | "assuming" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "gcd" | "lcm" | "factorial" | "binomial" | "floor" | "ceil" | "round" => {
             A::new().with(A::PROTECTED)
         }

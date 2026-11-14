@@ -142,6 +142,33 @@ impl Real {
         Ok(out)
     }
 
+    pub(crate) fn sqrt_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
+        if self.sign() < 0 {
+            return Err(NumError::Domain);
+        }
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_sqrt(&mut out.inner, &self.inner, rounding) };
+        Ok(out)
+    }
+
+    pub(crate) fn exp_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_exp(&mut out.inner, &self.inner, rounding) };
+        Ok(out)
+    }
+
+    pub(crate) fn ln_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
+        if self.sign() <= 0 {
+            return Err(NumError::Domain);
+        }
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_log(&mut out.inner, &self.inner, rounding) };
+        Ok(out)
+    }
+
     /// Convert an `f64` to a real with a requested decimal digit count.
     pub fn from_f64(value: f64, digits: u32) -> Result<Self, NumError> {
         let bits = bits_for_digits(digits);

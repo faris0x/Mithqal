@@ -18,7 +18,8 @@ Included:
 - Approximate interval arithmetic with directed endpoint rounding and significance widening.
 - Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, absolute value, gamma, log gamma, and error functions.
 - Exact polynomial expansion, factoring, polynomial gcd, resultants, rational function cancellation, and linear or quadratic solving.
-- Exact symbolic differentiation, basic antiderivatives, and definite integrals.
+- Exact symbolic differentiation, integration by parts, partial fractions, and definite and simple improper integrals.
+- Local sign assumptions and conditional simplification.
 - A line based surface language with modules, definitions, literal patterns, guards, lexical bindings, conditionals, match blocks, and print statements.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
 - Exact rational and symbolic matrix linear algebra with determinants, rank, inverses, row reduction, matrix products, PLU factorization, characteristic polynomials, eigenvalues, eigenvectors, null spaces, QR factorization, and linear solving.
@@ -36,8 +37,8 @@ Included:
 Excluded:
 
 - Branch cut conformance for complex inverse functions.
-- Full multivariate factorization and improper integration.
-- Further matrix decompositions and assumptions.
+- Full multivariate factorization and broader improper integration.
+- Further matrix decompositions and wider assumption domains.
 - Strings, files, and sets beyond `emptyset`.
 - A command line interface.
 - Unicode source and LaTeX rendering.

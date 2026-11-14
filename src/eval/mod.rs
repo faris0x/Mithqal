@@ -495,11 +495,27 @@ impl SmallArgs {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum Sign {
+    Negative,
+    Zero,
+    Positive,
+    NonNegative,
+    NonPositive,
+}
+
+#[derive(Copy, Clone)]
+struct Assumption {
+    symbol: SymbolId,
+    sign: Sign,
+}
+
 struct Evaluator<'a> {
     arena: &'a mut Arena,
     definitions: &'a mut Definitions,
     heads: Heads,
     locals: Vec<HashMap<SymbolId, ExprId>>,
+    assumptions: Vec<Assumption>,
     steps: u64,
     max_steps: u64,
     depth: u32,
@@ -514,6 +530,7 @@ impl<'a> Evaluator<'a> {
             definitions,
             heads,
             locals: Vec::new(),
+            assumptions: Vec::new(),
             steps: 0,
             max_steps: 1_000_000,
             depth: 0,
@@ -594,6 +611,9 @@ impl<'a> Evaluator<'a> {
         {
             return Ok(id);
         }
+        if head == self.heads.assume || head == self.heads.assuming {
+            return self.eval_assume(args.as_slice());
+        }
         if head == self.heads.function {
             return self.eval_function(args.as_slice());
         }
@@ -656,6 +676,173 @@ impl<'a> Evaluator<'a> {
 
         let result = self.apply(head, evaluated.as_slice())?;
         self.finish(id, result)
+    }
+
+    fn eval_assume(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.len() != 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "assume expects an assumption and an expression",
+            ));
+        }
+        let Some(assumption) = self.parse_assumption(args[0]) else {
+            return Ok(self.arena.intern_call(self.heads.assume, args));
+        };
+        self.assumptions.push(assumption);
+        let result = self.eval(args[1]);
+        self.assumptions.pop();
+        result
+    }
+
+    fn parse_assumption(&self, expression: ExprId) -> Option<Assumption> {
+        let Node::Call { head, args } = self.arena.node(expression) else {
+            return None;
+        };
+        if args.len() != 2 {
+            return None;
+        }
+        let name = self
+            .arena
+            .symbol_id(*head)
+            .map(|symbol| self.arena.symbol_name(symbol))?;
+        let symbol = self.arena.symbol_id(args[0])?;
+        let zero = match self.arena.node(args[1]) {
+            Node::Int(value) => value.is_zero(),
+            Node::Rat(value) => value.is_zero(),
+            _ => false,
+        };
+        if !zero {
+            return None;
+        }
+        let sign = match name {
+            "greater" => Sign::Positive,
+            "greaterEqual" => Sign::NonNegative,
+            "less" => Sign::Negative,
+            "lessEqual" => Sign::NonPositive,
+            "equal" => Sign::Zero,
+            _ => return None,
+        };
+        Some(Assumption { symbol, sign })
+    }
+
+    fn expression_sign(&self, expression: ExprId) -> Option<Sign> {
+        match self.arena.node(expression) {
+            Node::Int(value) => Some(sign_of(value.sign())),
+            Node::Rat(value) => Some(sign_of(value.sign())),
+            Node::Real(value) => Some(sign_of(value.sign())),
+            Node::Symbol(symbol) => self
+                .assumptions
+                .iter()
+                .rev()
+                .find(|assumption| assumption.symbol == *symbol)
+                .map(|assumption| assumption.sign),
+            Node::Call { head, args } => {
+                let name = self
+                    .arena
+                    .symbol_id(*head)
+                    .map(|symbol| self.arena.symbol_name(symbol))?;
+                match name {
+                    "negate" if args.len() == 1 => self.expression_sign(args[0]).map(flip_sign),
+                    "abs" | "sqrt" if args.len() == 1 => Some(Sign::NonNegative),
+                    "times" => {
+                        let mut exact = Sign::Positive;
+                        for arg in args.iter() {
+                            exact = multiply_signs(exact, self.expression_sign(*arg)?)?;
+                        }
+                        Some(exact)
+                    }
+                    "power" if args.len() == 2 => {
+                        let exponent = match self.arena.node(args[1]) {
+                            Node::Int(value) => value.to_i64()?,
+                            _ => return None,
+                        };
+                        let base = self.expression_sign(args[0])?;
+                        if exponent % 2 == 0 {
+                            Some(match base {
+                                Sign::Zero => Sign::Zero,
+                                Sign::Negative | Sign::Positive => Sign::Positive,
+                                Sign::NonNegative | Sign::NonPositive => Sign::NonNegative,
+                            })
+                        } else {
+                            Some(base)
+                        }
+                    }
+                    "plus" => {
+                        let mut all_nonnegative = true;
+                        let mut all_nonpositive = true;
+                        for arg in args.iter() {
+                            let sign = self.expression_sign(*arg)?;
+                            all_nonnegative &=
+                                matches!(sign, Sign::Positive | Sign::Zero | Sign::NonNegative);
+                            all_nonpositive &=
+                                matches!(sign, Sign::Negative | Sign::Zero | Sign::NonPositive);
+                        }
+                        if all_nonnegative {
+                            Some(Sign::NonNegative)
+                        } else if all_nonpositive {
+                            Some(Sign::NonPositive)
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    fn exact_constant_value(&self, expression: ExprId) -> Option<Rat> {
+        match self.arena.node(expression) {
+            Node::Int(value) => Rat::from_ints(value.clone(), Int::one()).ok(),
+            Node::Rat(value) => Some(value.clone()),
+            _ => None,
+        }
+    }
+
+    fn simplify_abs(&mut self, argument: ExprId) -> Option<ExprId> {
+        match self.expression_sign(argument) {
+            Some(Sign::Zero) => Some(self.arena.intern_int(Int::zero())),
+            Some(Sign::Positive) | Some(Sign::NonNegative) => Some(argument),
+            Some(Sign::Negative) | Some(Sign::NonPositive) => {
+                Some(self.arena.intern_call(self.heads.negate, &[argument]))
+            }
+            None => None,
+        }
+    }
+
+    fn simplify_sqrt(&mut self, argument: ExprId) -> Option<ExprId> {
+        if let Node::Call { head, args } = self.arena.node(argument) {
+            if args.len() == 2
+                && self
+                    .arena
+                    .symbol_id(*head)
+                    .map(|symbol| self.arena.symbol_name(symbol))
+                    == Some("power")
+            {
+                let exponent = match self.arena.node(args[1]) {
+                    Node::Int(value) => value.to_i64(),
+                    _ => None,
+                };
+                if exponent == Some(2) {
+                    let base = args[0];
+                    return match self.expression_sign(base) {
+                        Some(Sign::NonNegative) | Some(Sign::Positive) | Some(Sign::Zero) => {
+                            Some(base)
+                        }
+                        Some(Sign::NonPositive) | Some(Sign::Negative) => {
+                            Some(self.arena.intern_call(self.heads.negate, &[base]))
+                        }
+                        None => None,
+                    };
+                }
+            }
+        }
+        if let Node::Int(value) = self.arena.node(argument) {
+            if let Some(root) = integer_sqrt(value) {
+                return Some(self.arena.intern_int(root));
+            }
+        }
+        None
     }
 
     fn finish(&mut self, original: ExprId, result: ExprId) -> Result<ExprId, Diagnostic> {
@@ -919,6 +1106,57 @@ impl<'a> Evaluator<'a> {
             return Some((lower, upper));
         }
         Some((low_power, high_power))
+    }
+
+    fn interval_unary(&mut self, head: ExprId, low: &Real, high: &Real) -> Option<ExprId> {
+        let minus_one = Real::from_i64(-1, 30).ok()?;
+        let one = Real::one(30).ok()?;
+        let (low_value, high_value) = if head == self.heads.sqrt {
+            if high.sign() < 0 {
+                return None;
+            }
+            let zero = Real::zero(30).ok()?;
+            let low = if low.sign() < 0 { &zero } else { low };
+            (
+                low.sqrt_round(MPFR_RNDD).ok()?,
+                high.sqrt_round(MPFR_RNDU).ok()?,
+            )
+        } else if head == self.heads.exp {
+            (
+                low.exp_round(MPFR_RNDD).ok()?,
+                high.exp_round(MPFR_RNDU).ok()?,
+            )
+        } else if head == self.heads.ln {
+            if low.sign() <= 0 {
+                return None;
+            }
+            (
+                low.ln_round(MPFR_RNDD).ok()?,
+                high.ln_round(MPFR_RNDU).ok()?,
+            )
+        } else if head == self.heads.abs {
+            if low.sign() >= 0 {
+                (low.clone(), high.clone())
+            } else if high.sign() <= 0 {
+                (high.neg().ok()?, low.neg().ok()?)
+            } else {
+                let low_magnitude = low.neg().ok()?;
+                let high_magnitude = if low_magnitude.cmp(high) == Ordering::Greater {
+                    low_magnitude
+                } else {
+                    high.clone()
+                };
+                (Real::zero(30).ok()?, high_magnitude)
+            }
+        } else if head == self.heads.sin || head == self.heads.cos {
+            (minus_one, one)
+        } else {
+            return None;
+        };
+        if !low_value.is_finite() || !high_value.is_finite() {
+            return None;
+        }
+        Some(self.interval_node(low_value, high_value))
     }
 
     fn eval_approx(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -1613,6 +1851,48 @@ impl<'a> Evaluator<'a> {
         }
         if head == self.heads.greater_equal {
             return self.ordering(args, Ordering::Greater, self.heads.greater_equal);
+        }
+        if args.len() == 1
+            && (head == self.heads.abs
+                || head == self.heads.sqrt
+                || head == self.heads.exp
+                || head == self.heads.ln
+                || head == self.heads.sin
+                || head == self.heads.cos)
+        {
+            if let Some((low, high)) = self.interval_bounds(args[0]) {
+                if let Some(result) = self.interval_unary(head, &low, &high) {
+                    return Ok(result);
+                }
+            }
+        }
+        if args.len() == 1 {
+            if head == self.heads.abs {
+                if let Some(result) = self.simplify_abs(args[0]) {
+                    return Ok(result);
+                }
+            }
+            if let Some(value) = self.exact_constant_value(args[0]) {
+                if head == self.heads.exp && value.is_zero() {
+                    return Ok(self.arena.intern_int(Int::one()));
+                }
+                if head == self.heads.ln && value.is_one() {
+                    return Ok(self.arena.intern_int(Int::zero()));
+                }
+                if (head == self.heads.sin || head == self.heads.tan || head == self.heads.atan)
+                    && value.is_zero()
+                {
+                    return Ok(self.arena.intern_int(Int::zero()));
+                }
+                if head == self.heads.cos && value.is_zero() {
+                    return Ok(self.arena.intern_int(Int::one()));
+                }
+            }
+        }
+        if head == self.heads.sqrt && args.len() == 1 {
+            if let Some(result) = self.simplify_sqrt(args[0]) {
+                return Ok(result);
+            }
         }
         let kernel = self
             .arena
@@ -2796,6 +3076,62 @@ fn require_arity(args: &[ExprId], arity: usize, message: &str) -> Result<(), Dia
     } else {
         Err(Diagnostic::eval(ErrorCode::EvalArity, message))
     }
+}
+
+fn sign_of(value: i8) -> Sign {
+    match value.cmp(&0) {
+        core::cmp::Ordering::Less => Sign::Negative,
+        core::cmp::Ordering::Equal => Sign::Zero,
+        core::cmp::Ordering::Greater => Sign::Positive,
+    }
+}
+
+fn flip_sign(sign: Sign) -> Sign {
+    match sign {
+        Sign::Negative => Sign::Positive,
+        Sign::Zero => Sign::Zero,
+        Sign::Positive => Sign::Negative,
+        Sign::NonNegative => Sign::NonPositive,
+        Sign::NonPositive => Sign::NonNegative,
+    }
+}
+
+fn multiply_signs(left: Sign, right: Sign) -> Option<Sign> {
+    let left = match left {
+        Sign::Negative => -1,
+        Sign::Zero => 0,
+        Sign::Positive => 1,
+        _ => return None,
+    };
+    let right = match right {
+        Sign::Negative => -1,
+        Sign::Zero => 0,
+        Sign::Positive => 1,
+        _ => return None,
+    };
+    Some(sign_of((left * right) as i8))
+}
+
+fn integer_sqrt(value: &Int) -> Option<Int> {
+    let value = value.to_i64()?;
+    if value < 0 {
+        return None;
+    }
+    let mut low = 0i64;
+    let mut high = value;
+    while low <= high {
+        let middle = low + (high - low) / 2;
+        let square = (middle as i128) * (middle as i128);
+        if square == value as i128 {
+            return Some(Int::from_i64(middle));
+        }
+        if square < value as i128 {
+            low = middle + 1;
+        } else {
+            high = middle - 1;
+        }
+    }
+    None
 }
 
 fn exact_integer(arena: &Arena, expression: ExprId) -> Option<Int> {

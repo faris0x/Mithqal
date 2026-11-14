@@ -36,7 +36,7 @@ discriminant(x^2-4,x)                 -> 16
 
 ## Factoring coverage
 
-`factor` handles numeric content, common monomial content, univariate rational roots, differences of squares, perfect square trinomials, sums of cubes, and differences of cubes.
+`factor` handles numeric content, common monomial content, univariate rational roots, differences of squares, perfect square trinomials, sums of cubes, differences of cubes, and grouping for four to eight even-term multivariate polynomials.
 
 Unsupported factorizations stay unchanged. General multivariate factorization remains future work.
 

@@ -275,3 +275,12 @@ fn qr_decompositions() {
     assert!(text("qr([[1,2],[3,4],[5,6]])").starts_with("[[["));
     assert!(text("qr([[1,2],[2,4]])").contains("qr"));
 }
+
+#[test]
+fn broader_eigenvectors() {
+    assert_eq!(
+        text("eigenvectors([[1,2],[3,4]])"),
+        "[[2,-1+(1/2)*(5-sqrt(33))],[2,-1+(1/2)*(5+sqrt(33))]]"
+    );
+    assert_eq!(text("eigenvectors([[0,-1],[1,0]])"), "[[-1,-i],[-1,i]]");
+}
