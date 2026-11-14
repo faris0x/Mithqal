@@ -1423,10 +1423,15 @@ impl<'a> Evaluator<'a> {
             .symbol_id(head)
             .and_then(|symbol| CalculusHead::from_name(self.arena.symbol_name(symbol)));
         if let Some(calculus_head) = calculus_head {
-            if args.len() != 2 {
+            if !matches!(
+                (calculus_head, args.len()),
+                (CalculusHead::Differentiate, 2)
+                    | (CalculusHead::Integrate, 2)
+                    | (CalculusHead::Integrate, 4)
+            ) {
                 return Err(Diagnostic::eval(
                     ErrorCode::EvalArity,
-                    "calculus function expects an expression and a variable",
+                    "differentiate expects two arguments and integrate expects two or four",
                 ));
             }
             let original = self.arena.intern_call(head, args);
@@ -1445,6 +1450,9 @@ impl<'a> Evaluator<'a> {
                 CalculusHead::Differentiate => {
                     crate::calculus::differentiate(self.arena, args[0], args[1], &context)
                 }
+                CalculusHead::Integrate if args.len() == 4 => crate::calculus::definite_integrate(
+                    self.arena, args[0], args[1], args[2], args[3], &context,
+                ),
                 CalculusHead::Integrate => {
                     crate::calculus::integrate(self.arena, args[0], args[1], &context)
                 }

@@ -18,7 +18,7 @@ Included:
 - Approximate interval arithmetic with directed endpoint rounding and significance widening.
 - Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, and absolute value.
 - Exact polynomial expansion, factoring, polynomial gcd, resultants, rational function cancellation, and linear or quadratic solving.
-- Exact symbolic differentiation and basic antiderivatives.
+- Exact symbolic differentiation, basic antiderivatives, and definite integrals.
 - A versioned structured IR scaffold for a future language frontend.
 - Typed instruction virtual machine and a reference interpreter.
 - Explicit mark and sweep garbage collection.
@@ -28,7 +28,7 @@ Included:
 Excluded:
 
 - Branch cut conformance for complex inverse functions.
-- Full multivariate factorization and definite integration.
+- Full multivariate factorization and improper integration.
 - Linear algebra and assumptions.
 - Strings, files, and sets beyond `emptyset`.
 - A command line interface.
@@ -69,7 +69,7 @@ Fixtures use the `.expr` extension in the current version.
 
 ## Later layers
 
-The next layers add definite and improper integration, broader factoring, simplification under assumptions, and linear algebra. A command line interface and a graphical interface follow once the library surface is stable.
+The next layers add improper integration, advanced antiderivatives, broader factoring, simplification under assumptions, and linear algebra. A command line interface and a graphical interface follow once the library surface is stable.
 
 The project remains a library at its core. Front ends are consumers of the public API.
 

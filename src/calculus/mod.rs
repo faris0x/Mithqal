@@ -538,6 +538,114 @@ fn integrate_raw(
     }
 }
 
+pub(crate) fn definite_integrate(
+    arena: &mut Arena,
+    expression: ExprId,
+    variable: ExprId,
+    lower: ExprId,
+    upper: ExprId,
+    context: &Context,
+) -> Option<ExprId> {
+    let antiderivative = integrate(arena, expression, variable, context)?;
+    let upper_value = substitute(arena, antiderivative, variable, upper);
+    let lower_value = substitute(arena, antiderivative, variable, lower);
+    let negative_lower = negation(arena, context, lower_value);
+    Some(sum(arena, context, &[upper_value, negative_lower]))
+}
+
+fn substitute(arena: &mut Arena, expression: ExprId, variable: ExprId, value: ExprId) -> ExprId {
+    if expression == variable {
+        return value;
+    }
+    match arena.node(expression) {
+        Node::Call { head, args } => {
+            let head = *head;
+            let args = args.to_vec();
+            let head = substitute(arena, head, variable, value);
+            let mut replaced = Vec::with_capacity(args.len());
+            for arg in args {
+                replaced.push(substitute(arena, arg, variable, value));
+            }
+            arena.intern_call(head, &replaced)
+        }
+        _ => expression,
+    }
+}
+
+fn is_power_of_variable(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {
+    if let Node::Call { head, args } = arena.node(expression) {
+        if args.len() == 2 && function_name(arena, *head) == Some("power") {
+            return args[0] == variable
+                && as_rat(arena, args[1]).is_some_and(|value| {
+                    value == Rat::from_i64(2, 1).unwrap_or_else(|_| Rat::zero())
+                });
+        }
+    }
+    false
+}
+
+fn is_one_plus_square(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {
+    if let Node::Call { head, args } = arena.node(expression) {
+        if args.len() == 2 && function_name(arena, *head) == Some("plus") {
+            let one = Rat::from_i64(1, 1).unwrap_or_else(|_| Rat::zero());
+            let has_one = args
+                .iter()
+                .any(|arg| as_rat(arena, *arg).is_some_and(|value| value == one));
+            let has_square = args
+                .iter()
+                .any(|arg| is_power_of_variable(arena, *arg, variable));
+            return has_one && has_square;
+        }
+    }
+    false
+}
+
+fn is_negative_square(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {
+    match arena.node(expression) {
+        Node::Call { head, args }
+            if args.len() == 1 && function_name(arena, *head) == Some("negate") =>
+        {
+            is_power_of_variable(arena, args[0], variable)
+        }
+        Node::Call { head, args }
+            if args.len() == 2 && function_name(arena, *head) == Some("times") =>
+        {
+            let one = Rat::from_i64(-1, 1).unwrap_or_else(|_| Rat::zero());
+            args.iter()
+                .any(|arg| as_rat(arena, *arg).is_some_and(|value| value == one))
+                && args
+                    .iter()
+                    .any(|arg| is_power_of_variable(arena, *arg, variable))
+        }
+        _ => false,
+    }
+}
+
+fn is_one_minus_square(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {
+    if let Node::Call { head, args } = arena.node(expression) {
+        if args.len() == 2 && function_name(arena, *head) == Some("plus") {
+            let one = Rat::from_i64(1, 1).unwrap_or_else(|_| Rat::zero());
+            let has_one = args
+                .iter()
+                .any(|arg| as_rat(arena, *arg).is_some_and(|value| value == one));
+            let has_negative_square = args
+                .iter()
+                .any(|arg| is_negative_square(arena, *arg, variable));
+            return has_one && has_negative_square;
+        }
+    }
+    false
+}
+
+fn sqrt_argument(arena: &Arena, expression: ExprId) -> Option<ExprId> {
+    if let Node::Call { head, args } = arena.node(expression) {
+        if args.len() == 1 && function_name(arena, *head) == Some("sqrt") {
+            return Some(args[0]);
+        }
+    }
+    None
+}
+
 fn integrate_power(
     arena: &mut Arena,
     args: &[ExprId],
@@ -553,6 +661,20 @@ fn integrate_power(
         return None;
     }
     let exponent_value = as_rat(arena, exponent)?;
+    let minus_one = Rat::from_i64(-1, 1).ok()?;
+    if exponent_value == minus_one {
+        if is_one_plus_square(arena, base, variable) {
+            return Some(call(arena, "atan", &[variable]));
+        }
+        if let Some(inner) = sqrt_argument(arena, base) {
+            if is_one_minus_square(arena, inner, variable) {
+                return Some(call(arena, "asin", &[variable]));
+            }
+            let half = Rat::from_i64(-1, 2).ok()?;
+            let half_expression = rat_expression(arena, &half);
+            return integrate_power(arena, &[inner, half_expression], variable, context);
+        }
+    }
     let slope = differentiate(arena, base, variable, context)?;
     if contains(arena, slope, variable) {
         return None;

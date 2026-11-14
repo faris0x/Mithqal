@@ -89,6 +89,12 @@ fn main() {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 
+    let mut cold_arena = Arena::new();
+    measure("cold definite integral", 1_000, || {
+        let parsed = parse_statement(&mut cold_arena, "integrate(x^3-2*x+1,x,0,1)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut session = Session::new();
     measure("cached parse and evaluate 1+2", 20_000, || {
         black_box(session.eval_statement("1+2").unwrap());

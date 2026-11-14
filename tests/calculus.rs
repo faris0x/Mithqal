@@ -100,7 +100,12 @@ fn fundamental_theorem_round_trip() {
 
 #[test]
 fn calculus_arity_errors() {
-    for source in ["differentiate(x)", "differentiate(x,x,x)", "integrate(x)"] {
+    for source in [
+        "differentiate(x)",
+        "differentiate(x,x,x)",
+        "integrate(x)",
+        "integrate(x,x,x)",
+    ] {
         let mut session = Session::new();
         let error = session.eval_statement(source).unwrap_err();
         assert_eq!(error.code, ErrorCode::EvalArity, "source {source}");
@@ -127,4 +132,31 @@ fn calculus_results_survive_collection() {
         _ => panic!("expected a derivative call"),
     }
     assert_eq!(session.format_infix(value), "3*x^2");
+}
+
+#[test]
+fn integrate_inverse_function_patterns() {
+    assert_eq!(text("integrate(1/(1+x^2),x)"), "atan(x)");
+    assert_eq!(text("integrate(1/sqrt(1-x^2),x)"), "asin(x)");
+    assert_eq!(text("integrate(1/sqrt(x),x)"), "2*x^(1/2)");
+}
+
+#[test]
+fn definite_integrals() {
+    assert_eq!(text("integrate(x^2,x,0,3)"), "9");
+    assert_eq!(text("integrate(2*x+1,x,1,2)"), "4");
+    assert_eq!(text("integrate(x^3-2*x+1,x,0,1)"), "1/4");
+    assert_eq!(text("integrate(x^2,x,1,0)"), "-1/3");
+    assert_eq!(text("integrate(1/x,x,1,2)"), "ln(abs(2))-ln(abs(1))");
+}
+
+#[test]
+fn definite_integrals_accept_symbolic_bounds() {
+    assert_eq!(text("integrate(x^2,x,a,b)"), "-(1/3)*a^3+(1/3)*b^3");
+    assert_eq!(text("integrate(sin(x),x,0,1)"), "cos(0)-cos(1)");
+}
+
+#[test]
+fn definite_integrals_leave_unsupported_forms_unevaluated() {
+    assert!(text("integrate(f(x),x,0,1)").contains("integrate"));
 }

@@ -52,7 +52,8 @@ Initial kernel work.
 - Added polynomial size limits for exponents, expanded term counts, and resultant degree.
 - Added lazy algebra head resolution and mutable polynomial accumulation on hot algebra paths.
 - Added exact symbolic differentiation for polynomials, products, powers, elementary functions, and inverse functions.
-- Added basic exact integration for polynomials, powers, linear substitutions, trigonometric functions, exponentials, logarithms, and reciprocal linear terms.
+- Added basic exact integration for polynomials, powers, linear substitutions, trigonometric functions, exponentials, logarithms, reciprocal linear terms, and selected inverse function patterns.
+- Added definite integration with exact endpoint substitution and symbolic bounds.
 - Added calculus simplification through rational cancellation and protected calculus symbols.
 - Added a versioned structured IR scaffold with typed arenas, lexical scopes, patterns, definitions, validation, and a builder.
 - Expanded the suite to more than 300 tests covering normal behavior, boundaries, malformed input, numeric significance, intervals, complex arithmetic, polynomial algebra, calculus, structured IR validation, and error propagation.
