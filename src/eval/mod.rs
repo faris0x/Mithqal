@@ -410,6 +410,11 @@ pub(crate) fn evaluate_with_definitions(
     max_steps: u64,
     max_depth: u32,
 ) -> Result<ExprId, Diagnostic> {
+    if max_steps >= 16 && max_depth >= 4 {
+        if let Some(value) = fold_numeric_call(arena, id) {
+            return Ok(value);
+        }
+    }
     let mut evaluator = Evaluator::new(arena, definitions);
     evaluator.max_steps = max_steps.max(1);
     evaluator.max_depth = max_depth.max(1);
@@ -2768,6 +2773,73 @@ fn integer_binomial(n: i64, k: i64) -> Option<Int> {
         index += 1;
     }
     Some(result)
+}
+
+fn fold_numeric_call(arena: &mut Arena, id: ExprId) -> Option<ExprId> {
+    match arena.node(id) {
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) => return Some(id),
+        Node::Call { head, args } => {
+            let symbol = arena.symbol_id(*head)?;
+            let name = arena.symbol_name(symbol);
+            if name != "plus" && name != "times" && name != "negate" {
+                return None;
+            }
+            let args = args.as_ref();
+            if args.is_empty() {
+                return None;
+            }
+            if name == "negate" {
+                if args.len() != 1 {
+                    return None;
+                }
+                return match arena.node(args[0]) {
+                    Node::Int(value) => Some(arena.intern_int(value.neg())),
+                    Node::Rat(value) => Some(arena.intern_rat(value.neg())),
+                    _ => None,
+                };
+            }
+            if args
+                .iter()
+                .all(|arg| matches!(arena.node(*arg), Node::Int(_)))
+            {
+                let mut value = if name == "plus" {
+                    Int::zero()
+                } else {
+                    Int::one()
+                };
+                for arg in args {
+                    let Node::Int(number) = arena.node(*arg) else {
+                        return None;
+                    };
+                    value = if name == "plus" {
+                        value.add(number)
+                    } else {
+                        value.mul(number)
+                    };
+                }
+                return Some(arena.intern_int(value));
+            }
+            let mut value = if name == "plus" {
+                Rat::zero()
+            } else {
+                Rat::one()
+            };
+            for arg in args {
+                let number = match arena.node(*arg) {
+                    Node::Int(value) => Rat::from_ints(value.clone(), Int::one()).ok()?,
+                    Node::Rat(value) => value.clone(),
+                    _ => return None,
+                };
+                value = if name == "plus" {
+                    value.add(&number)
+                } else {
+                    value.mul(&number)
+                };
+            }
+            Some(arena.intern_rat(value))
+        }
+        _ => None,
+    }
 }
 
 fn numeric_add(left: &Numeric, right: &Numeric) -> Option<Numeric> {

@@ -24,6 +24,17 @@ fn main() {
     });
 
     let mut cold_arena = Arena::new();
+    measure("parse only 1+2", 50_000, || {
+        black_box(parse_statement(&mut cold_arena, "1+2").unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    let parsed = parse_statement(&mut cold_arena, "1+2").unwrap();
+    measure("evaluate parsed 1+2", 50_000, || {
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
     measure("cold approx pi 30", 5_000, || {
         let parsed = parse_statement(&mut cold_arena, "approx(pi,30)").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
