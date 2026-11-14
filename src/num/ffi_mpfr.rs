@@ -15,6 +15,8 @@ pub(crate) struct Mpfr {
 }
 
 pub(crate) const MPFR_RNDN: c_int = 0;
+pub(crate) const MPFR_RNDU: c_int = 2;
+pub(crate) const MPFR_RNDD: c_int = 3;
 
 unsafe extern "C" {
     pub(crate) fn mpfr_init2(value: *mut Mpfr, precision: c_long);

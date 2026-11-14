@@ -49,13 +49,13 @@ An interval is a call with the protected `interval(low,high)` head. Endpoints ma
 
 Interval arithmetic is available for addition, multiplication, negation, and integer powers. Scalar values combine with intervals by treating the scalar as a zero width interval. Multiplication evaluates the four endpoint products and takes the minimum and maximum. Even powers that cross zero produce a lower bound of zero. A negative power requires an interval that does not contain zero.
 
-Interval endpoints are converted to `Real` with a default precision for the operation. The current implementation propagates significance error but does not yet use directed rounding for rigorous outward bounds. Rigorous interval arithmetic is a later refinement.
+Interval endpoints are converted to `Real` with a default precision for the operation. Endpoint arithmetic uses MPFR directed rounding: lower bounds round down, upper bounds round up, and products evaluate all four endpoint combinations with directed rounding before selecting the extrema. Endpoints also widen by their stored significance error. The result is a conservative enclosure for the modeled error estimates. Fully rigorous enclosures from arbitrary real inputs remain a later refinement because significance estimates are themselves approximate.
 
 ## Approximate complex values
 
 An approximate complex value is a call with the protected `complex(real,imaginary)` head. The `approx` boundary recognizes the symbol `i`, converts real and imaginary parts to `Real` values, and returns a `complex` expression when the imaginary part is nonzero. A zero imaginary part normalizes to the real value.
 
-The numeric boundary supports complex addition, subtraction, multiplication, division through reciprocal powers, integer powers, real and complex powers, absolute value, exponential, logarithm, square root, sine, cosine, and tangent. MPC supplies the complex elementary functions. Inverse trigonometric functions remain real only.
+The numeric boundary supports complex addition, subtraction, multiplication, stable division, integer powers, real and complex powers, absolute value, exponential, logarithm, square root, sine, cosine, and tangent. MPC supplies the complex elementary functions. Inverse trigonometric and hyperbolic functions remain real only for now.
 
 ## Symbolic constants
 

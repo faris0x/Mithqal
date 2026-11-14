@@ -14,7 +14,7 @@ use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
 use crate::hash::FnvBuildHasher;
-use crate::num::{ComplexMpc, Int, Rat, Real};
+use crate::num::{ComplexMpc, Int, MPFR_RNDD, MPFR_RNDU, Rat, Real};
 
 use definitions::{Definitions, Rule};
 use pattern::{Bindings, match_pattern, substitute};
@@ -386,10 +386,10 @@ impl<'a> Evaluator<'a> {
         other_high: &Real,
     ) -> Result<(Real, Real), Diagnostic> {
         let low = low
-            .add(other_low)
+            .add_round(other_low, MPFR_RNDD)
             .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "interval addition failed"))?;
         let high = high
-            .add(other_high)
+            .add_round(other_high, MPFR_RNDU)
             .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "interval addition failed"))?;
         Ok((low, high))
     }
@@ -401,24 +401,29 @@ impl<'a> Evaluator<'a> {
         other_low: &Real,
         other_high: &Real,
     ) -> Result<(Real, Real), Diagnostic> {
-        let products = [
-            low.mul(other_low),
-            low.mul(other_high),
-            high.mul(other_low),
-            high.mul(other_high),
-        ];
-        let mut values = Vec::with_capacity(4);
-        for product in products {
-            values.push(product.map_err(|_| {
+        let mut lower_products = Vec::with_capacity(4);
+        let mut upper_products = Vec::with_capacity(4);
+        for (left, right) in [
+            (low, other_low),
+            (low, other_high),
+            (high, other_low),
+            (high, other_high),
+        ] {
+            lower_products.push(left.mul_round(right, MPFR_RNDD).map_err(|_| {
+                Diagnostic::eval(ErrorCode::NumericFailure, "interval product failed")
+            })?);
+            upper_products.push(left.mul_round(right, MPFR_RNDU).map_err(|_| {
                 Diagnostic::eval(ErrorCode::NumericFailure, "interval product failed")
             })?);
         }
-        let mut low = values[0].clone();
-        let mut high = values[0].clone();
-        for value in values.iter().skip(1) {
+        let mut low = lower_products[0].clone();
+        for value in lower_products.iter().skip(1) {
             if value.cmp(&low) == Ordering::Less {
                 low = value.clone();
             }
+        }
+        let mut high = upper_products[0].clone();
+        for value in upper_products.iter().skip(1) {
             if value.cmp(&high) == Ordering::Greater {
                 high = value.clone();
             }
@@ -495,15 +500,24 @@ impl<'a> Evaluator<'a> {
                 return None;
             }
             let positive = exponent.unsigned_abs() as i64;
-            let low_power = low.pow_si(positive).ok()?;
-            let high_power = high.pow_si(positive).ok()?;
+            let (low_power, high_power) = self.interval_positive_power(low, high, positive)?;
             let one = Real::one(30).ok()?;
-            let low_result = one.div(&high_power).ok()?;
-            let high_result = one.div(&low_power).ok()?;
+            let low_result = one.div_round(&high_power, MPFR_RNDD).ok()?;
+            let high_result = one.div_round(&low_power, MPFR_RNDU).ok()?;
             return Some(self.interval_node(low_result, high_result));
         }
-        let low_power = low.pow_si(exponent).ok()?;
-        let high_power = high.pow_si(exponent).ok()?;
+        let (low_power, high_power) = self.interval_positive_power(low, high, exponent)?;
+        Some(self.interval_node(low_power, high_power))
+    }
+
+    fn interval_positive_power(
+        &mut self,
+        low: &Real,
+        high: &Real,
+        exponent: i64,
+    ) -> Option<(Real, Real)> {
+        let low_power = low.pow_si_round(exponent, MPFR_RNDD).ok()?;
+        let high_power = high.pow_si_round(exponent, MPFR_RNDU).ok()?;
         if exponent % 2 == 0 && low.sign() < 0 && high.sign() > 0 {
             let zero = Real::zero(30).ok()?;
             let low_abs = low.abs().ok()?;
@@ -513,13 +527,15 @@ impl<'a> Evaluator<'a> {
             } else {
                 high_abs
             };
-            let high_power = high_magnitude.pow_si(exponent).ok()?;
-            return Some(self.interval_node(zero, high_power));
+            let upper = high_magnitude.pow_si_round(exponent, MPFR_RNDU).ok()?;
+            return Some((zero, upper));
         }
         if exponent % 2 == 0 && high.sign() <= 0 {
-            return Some(self.interval_node(high_power, low_power));
+            let upper = low.pow_si_round(exponent, MPFR_RNDU).ok()?;
+            let lower = high.pow_si_round(exponent, MPFR_RNDD).ok()?;
+            return Some((lower, upper));
         }
-        Some(self.interval_node(low_power, high_power))
+        Some((low_power, high_power))
     }
 
     fn eval_approx(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {

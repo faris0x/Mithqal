@@ -53,13 +53,88 @@ impl Real {
 
     /// Convert an `i64` to a real with a requested decimal digit count.
     pub fn from_i64(value: i64, digits: u32) -> Result<Self, NumError> {
+        Self::from_i64_round(value, digits, MPFR_RNDN)
+    }
+
+    pub(crate) fn from_i64_round(
+        value: i64,
+        digits: u32,
+        rounding: core::ffi::c_int,
+    ) -> Result<Self, NumError> {
         let bits = bits_for_digits(digits);
         let mut out = Self::initialized(bits);
         // SAFETY: the value is initialized.
         unsafe {
-            ffi_mpfr::mpfr_set_si(&mut out.inner, value as core::ffi::c_long, MPFR_RNDN);
+            ffi_mpfr::mpfr_set_si(&mut out.inner, value as core::ffi::c_long, rounding);
         }
-        out.error = rounding_error(&out);
+        out.error = if rounding == MPFR_RNDN {
+            rounding_error(&out)
+        } else {
+            0.0
+        };
+        Ok(out)
+    }
+
+    pub(crate) fn add_round(
+        &self,
+        other: &Real,
+        rounding: core::ffi::c_int,
+    ) -> Result<Real, NumError> {
+        let bits = self.bits.max(other.bits);
+        let mut out = Self::initialized(bits);
+        // SAFETY: all values are initialized.
+        unsafe {
+            ffi_mpfr::mpfr_add(&mut out.inner, &self.inner, &other.inner, rounding);
+        }
+        Ok(out)
+    }
+
+    pub(crate) fn mul_round(
+        &self,
+        other: &Real,
+        rounding: core::ffi::c_int,
+    ) -> Result<Real, NumError> {
+        let bits = self.bits.max(other.bits);
+        let mut out = Self::initialized(bits);
+        // SAFETY: all values are initialized.
+        unsafe {
+            ffi_mpfr::mpfr_mul(&mut out.inner, &self.inner, &other.inner, rounding);
+        }
+        Ok(out)
+    }
+
+    pub(crate) fn div_round(
+        &self,
+        other: &Real,
+        rounding: core::ffi::c_int,
+    ) -> Result<Real, NumError> {
+        if other.is_zero() {
+            return Err(NumError::DivisionByZero);
+        }
+        let bits = self.bits.max(other.bits);
+        let mut out = Self::initialized(bits);
+        // SAFETY: all values are initialized and the divisor is nonzero.
+        unsafe {
+            ffi_mpfr::mpfr_div(&mut out.inner, &self.inner, &other.inner, rounding);
+        }
+        Ok(out)
+    }
+
+    pub(crate) fn pow_si_round(
+        &self,
+        exponent: i64,
+        rounding: core::ffi::c_int,
+    ) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe {
+            ffi_mpfr::mpfr_pow_si(
+                &mut out.inner,
+                &self.inner,
+                exponent as core::ffi::c_long,
+                rounding,
+            );
+        }
         Ok(out)
     }
 
@@ -79,7 +154,7 @@ impl Real {
             return Ok(self.clone());
         }
         let error = Self::from_f64(-self.error, 64)?;
-        self.add(&error)
+        self.add_round(&error, ffi_mpfr::MPFR_RNDD)
     }
 
     /// A conservative upper endpoint from the stored error estimate.
@@ -88,7 +163,7 @@ impl Real {
             return Ok(self.clone());
         }
         let error = Self::from_f64(self.error, 64)?;
-        self.add(&error)
+        self.add_round(&error, ffi_mpfr::MPFR_RNDU)
     }
 
     /// The approximate zero at a requested decimal digit count.
@@ -438,15 +513,24 @@ impl Real {
     }
 
     /// A stable identity string for interning.
-    pub(crate) fn key(&self) -> String {
-        let digits = ((self.bits as f64 / 3.321_928_094_887_362) as usize)
-            .saturating_add(2)
-            .max(1);
-        format!(
-            "{}|{}|{}",
-            self.to_decimal_with_digits(digits),
+    pub(crate) fn key_parts(&self) -> (u32, i8, i64, Box<[u64]>, u64) {
+        if self.is_zero() {
+            return (self.bits, 0, 0, Box::new([]), self.error.to_bits());
+        }
+        let limbs = (self.bits as usize + 63) / 64;
+        let digits = if limbs == 0 {
+            Box::new([])
+        } else {
+            // SAFETY: MPFR stores `limbs` initialized limbs for a nonzero value.
+            let slice = unsafe { core::slice::from_raw_parts(self.inner.limbs, limbs) };
+            slice.to_vec().into_boxed_slice()
+        };
+        (
             self.bits,
-            self.error.to_bits()
+            self.sign(),
+            self.inner.exponent as i64,
+            digits,
+            self.error.to_bits(),
         )
     }
 

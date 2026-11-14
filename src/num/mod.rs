@@ -15,6 +15,7 @@ pub use int::Int;
 pub use rat::Rat;
 pub use real::Real;
 
+pub(crate) use ffi_mpfr::{MPFR_RNDD, MPFR_RNDU};
 pub(crate) use mpc::Complex as ComplexMpc;
 
 use core::fmt;

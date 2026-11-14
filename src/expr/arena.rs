@@ -20,7 +20,13 @@ enum Key {
         num: Box<[u64]>,
         den: Box<[u64]>,
     },
-    Real(String),
+    Real {
+        precision: u32,
+        sign: i8,
+        exponent: i64,
+        limbs: Box<[u64]>,
+        error: u64,
+    },
     Symbol(SymbolId),
     Call {
         head: ExprId,
@@ -291,7 +297,16 @@ fn key_for(node: &Node) -> Key {
             num: value.num_limbs().into(),
             den: value.den_limbs().into(),
         },
-        Node::Real(value) => Key::Real(value.key()),
+        Node::Real(value) => {
+            let (precision, sign, exponent, limbs, error) = value.key_parts();
+            Key::Real {
+                precision,
+                sign,
+                exponent,
+                limbs,
+                error,
+            }
+        }
         Node::Symbol(symbol) => Key::Symbol(*symbol),
         Node::Call { head, args } => Key::Call {
             head: *head,

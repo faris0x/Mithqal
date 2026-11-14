@@ -25,6 +25,8 @@ Initial kernel work.
 - Added all numeric real folding in `plus` and `times`, interval zero power normalization, correct negative interval powers, and shorter precision aware real interning keys.
 - Added general real powers through MPFR, complex non-integer powers through MPC, and complex exponential, logarithm, square root, sine, cosine, and tangent functions.
 - Added stable scaled complex division, complex power handling, negative real square root and logarithm promotion to complex values, and conservative interval endpoint widening from significance error.
+- Added directed MPFR rounding for interval addition, multiplication, negation, and powers, with outward bound selection for products and reciprocals.
+- Added binary MPFR interning keys for real values instead of decimal string keys.
 - Added real derivative corrections for sine, cosine, and integer powers.
 - Expanded numeric, interval, and complex tests to cover normal values, boundaries, malformed input, errors, precision changes, collection, and the compiled path.
 - Added own values, down values, protected symbol checks, definition specificity, and immediate and delayed definitions.

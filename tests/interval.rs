@@ -181,6 +181,24 @@ fn approximate_point_intervals_widen_for_error() {
 }
 
 #[test]
+fn interval_bounds_are_outward() {
+    let (session, value) = evaluate("interval(1/3,2/3)+interval(1/7,2/7)");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= 10.0 / 21.0 + 1e-12, "low {low}");
+    assert!(high >= 20.0 / 21.0 - 1e-12, "high {high}");
+
+    let (session, value) = evaluate("interval(1/3,2/3)*interval(1/7,2/7)");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= 1.0 / 21.0 + 1e-12, "low {low}");
+    assert!(high >= 4.0 / 21.0 - 1e-12, "high {high}");
+
+    let (session, value) = evaluate("interval(1/3,2/3)^2");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= 1.0 / 9.0 + 1e-12, "low {low}");
+    assert!(high >= 4.0 / 9.0 - 1e-12, "high {high}");
+}
+
+#[test]
 fn interval_arity_errors() {
     let mut session = Session::new();
     for source in ["interval()", "interval(1)", "interval(1,2,3)"] {
