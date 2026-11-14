@@ -19,6 +19,7 @@ Included:
 - Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, absolute value, gamma, log gamma, and error functions.
 - Exact polynomial expansion, factoring, polynomial gcd, resultants, rational function cancellation, and linear or quadratic solving.
 - Exact symbolic differentiation, integration by parts, partial fractions, and definite and simple improper integrals.
+- Exact limits at finite points and at infinity, one sided limits, truncated Taylor series, and limit convergence checks.
 - Local sign assumptions and conditional simplification.
 - A line based surface language with modules, definitions, literal patterns, guards, lexical bindings, conditionals, match blocks, and print statements.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
@@ -78,7 +79,7 @@ Fixtures use the `.expr` extension in the current version.
 
 ## Later layers
 
-The next layers add improper integration, advanced antiderivatives, broader factoring, symbolic matrix entries, matrix decompositions, and simplification under assumptions. A command line interface and a graphical interface follow once the library surface is stable.
+The next layers add branch cut conformance, broader improper integration, full multivariate factorization, further matrix decompositions, and wider assumption domains. A command line interface and a graphical interface follow once the library surface is stable.
 
 The project remains a library at its core. Front ends are consumers of the public API.
 

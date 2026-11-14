@@ -66,6 +66,9 @@ Initial kernel work.
 - Added local assumptions with `assume` and `assuming`, sign-aware `abs` and `sqrt(x^2)` simplification, and exact constant simplifications for elementary functions.
 - Added multivariate grouping factorization for even-term polynomials.
 - Added integration by parts, partial fractions with distinct rational roots, and simple improper integrals with infinite bounds.
+- Added exact two sided and one sided limits at finite points and at infinity, with rational degree comparison, local Taylor comparison, continuous composition, and exponential or logarithmic growth rules.
+- Added truncated Taylor series through repeated exact differentiation, plus `converges` for finite limit existence.
+- Added rational infinity limits to the algebra layer.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.
 - Added irrational and complex two by two eigenvectors.
 - Added broader polynomial algebra with degree, coefficient, polynomial division, discriminants, and sum or difference of cubes factoring.
@@ -75,4 +78,4 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to more than 610 test functions and more than 1390 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.
+- Expanded the suite to more than 620 test functions and more than 1460 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.

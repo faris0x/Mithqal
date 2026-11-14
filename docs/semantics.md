@@ -231,7 +231,7 @@ The algebra layer rejects exponents above 4096, expanded forms above 20000 terms
 
 ## Symbolic calculus
 
-The calculus layer provides `differentiate` and `integrate`. Both take an expression and a variable. `integrate` accepts two optional bound arguments.
+The calculus layer provides `differentiate`, `integrate`, `limit`, `series`, and `converges`. Differentiation, integration, and limits take an expression and a variable. `integrate` accepts two optional bound arguments, and `limit` accepts an optional side argument.
 
 `differentiate` applies exact differentiation rules for sums, products, powers, the elementary functions, and the inverse trigonometric and hyperbolic functions. Unknown function calls remain unevaluated. A symbol other than the differentiation variable is treated as a constant.
 
@@ -240,6 +240,12 @@ The calculus layer provides `differentiate` and `integrate`. Both take an expres
 `integrate` also accepts lower and upper bounds as extra arguments. The definite form substitutes the endpoints into the antiderivative and forms the difference. Symbolic bounds are allowed. Simple improper integrals with `inf` or `-inf` endpoints use limit rules for decaying exponentials, negative powers, and arctangents. Divergent improper integrals remain unevaluated.
 
 Differentiation results are passed through rational cancellation so quotient rule results collapse to a single fraction. Integration does not attach branch conditions or assumptions.
+
+`limit` evaluates two sided and one sided limits at finite points and at `inf` or `-inf`. The fourth argument selects `left` or `right`. Finite points use direct substitution, rational cancellation, continuous composition, and local Taylor comparison. Infinite points use rational degree comparison plus exponential and logarithmic growth rules. Expressions with unknown heads remain unevaluated.
+
+`series` returns a truncated Taylor polynomial through a requested degree. Coefficients come from repeated exact differentiation evaluated at the point. The order must be a nonnegative integer no greater than 20.
+
+`converges` reports whether a finite limit exists. It returns `true` for a finite limit, `false` for divergence or an infinite limit, and remains unevaluated when the limit cannot be decided.
 
 ## Linear algebra
 

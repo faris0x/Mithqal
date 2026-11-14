@@ -1712,6 +1712,60 @@ pub(crate) fn discriminant(
     Some(expression_from_rat(arena, &value))
 }
 
+/// The value of a rational function as its variable tends to infinity.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum RationalLimit {
+    Finite(Rat),
+    Infinite(i8),
+}
+
+/// Evaluate a rational expression at positive or negative infinity.
+///
+/// Returns `None` when the expression is not rational in the variable or the
+/// denominator is identically zero.
+pub(crate) fn rational_limit_at_infinity(
+    arena: &Arena,
+    expression: ExprId,
+    variable: ExprId,
+    context: &Context,
+    positive: bool,
+) -> Option<RationalLimit> {
+    let variable = variable_argument(arena, variable)?;
+    let function = cancel_function(&rational_from_expr(arena, context, expression)?);
+    if function.denominator.is_zero() {
+        return None;
+    }
+    let numerator = function.numerator.dense_in(variable)?;
+    let denominator = function.denominator.dense_in(variable)?;
+    if numerator.is_empty() {
+        return Some(RationalLimit::Finite(Rat::zero()));
+    }
+    if denominator.is_empty() {
+        return None;
+    }
+    let numerator_degree = numerator.len() as i64 - 1;
+    let denominator_degree = denominator.len() as i64 - 1;
+    let numerator_leading = numerator.last()?;
+    let denominator_leading = denominator.last()?;
+    if numerator_degree < denominator_degree {
+        return Some(RationalLimit::Finite(Rat::zero()));
+    }
+    if numerator_degree == denominator_degree {
+        return numerator_leading
+            .div(denominator_leading)
+            .ok()
+            .map(RationalLimit::Finite);
+    }
+    let ratio = numerator_leading.div(denominator_leading).ok()?;
+    let difference = numerator_degree - denominator_degree;
+    let sign = if !positive && difference % 2 != 0 {
+        -ratio.sign()
+    } else {
+        ratio.sign()
+    };
+    Some(RationalLimit::Infinite(sign))
+}
+
 pub(crate) fn univariate_rational_roots(
     arena: &Arena,
     expression: ExprId,
