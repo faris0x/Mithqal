@@ -235,3 +235,19 @@ fn characteristic_polynomials() {
     assert_eq!(text("charpoly([[1,0],[0,2]])"), "[2,-3,1]");
     assert_eq!(text("charpoly([[1,0,0],[0,2,0],[0,0,3]])"), "[-6,11,-6,1]");
 }
+
+#[test]
+fn eigenvalues_and_nullspaces() {
+    assert_eq!(text("eigenvalues([[2,0],[0,3]])"), "[2,3]");
+    assert_eq!(
+        text("eigenvalues([[1,2],[3,4]])"),
+        "[(1/2)*(5-sqrt(33)),(1/2)*(5+sqrt(33))]"
+    );
+    assert_eq!(text("eigenvalues([[0,-1],[1,0]])"), "[-i,i]");
+    assert_eq!(text("eigenvalues([[1,2],[2,4]])"), "[0,5]");
+    assert_eq!(text("eigenvalues([[1,0,0],[0,2,0],[0,0,3]])"), "[1,2,3]");
+    assert!(text("eigenvalues([[a,b],[c,d]])").contains("sqrt"));
+    assert_eq!(text("nullspace([[1,2],[2,4]])"), "[[-2,1]]");
+    assert_eq!(text("nullspace([[1,0],[0,1]])"), "[]");
+    assert_eq!(text("nullspace([[1,2,3],[2,4,6]])"), "[[-2,1,0],[-3,0,1]]");
+}

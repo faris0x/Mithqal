@@ -214,6 +214,8 @@ enum LinearHead {
     Cross,
     Plu,
     Charpoly,
+    Eigenvalues,
+    Nullspace,
 }
 impl LinearHead {
     fn from_name(name: &str) -> Option<Self> {
@@ -231,6 +233,8 @@ impl LinearHead {
             "cross" => Self::Cross,
             "plu" => Self::Plu,
             "charpoly" => Self::Charpoly,
+            "eigenvalues" => Self::Eigenvalues,
+            "nullspace" => Self::Nullspace,
             _ => return None,
         })
     }
@@ -1942,6 +1946,8 @@ impl<'a> Evaluator<'a> {
             LinearHead::Cross => crate::linalg::cross(self.arena, args[0], args[1]),
             LinearHead::Plu => crate::linalg::plu(self.arena, args[0]),
             LinearHead::Charpoly => crate::linalg::charpoly(self.arena, args[0]),
+            LinearHead::Eigenvalues => crate::linalg::eigenvalues(self.arena, args[0]),
+            LinearHead::Nullspace => crate::linalg::nullspace(self.arena, args[0]),
         }
     }
 

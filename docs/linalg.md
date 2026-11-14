@@ -31,6 +31,8 @@ Symbolic entries and approximate entries are not accepted by this layer yet. An 
 | `cross(a,b)` | Three dimensional vector cross product. |
 | `plu(a)` | Permutation, lower, and upper factors. |
 | `charpoly(a)` | Characteristic polynomial coefficients. |
+| `eigenvalues(a)` | Exact eigenvalues where supported. |
+| `nullspace(a)` | Basis of the null space. |
 
 ## Examples
 
@@ -50,6 +52,9 @@ det([[a,b],[c,d]])                  -> -b*c+a*d
 matmul([[a,b],[c,d]],[[e,f],[g,h]]) -> [[a*e+b*g,a*f+b*h],[c*e+d*g,c*f+d*h]]
 plu([[2,1],[4,3]])                  -> [[[1,0],[0,1]],[[1,0],[2,1]],[[2,1],[0,1]]]
 charpoly([[1,2],[3,4]])             -> [-2,-5,1]
+eigenvalues([[1,2],[3,4]])          -> [(1/2)*(5-sqrt(33)),(1/2)*(5+sqrt(33))]
+eigenvalues([[0,-1],[1,0]])         -> [-i,i]
+nullspace([[1,2],[2,4]])            -> [[-2,1]]
 ```
 
 ## Exactness
@@ -69,4 +74,6 @@ Dimension mismatches and non-square inputs also leave the call unevaluated. Wron
 - `plu` requires a square full-rank exact matrix.
 - `charpoly` accepts exact rational matrices up to eight by eight and returns coefficients in ascending order.
 - `identity` accepts sizes from zero to 256.
-- Eigenvalues and sparse matrices arrive in later work.
+- `eigenvalues` supports one by one and two by two exact or symbolic matrices, plus diagonal and triangular matrices of any size accepted by the layer.
+- `nullspace` accepts exact rational matrices.
+- Sparse matrices and further decompositions arrive in later work.

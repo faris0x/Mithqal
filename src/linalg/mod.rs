@@ -766,3 +766,120 @@ pub(crate) fn charpoly(arena: &mut Arena, expression: ExprId) -> Option<ExprId> 
     let list = arena.builtin_head("list");
     Some(arena.intern_call(list, &entries))
 }
+
+fn exact_eigenvalues(arena: &mut Arena, matrix: &Matrix) -> Option<ExprId> {
+    let list = arena.builtin_head("list");
+    if matrix.rows != matrix.columns || matrix.rows == 0 {
+        return None;
+    }
+    let size = matrix.rows;
+    if size == 1 {
+        let entry = rational_expression(arena, &matrix.get(0, 0));
+        return Some(arena.intern_call(list, &[entry]));
+    }
+    let triangular = (0..size)
+        .all(|row| (0..size).all(|column| row == column || matrix.get(row, column).is_zero()))
+        || (0..size)
+            .all(|row| (0..size).all(|column| row == column || matrix.get(row, column).is_zero()));
+    if size > 2 && triangular {
+        let entries = (0..size)
+            .map(|index| rational_expression(arena, &matrix.get(index, index)))
+            .collect::<Vec<_>>();
+        return Some(arena.intern_call(list, &entries));
+    }
+    if size != 2 {
+        return None;
+    }
+    let trace = matrix.get(0, 0).add(&matrix.get(1, 1));
+    let determinant = matrix
+        .get(0, 0)
+        .mul(&matrix.get(1, 1))
+        .sub(&matrix.get(0, 1).mul(&matrix.get(1, 0)));
+    let variable_symbol = arena.symbol_or_intern("x");
+    let variable = arena.symbol_expr(variable_symbol);
+    let two = arena.intern_int(Int::from_i64(2));
+    let power = arena.builtin_head("power");
+    let squared = arena.intern_call(power, &[variable, two]);
+    let negative_trace = rational_expression(arena, &trace.neg());
+    let times = arena.builtin_head("times");
+    let linear = arena.intern_call(times, &[negative_trace, variable]);
+    let constant = rational_expression(arena, &determinant);
+    let plus = arena.builtin_head("plus");
+    let polynomial = arena.intern_call(plus, &[squared, linear, constant]);
+    let context = crate::algebra::Context {
+        plus,
+        times,
+        power,
+        negate: arena.builtin_head("negate"),
+        list,
+        equal: arena.builtin_head("equal"),
+    };
+    crate::algebra::solve(arena, polynomial, variable, &context)
+}
+
+pub(crate) fn eigenvalues(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    if let Some(matrix) = matrix_from_expr(arena, expression) {
+        return exact_eigenvalues(arena, &matrix);
+    }
+    let matrix = symbolic_matrix(arena, expression)?;
+    if matrix.rows != matrix.columns || matrix.rows == 0 {
+        return None;
+    }
+    let size = matrix.rows;
+    let upper = (0..size).all(|row| {
+        (0..size).all(|column| row == column || expression_zero(arena, matrix.get(row, column)))
+    });
+    let lower = (0..size).all(|row| {
+        (0..size).all(|column| row == column || expression_zero(arena, matrix.get(row, column)))
+    });
+    let list = arena.builtin_head("list");
+    if size > 2 && (upper || lower) {
+        let entries = (0..size)
+            .map(|index| matrix.get(index, index))
+            .collect::<Vec<_>>();
+        return Some(arena.intern_call(list, &entries));
+    }
+    if size != 2 {
+        return None;
+    }
+    let trace = expression_add(arena, matrix.get(0, 0), matrix.get(1, 1));
+    let left = expression_multiply(arena, matrix.get(0, 0), matrix.get(1, 1));
+    let right = expression_multiply(arena, matrix.get(0, 1), matrix.get(1, 0));
+    let determinant = expression_subtract(arena, left, right);
+    let four = arena.intern_int(Int::from_i64(4));
+    let squared_trace = expression_multiply(arena, trace, trace);
+    let four_determinant = expression_multiply(arena, four, determinant);
+    let discriminant = expression_subtract(arena, squared_trace, four_determinant);
+    let sqrt_head = arena.builtin_head("sqrt");
+    let root = arena.intern_call(sqrt_head, &[discriminant]);
+    let two = arena.intern_int(Int::from_i64(2));
+    let half = expression_reciprocal(arena, two);
+    let numerator = expression_add(arena, trace, root);
+    let first = expression_multiply(arena, numerator, half);
+    let negative_root = expression_negate(arena, root);
+    let numerator = expression_add(arena, trace, negative_root);
+    let second = expression_multiply(arena, numerator, half);
+    Some(arena.intern_call(list, &[first, second]))
+}
+
+pub(crate) fn nullspace(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let matrix = matrix_from_expr(arena, expression)?;
+    let (reduced, pivots) = matrix.rref();
+    let mut free = Vec::new();
+    for column in 0..matrix.columns {
+        if !pivots.contains(&column) {
+            free.push(column);
+        }
+    }
+    let list = arena.builtin_head("list");
+    let mut vectors = Vec::with_capacity(free.len());
+    for column in free {
+        let mut values = vec![Rat::zero(); matrix.columns];
+        values[column] = Rat::one();
+        for (row, pivot) in pivots.iter().enumerate() {
+            values[*pivot] = reduced.get(row, column).neg();
+        }
+        vectors.push(vector_expression(arena, &values));
+    }
+    Some(arena.intern_call(list, &vectors))
+}
