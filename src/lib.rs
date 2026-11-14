@@ -3,7 +3,7 @@
 //! The current version defines the expression kernel, source reader, evaluator,
 //! virtual machine, garbage collector, and public library API.
 //!
-//! The crate name `cas` is a placeholder.
+//! The project is named Mithqal.
 
 #![warn(missing_docs)]
 #![forbid(unsafe_op_in_unsafe_fn)]

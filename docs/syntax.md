@@ -272,6 +272,15 @@ interval(1,2)*interval(3,4)
 interval(-2,3)^2
 ```
 
+`complex(real,imaginary)` constructs an approximate complex value. The `approx` boundary recognizes `i` and produces complex values for expressions with a nonzero imaginary part.
+
+```text
+complex(1,2)
+approx(1+2*i,30)
+approx((2+3*i)*(4-i),30)
+approx((1+i)/(1-i),30)
+```
+
 ## Control forms
 
 `if` is a normal call with three arguments. It holds the branch arguments.

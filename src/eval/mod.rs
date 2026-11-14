@@ -21,6 +21,12 @@ use pattern::{Bindings, match_pattern, substitute};
 
 pub(crate) use definitions::Definitions as SessionDefinitions;
 
+enum Numeric {
+    Real(Real),
+    Complex(Real, Real),
+    Error(ExprId),
+}
+
 struct Heads {
     plus: ExprId,
     times: ExprId,
@@ -51,6 +57,7 @@ struct Heads {
     closure: ExprId,
     approx: ExprId,
     interval: ExprId,
+    complex: ExprId,
     pi: ExprId,
     e: ExprId,
     null: ExprId,
@@ -129,6 +136,7 @@ impl<'a> Evaluator<'a> {
             closure: head(arena, "closure"),
             approx: head(arena, "approx"),
             interval: head(arena, "interval"),
+            complex: head(arena, "complex"),
             pi: head(arena, "pi"),
             e: head(arena, "e"),
             null: head(arena, "null"),
@@ -217,6 +225,9 @@ impl<'a> Evaluator<'a> {
         if head == self.heads.interval {
             return self.eval_interval(&args);
         }
+        if head == self.heads.complex {
+            return self.eval_complex(&args);
+        }
         if head == self.heads.set {
             return self.eval_definition(&args, false);
         }
@@ -303,6 +314,25 @@ impl<'a> Evaluator<'a> {
             }
         }
         Ok(self.arena.intern_call(self.heads.interval, &[low, high]))
+    }
+
+    fn eval_complex(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.len() != 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "complex expects a real and an imaginary part",
+            ));
+        }
+        let real = self.eval(args[0])?;
+        let imaginary = self.eval(args[1])?;
+        if let Some(value) = self.real_endpoint(imaginary) {
+            if value.is_zero() {
+                return Ok(real);
+            }
+        }
+        Ok(self
+            .arena
+            .intern_call(self.heads.complex, &[real, imaginary]))
     }
 
     fn real_endpoint(&self, id: ExprId) -> Option<Real> {
@@ -455,15 +485,19 @@ impl<'a> Evaluator<'a> {
 
     fn interval_power(&mut self, low: &Real, high: &Real, exponent: i64) -> Option<ExprId> {
         if exponent == 0 {
-            return Some(self.arena.intern_int(Int::one()));
+            let one = Real::one(30).ok()?;
+            return Some(self.interval_node(one.clone(), one));
         }
         if exponent < 0 {
             if low.sign() <= 0 && high.sign() >= 0 {
                 return None;
             }
+            let positive = exponent.unsigned_abs() as i64;
+            let low_power = low.pow_si(positive).ok()?;
+            let high_power = high.pow_si(positive).ok()?;
             let one = Real::one(30).ok()?;
-            let low_result = one.div(high).ok()?;
-            let high_result = one.div(low).ok()?;
+            let low_result = one.div(&high_power).ok()?;
+            let high_result = one.div(&low_power).ok()?;
             return Some(self.interval_node(low_result, high_result));
         }
         let low_power = low.pow_si(exponent).ok()?;
@@ -510,7 +544,7 @@ impl<'a> Evaluator<'a> {
         }
         let expression = self.eval(args[0])?;
         if let Some(value) = self.approximate(expression, digits as u32)? {
-            return Ok(value);
+            return Ok(self.numeric_expr(value));
         }
         Ok(self.arena.intern_call(self.heads.approx, args))
     }
@@ -519,31 +553,42 @@ impl<'a> Evaluator<'a> {
         &mut self,
         expression: ExprId,
         digits: u32,
-    ) -> Result<Option<ExprId>, Diagnostic> {
+    ) -> Result<Option<Numeric>, Diagnostic> {
         match self.arena.node(expression) {
             Node::Int(value) => {
                 if let Some(value) = value.to_i64() {
                     let real = Real::from_i64(value, digits).map_err(|_| {
                         Diagnostic::eval(ErrorCode::NumericFailure, "real conversion failed")
                     })?;
-                    return Ok(Some(self.arena.intern_real(real)));
+                    return Ok(Some(Numeric::Real(real)));
                 }
                 let rational = Rat::from_ints(value.clone(), Int::one()).map_err(|_| {
                     Diagnostic::eval(ErrorCode::NumericFailure, "rational conversion failed")
                 })?;
-                return self.real_from_rat(rational, digits);
+                return self.approximate_rat(rational, digits);
             }
-            Node::Rat(value) => return self.real_from_rat(value.clone(), digits),
-            Node::Real(_) => return Ok(Some(expression)),
+            Node::Rat(value) => return self.approximate_rat(value.clone(), digits),
+            Node::Real(value) => return Ok(Some(Numeric::Real(value.clone()))),
             Node::Symbol(_) => {
                 if expression == self.heads.pi {
-                    return self.real_node(Real::pi(digits));
+                    return Ok(Some(Numeric::Real(Real::pi(digits).map_err(|_| {
+                        Diagnostic::eval(ErrorCode::NumericFailure, "pi failed")
+                    })?)));
                 }
                 if expression == self.heads.e {
-                    return self.real_node(Real::e(digits));
+                    return Ok(Some(Numeric::Real(Real::e(digits).map_err(|_| {
+                        Diagnostic::eval(ErrorCode::NumericFailure, "e failed")
+                    })?)));
+                }
+                if expression == self.heads.imaginary {
+                    let zero = Real::zero(digits)
+                        .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real failed"))?;
+                    let one = Real::one(digits)
+                        .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real failed"))?;
+                    return Ok(Some(Numeric::Complex(zero, one)));
                 }
                 if self.is_error(expression) {
-                    return Ok(Some(expression));
+                    return Ok(Some(Numeric::Error(expression)));
                 }
                 return Ok(None);
             }
@@ -556,47 +601,40 @@ impl<'a> Evaluator<'a> {
                     .map(|symbol| self.arena.symbol_name(symbol).to_string());
                 match name.as_deref() {
                     Some("plus") => {
-                        let mut value = Real::zero(digits).map_err(|_| {
+                        let mut value = Numeric::Real(Real::zero(digits).map_err(|_| {
                             Diagnostic::eval(ErrorCode::NumericFailure, "real failed")
-                        })?;
+                        })?);
                         for arg in args {
                             let Some(argument) = self.approximate(arg, digits)? else {
                                 return Ok(None);
                             };
-                            let Node::Real(argument) = self.arena.node(argument) else {
+                            let Some(next) = numeric_add(&value, &argument) else {
                                 return Ok(None);
                             };
-                            value = value.add(argument).map_err(|_| {
-                                Diagnostic::eval(ErrorCode::NumericFailure, "real addition failed")
-                            })?;
+                            value = next;
                         }
-                        self.real_node(Ok(value))
+                        Ok(Some(value))
                     }
                     Some("times") => {
-                        let mut value = Real::one(digits).map_err(|_| {
+                        let mut value = Numeric::Real(Real::one(digits).map_err(|_| {
                             Diagnostic::eval(ErrorCode::NumericFailure, "real failed")
-                        })?;
+                        })?);
                         for arg in args {
                             let Some(argument) = self.approximate(arg, digits)? else {
                                 return Ok(None);
                             };
-                            let Node::Real(argument) = self.arena.node(argument) else {
+                            let Some(next) = numeric_mul(&value, &argument) else {
                                 return Ok(None);
                             };
-                            value = value.mul(argument).map_err(|_| {
-                                Diagnostic::eval(ErrorCode::NumericFailure, "real product failed")
-                            })?;
+                            value = next;
                         }
-                        self.real_node(Ok(value))
+                        Ok(Some(value))
                     }
                     Some("negate") if args.len() == 1 => {
                         let Some(argument) = self.approximate(args[0], digits)? else {
                             return Ok(None);
                         };
-                        let Node::Real(argument) = self.arena.node(argument) else {
-                            return Ok(None);
-                        };
-                        self.real_node(argument.neg())
+                        Ok(numeric_neg(&argument))
                     }
                     Some("power") if args.len() == 2 => {
                         let exponent = match self.arena.node(args[1]) {
@@ -610,40 +648,33 @@ impl<'a> Evaluator<'a> {
                         let Some(base) = self.approximate(args[0], digits)? else {
                             return Ok(None);
                         };
-                        let Node::Real(base) = self.arena.node(base) else {
+                        Ok(numeric_pow(&base, exponent, digits))
+                    }
+                    Some("complex") if args.len() == 2 => {
+                        let Some(real) = self.approximate(args[0], digits)? else {
                             return Ok(None);
                         };
-                        if base.is_zero() {
+                        let Some(imaginary) = self.approximate(args[1], digits)? else {
                             return Ok(None);
+                        };
+                        match (real, imaginary) {
+                            (Numeric::Real(real), Numeric::Real(imaginary)) => {
+                                Ok(Some(Numeric::Complex(real, imaginary)))
+                            }
+                            (Numeric::Error(value), _) | (_, Numeric::Error(value)) => {
+                                Ok(Some(Numeric::Error(value)))
+                            }
+                            _ => Ok(None),
                         }
-                        self.real_node(base.pow_si(exponent))
                     }
                     Some("sqrt") if args.len() == 1 => {
-                        let Some(argument) = self.approximate(args[0], digits)? else {
-                            return Ok(None);
-                        };
-                        let Node::Real(argument) = self.arena.node(argument) else {
-                            return Ok(None);
-                        };
-                        self.real_node(argument.sqrt())
+                        self.approximate_unary(args[0], digits, |value| value.sqrt())
                     }
                     Some("exp") if args.len() == 1 => {
-                        let Some(argument) = self.approximate(args[0], digits)? else {
-                            return Ok(None);
-                        };
-                        let Node::Real(argument) = self.arena.node(argument) else {
-                            return Ok(None);
-                        };
-                        self.real_node(argument.exp())
+                        self.approximate_unary(args[0], digits, |value| value.exp())
                     }
                     Some("ln") if args.len() == 1 => {
-                        let Some(argument) = self.approximate(args[0], digits)? else {
-                            return Ok(None);
-                        };
-                        let Node::Real(argument) = self.arena.node(argument) else {
-                            return Ok(None);
-                        };
-                        self.real_node(argument.ln())
+                        self.approximate_unary(args[0], digits, |value| value.ln())
                     }
                     Some("sin") if args.len() == 1 => {
                         self.approximate_unary(args[0], digits, |value| value.sin())
@@ -664,7 +695,10 @@ impl<'a> Evaluator<'a> {
                         self.approximate_unary(args[0], digits, |value| value.atan())
                     }
                     Some("abs") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.abs())
+                        let Some(argument) = self.approximate(args[0], digits)? else {
+                            return Ok(None);
+                        };
+                        Ok(numeric_abs(&argument))
                     }
                     _ => Ok(None),
                 }
@@ -677,30 +711,37 @@ impl<'a> Evaluator<'a> {
         argument: ExprId,
         digits: u32,
         operation: impl Fn(&Real) -> Result<Real, crate::num::NumError>,
-    ) -> Result<Option<ExprId>, Diagnostic> {
+    ) -> Result<Option<Numeric>, Diagnostic> {
         let Some(argument) = self.approximate(argument, digits)? else {
             return Ok(None);
         };
-        let Node::Real(argument) = self.arena.node(argument) else {
-            return Ok(None);
-        };
-        let value = operation(argument);
-        self.real_node(value)
+        match argument {
+            Numeric::Real(argument) => Ok(operation(&argument).ok().map(Numeric::Real)),
+            Numeric::Error(value) => Ok(Some(Numeric::Error(value))),
+            Numeric::Complex(_, _) => Ok(None),
+        }
     }
 
-    fn real_from_rat(&mut self, value: Rat, digits: u32) -> Result<Option<ExprId>, Diagnostic> {
+    fn approximate_rat(&mut self, value: Rat, digits: u32) -> Result<Option<Numeric>, Diagnostic> {
         let real = Real::from_rat(&value, digits)
             .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real conversion failed"))?;
-        Ok(Some(self.arena.intern_real(real)))
+        Ok(Some(Numeric::Real(real)))
     }
 
-    fn real_node(
-        &mut self,
-        value: Result<Real, crate::num::NumError>,
-    ) -> Result<Option<ExprId>, Diagnostic> {
+    fn numeric_expr(&mut self, value: Numeric) -> ExprId {
         match value {
-            Ok(value) => Ok(Some(self.arena.intern_real(value))),
-            Err(_) => Ok(None),
+            Numeric::Real(value) => self.arena.intern_real(value),
+            Numeric::Error(value) => value,
+            Numeric::Complex(real, imaginary) => {
+                if imaginary.is_zero() {
+                    self.arena.intern_real(real)
+                } else {
+                    let real = self.arena.intern_real(real);
+                    let imaginary = self.arena.intern_real(imaginary);
+                    self.arena
+                        .intern_call(self.heads.complex, &[real, imaginary])
+                }
+            }
         }
     }
 
@@ -1120,6 +1161,28 @@ impl<'a> Evaluator<'a> {
         if let Some(value) = self.error_value(args) {
             return Ok(value);
         }
+        if args
+            .iter()
+            .any(|arg| matches!(self.arena.node(*arg), Node::Real(_)))
+            && args.iter().all(|arg| {
+                matches!(
+                    self.arena.node(*arg),
+                    Node::Int(_) | Node::Rat(_) | Node::Real(_)
+                )
+            })
+        {
+            let mut value = Real::zero(30)
+                .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real addition failed"))?;
+            for arg in args {
+                let Some(argument) = self.real_endpoint(*arg) else {
+                    return Ok(self.arena.intern_call(self.heads.plus, args));
+                };
+                value = value.add(&argument).map_err(|_| {
+                    Diagnostic::eval(ErrorCode::NumericFailure, "real addition failed")
+                })?;
+            }
+            return Ok(self.arena.intern_real(value));
+        }
         let mut constant = Rat::zero();
         let mut terms: HashMap<ExprId, Rat, FnvBuildHasher> = HashMap::default();
         for arg in args {
@@ -1171,6 +1234,28 @@ impl<'a> Evaluator<'a> {
         }
         if args.iter().any(|arg| *arg == self.heads.failed) {
             return Ok(self.heads.failed);
+        }
+        if args
+            .iter()
+            .any(|arg| matches!(self.arena.node(*arg), Node::Real(_)))
+            && args.iter().all(|arg| {
+                matches!(
+                    self.arena.node(*arg),
+                    Node::Int(_) | Node::Rat(_) | Node::Real(_)
+                )
+            })
+        {
+            let mut value = Real::one(30)
+                .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real product failed"))?;
+            for arg in args {
+                let Some(argument) = self.real_endpoint(*arg) else {
+                    return Ok(self.arena.intern_call(self.heads.times, args));
+                };
+                value = value.mul(&argument).map_err(|_| {
+                    Diagnostic::eval(ErrorCode::NumericFailure, "real product failed")
+                })?;
+            }
+            return Ok(self.arena.intern_real(value));
         }
 
         let mut coefficient = Rat::one();
@@ -1231,6 +1316,22 @@ impl<'a> Evaluator<'a> {
         }
         if self.is_error(exponent) {
             return Ok(exponent);
+        }
+        if let Node::Real(real) = self.arena.node(base) {
+            if let Some(exp) = self.as_rat(exponent) {
+                if exp.den().is_one() {
+                    if let Some(power) = exp.num().to_i64() {
+                        let value = if power == 0 {
+                            Real::one(30)
+                        } else {
+                            real.pow_si(power)
+                        };
+                        if let Ok(value) = value {
+                            return Ok(self.arena.intern_real(value));
+                        }
+                    }
+                }
+            }
         }
         if let (Some((low, high)), Some(exp)) = (self.interval_bounds(base), self.as_rat(exponent))
         {
@@ -1349,6 +1450,12 @@ impl<'a> Evaluator<'a> {
         let value = args[0];
         if self.is_error(value) {
             return Ok(value);
+        }
+        if let Node::Real(real) = self.arena.node(value) {
+            let negated = real
+                .neg()
+                .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real negation failed"))?;
+            return Ok(self.arena.intern_real(negated));
         }
         if let Some((low, high)) = self.interval_bounds(value) {
             let negated_low = high.neg().map_err(|_| {
@@ -1697,6 +1804,119 @@ impl<'a> Evaluator<'a> {
             return Some(self.heads.failed);
         }
         None
+    }
+}
+
+fn numeric_add(left: &Numeric, right: &Numeric) -> Option<Numeric> {
+    match (left, right) {
+        (Numeric::Error(value), _) | (_, Numeric::Error(value)) => Some(Numeric::Error(*value)),
+        (Numeric::Real(a), Numeric::Real(b)) => a.add(b).ok().map(Numeric::Real),
+        (Numeric::Real(a), Numeric::Complex(c, d)) => {
+            let real = a.add(c).ok()?;
+            Some(Numeric::Complex(real, d.clone()))
+        }
+        (Numeric::Complex(c, d), Numeric::Real(a)) => {
+            let real = c.add(a).ok()?;
+            Some(Numeric::Complex(real, d.clone()))
+        }
+        (Numeric::Complex(a, b), Numeric::Complex(c, d)) => {
+            let real = a.add(c).ok()?;
+            let imaginary = b.add(d).ok()?;
+            Some(Numeric::Complex(real, imaginary))
+        }
+    }
+}
+
+fn numeric_mul(left: &Numeric, right: &Numeric) -> Option<Numeric> {
+    match (left, right) {
+        (Numeric::Error(value), _) | (_, Numeric::Error(value)) => Some(Numeric::Error(*value)),
+        (Numeric::Real(a), Numeric::Real(b)) => a.mul(b).ok().map(Numeric::Real),
+        (Numeric::Real(a), Numeric::Complex(c, d)) => {
+            let real = a.mul(c).ok()?;
+            let imaginary = a.mul(d).ok()?;
+            Some(Numeric::Complex(real, imaginary))
+        }
+        (Numeric::Complex(c, d), Numeric::Real(a)) => {
+            let real = c.mul(a).ok()?;
+            let imaginary = d.mul(a).ok()?;
+            Some(Numeric::Complex(real, imaginary))
+        }
+        (Numeric::Complex(a, b), Numeric::Complex(c, d)) => {
+            let real = a.mul(c).ok()?.sub(&b.mul(d).ok()?).ok()?;
+            let imaginary = a.mul(d).ok()?.add(&b.mul(c).ok()?).ok()?;
+            Some(Numeric::Complex(real, imaginary))
+        }
+    }
+}
+
+fn numeric_neg(value: &Numeric) -> Option<Numeric> {
+    match value {
+        Numeric::Real(value) => Some(Numeric::Real(value.neg().ok()?)),
+        Numeric::Error(value) => Some(Numeric::Error(*value)),
+        Numeric::Complex(real, imaginary) => {
+            Some(Numeric::Complex(real.neg().ok()?, imaginary.neg().ok()?))
+        }
+    }
+}
+
+fn numeric_abs(value: &Numeric) -> Option<Numeric> {
+    match value {
+        Numeric::Real(value) => Some(Numeric::Real(value.abs().ok()?)),
+        Numeric::Error(value) => Some(Numeric::Error(*value)),
+        Numeric::Complex(real, imaginary) => {
+            let squared = real
+                .mul(real)
+                .ok()?
+                .add(&imaginary.mul(imaginary).ok()?)
+                .ok()?;
+            Some(Numeric::Real(squared.sqrt().ok()?))
+        }
+    }
+}
+
+fn numeric_pow(value: &Numeric, exponent: i64, digits: u32) -> Option<Numeric> {
+    if exponent == 0 {
+        return Some(Numeric::Real(Real::one(digits).ok()?));
+    }
+    match value {
+        Numeric::Error(value) => Some(Numeric::Error(*value)),
+        Numeric::Real(value) => {
+            if value.is_zero() && exponent < 0 {
+                return None;
+            }
+            Some(Numeric::Real(value.pow_si(exponent).ok()?))
+        }
+        Numeric::Complex(real, imaginary) => {
+            let mut power = exponent.unsigned_abs();
+            let inverted = exponent < 0;
+            let mut base = Numeric::Complex(real.clone(), imaginary.clone());
+            if inverted {
+                let norm = real
+                    .mul(real)
+                    .ok()?
+                    .add(&imaginary.mul(imaginary).ok()?)
+                    .ok()?;
+                if norm.is_zero() {
+                    return None;
+                }
+                let inverse = Real::one(digits).ok()?.div(&norm).ok()?;
+                base = Numeric::Complex(
+                    real.mul(&inverse).ok()?,
+                    imaginary.neg().ok()?.mul(&inverse).ok()?,
+                );
+            }
+            let mut result = Numeric::Complex(Real::one(digits).ok()?, Real::zero(digits).ok()?);
+            while power > 0 {
+                if power & 1 == 1 {
+                    result = numeric_mul(&result, &base)?;
+                }
+                power >>= 1;
+                if power > 0 {
+                    base = numeric_mul(&base, &base)?;
+                }
+            }
+            Some(result)
+        }
     }
 }
 

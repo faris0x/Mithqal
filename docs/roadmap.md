@@ -16,6 +16,7 @@ Included:
 - Symbolic `Q(i)` normalization.
 - Approximate reals through MPFR with significance tracking and a numeric boundary.
 - Approximate interval arithmetic with compiled expression endpoints.
+- Approximate complex arithmetic, integer powers, reciprocals, and absolute value.
 - Typed instruction virtual machine and a reference interpreter.
 - Explicit mark and sweep garbage collection.
 - Structured diagnostics with stable codes and source spans.
@@ -23,7 +24,7 @@ Included:
 
 Excluded:
 
-- Interval arithmetic and approximate complex numbers.
+- Rigorous outward rounded intervals and complex transcendental functions.
 - Calculus, algebra, linear algebra, and assumptions.
 - Strings, files, and sets beyond `emptyset`.
 - A command line interface.

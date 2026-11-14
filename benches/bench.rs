@@ -1,10 +1,10 @@
 use std::hint::black_box;
 use std::time::Instant;
 
-use cas::Session;
-use cas::eval::evaluate;
-use cas::expr::Arena;
-use cas::syntax::parse_statement;
+use mithqal::Session;
+use mithqal::eval::evaluate;
+use mithqal::expr::Arena;
+use mithqal::syntax::parse_statement;
 
 fn measure(name: &str, iterations: u32, mut action: impl FnMut()) {
     let start = Instant::now();

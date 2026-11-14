@@ -1,4 +1,4 @@
-use cas::{ErrorCode, Session};
+use mithqal::{ErrorCode, Session};
 
 fn session() -> Session {
     Session::new()
@@ -240,10 +240,10 @@ fn call_heads_are_evaluated() {
 
 #[test]
 fn recursive_definitions_respect_the_budget() {
-    let config = cas::Config {
+    let config = mithqal::Config {
         max_steps: 50,
         max_depth: 32,
-        ..cas::Config::default()
+        ..mithqal::Config::default()
     };
     let mut session = Session::with_config(config);
     session.eval_statement("f(x_):=f(x)").unwrap();

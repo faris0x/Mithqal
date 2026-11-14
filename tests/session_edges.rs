@@ -1,4 +1,4 @@
-use cas::{Config, ErrorCode, ErrorKind, ExprView, Session};
+use mithqal::{Config, ErrorCode, ErrorKind, ExprView, Session};
 
 #[test]
 fn new_session_has_no_result() {

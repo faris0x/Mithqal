@@ -103,6 +103,8 @@ pub struct Real { /* MPFR value, binary precision, absolute error */ }
 
 Intervals are expressions with the protected `interval(low,high)` head. Their endpoints are exact values or `Real` values. The evaluator supplies addition, multiplication, negation, and integer powers for intervals.
 
+Approximate complex values are expressions with the protected `complex(real,imaginary)` head. Their components are exact values or `Real` values. Numeric approximation supplies complex arithmetic, integer powers, reciprocals, and absolute value.
+
 ## Diagnostics
 
 ```rust
@@ -193,9 +195,9 @@ Public enums are `#[non_exhaustive]` where extension is expected. Private module
 ## Example
 
 ```rust
-use cas::Session;
+use mithqal::Session;
 
-fn main() -> Result<(), cas::Diagnostic> {
+fn main() -> Result<(), mithqal::Diagnostic> {
     let mut session = Session::new();
     let value = session.eval_statement("f(x_):=x^2+1")?;
     let _ = value;

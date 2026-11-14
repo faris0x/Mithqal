@@ -1,6 +1,6 @@
-use cas::expr::Arena;
-use cas::print::{canonical, infix};
-use cas::syntax::parse_statement;
+use mithqal::expr::Arena;
+use mithqal::print::{canonical, infix};
+use mithqal::syntax::parse_statement;
 
 fn round_trip(source: &str) {
     let mut arena = Arena::new();

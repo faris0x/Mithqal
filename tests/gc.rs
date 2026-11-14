@@ -1,4 +1,4 @@
-use cas::Session;
+use mithqal::Session;
 
 #[test]
 fn collection_reclaims_unrooted_expressions() {
@@ -103,9 +103,9 @@ fn collection_reuses_freed_slots() {
 
 #[test]
 fn automatic_collection_keeps_memory_bounded() {
-    let config = cas::Config {
+    let config = mithqal::Config {
         gc_threshold_bytes: 4096,
-        ..cas::Config::default()
+        ..mithqal::Config::default()
     };
     let mut session = Session::with_config(config);
     for value in 0..500 {

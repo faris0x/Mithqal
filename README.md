@@ -1,10 +1,10 @@
-# cas
+# Mithqal
 
 A symbolic math engine.
 
 The public interface is a Rust library. Programs are whitespace free statements separated by newlines. Exact arithmetic uses GMP for arbitrary precision integers and rationals. The engine treats expressions as terms and defines evaluation as deterministic rewriting.
 
-This repository is in early development. The exact number layer, approximate reals with significance tracking, interval arithmetic, expression arena, source reader, printers, arithmetic evaluator, definitions, pattern matching, lexical `let`, closures, diagnostics, public session API, typed instruction virtual machine, and explicit mark and sweep collector are implemented. Approximate complex values, rigorous outward rounded intervals, calculus, and algebra come later.
+This repository is in early development. The exact number layer, approximate reals with significance tracking, interval arithmetic, approximate complex arithmetic, expression arena, source reader, printers, arithmetic evaluator, definitions, pattern matching, lexical `let`, closures, diagnostics, public session API, typed instruction virtual machine, and explicit mark and sweep collector are implemented. Rigorous outward rounded intervals, complex transcendental functions, calculus, and algebra come later.
 
 ## Documentation
 
@@ -16,7 +16,7 @@ This repository is in early development. The exact number layer, approximate rea
 
 ## Status
 
-The current version targets Linux on x86 64. The crate name `cas` is a placeholder. The project has no product name at this stage.
+The current version targets Linux on x86 64. The project is named Mithqal. The project has no product name at this stage.
 
 ## License
 

@@ -1,4 +1,4 @@
-use cas::{Config, ErrorCode, ExprView, Session};
+use mithqal::{Config, ErrorCode, ExprView, Session};
 
 #[test]
 fn session_evaluates_and_formats() {

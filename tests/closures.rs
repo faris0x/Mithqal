@@ -1,4 +1,4 @@
-use cas::{ErrorCode, Session};
+use mithqal::{ErrorCode, Session};
 
 fn eval(session: &mut Session, source: &str) -> String {
     let value = session.eval_statement(source).unwrap();

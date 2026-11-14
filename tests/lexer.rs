@@ -1,5 +1,5 @@
-use cas::diag::ErrorCode;
-use cas::syntax::{TokenKind, lex};
+use mithqal::diag::ErrorCode;
+use mithqal::syntax::{TokenKind, lex};
 
 fn kinds(source: &str) -> Vec<TokenKind> {
     lex(source)

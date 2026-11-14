@@ -1,5 +1,5 @@
-use cas::expr::{Arena, Attributes, Node};
-use cas::num::{Int, Rat};
+use mithqal::expr::{Arena, Attributes, Node};
+use mithqal::num::{Int, Rat};
 
 fn symbol(arena: &mut Arena, name: &str) -> u32 {
     let id = arena.intern_symbol(name, Attributes::new());

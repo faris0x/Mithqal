@@ -1,8 +1,8 @@
-use cas::diag::ErrorCode;
-use cas::eval::evaluate;
-use cas::expr::Arena;
-use cas::print::infix;
-use cas::syntax::parse_statement;
+use mithqal::diag::ErrorCode;
+use mithqal::eval::evaluate;
+use mithqal::expr::Arena;
+use mithqal::print::infix;
+use mithqal::syntax::parse_statement;
 
 fn eval_source(source: &str) -> (Arena, u32) {
     let mut arena = Arena::new();

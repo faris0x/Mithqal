@@ -375,9 +375,12 @@ impl Real {
 
     /// A stable identity string for interning.
     pub(crate) fn key(&self) -> String {
+        let digits = ((self.bits as f64 / 3.321_928_094_887_362) as usize)
+            .saturating_add(2)
+            .max(1);
         format!(
             "{}|{}|{}",
-            self.to_decimal_with_digits(40),
+            self.to_decimal_with_digits(digits),
             self.bits,
             self.error.to_bits()
         )

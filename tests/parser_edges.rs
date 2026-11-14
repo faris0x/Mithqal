@@ -1,7 +1,7 @@
-use cas::diag::ErrorCode;
-use cas::expr::{Arena, ExprId, Node};
-use cas::num::Int;
-use cas::syntax::{parse_source, parse_statement};
+use mithqal::diag::ErrorCode;
+use mithqal::expr::{Arena, ExprId, Node};
+use mithqal::num::Int;
+use mithqal::syntax::{parse_source, parse_statement};
 
 fn parse_one(source: &str) -> (Arena, ExprId) {
     let mut arena = Arena::new();

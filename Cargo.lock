@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "cas"
+name = "mithqal"
 version = "0.0.1"

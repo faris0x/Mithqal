@@ -1,4 +1,4 @@
-use cas::{Config, ErrorCode, Session};
+use mithqal::{Config, ErrorCode, Session};
 
 fn both(source: &str) -> (String, String) {
     let mut session = Session::new();

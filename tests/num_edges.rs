@@ -1,6 +1,6 @@
 use core::cmp::Ordering;
 
-use cas::num::{Int, NumError, Rat};
+use mithqal::num::{Int, NumError, Rat};
 
 #[test]
 fn integer_zero_and_one() {

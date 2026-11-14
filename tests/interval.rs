@@ -1,4 +1,4 @@
-use cas::{ExprView, Session};
+use mithqal::{ExprView, Session};
 
 fn evaluate(source: &str) -> (Session, u32) {
     let mut session = Session::new();
@@ -101,6 +101,83 @@ fn symbolic_intervals_stay_symbolic() {
     let (session, value) = evaluate("interval(a,b)+1");
     let text = session.format_infix(value);
     assert!(text.contains("interval(a,b)"), "{text}");
+}
+
+#[test]
+fn interval_subtraction() {
+    check("interval(1,2)-3", -2.0, -1.0);
+    check("interval(1,2)-interval(3,4)", -3.0, -1.0);
+    check("interval(-2,-1)-interval(1,2)", -4.0, -2.0);
+}
+
+#[test]
+fn interval_division_by_scalar() {
+    check("interval(2,4)/2", 1.0, 2.0);
+    check("interval(1,2)*(1/2)", 0.5, 1.0);
+    check("2/interval(1,2)", 1.0, 2.0);
+}
+
+#[test]
+fn interval_multiple_terms() {
+    check("interval(1,2)+interval(3,4)+interval(5,6)", 9.0, 12.0);
+    check("interval(1,2)*interval(3,4)*interval(5,6)", 15.0, 48.0);
+    check("interval(1,2)+3+4", 8.0, 9.0);
+    check("interval(1,2)*2*3", 6.0, 12.0);
+}
+
+#[test]
+fn interval_zero_widths() {
+    check("interval(0,0)", 0.0, 0.0);
+    check("interval(3,3)", 3.0, 3.0);
+    check("interval(1,2)*0", 0.0, 0.0);
+    check("interval(-5,7)*0", 0.0, 0.0);
+}
+
+#[test]
+fn interval_powers_extended() {
+    check("interval(1,2)^0", 1.0, 1.0);
+    check("interval(1,2)^1", 1.0, 2.0);
+    check("interval(1,2)^4", 1.0, 16.0);
+    check("interval(-2,-1)^2", 1.0, 4.0);
+    check("interval(-2,-1)^3", -8.0, -1.0);
+    check("interval(-2,-1)^4", 1.0, 16.0);
+    check("interval(0,2)^2", 0.0, 4.0);
+    check("interval(-1,0)^2", 0.0, 1.0);
+    check("interval(1,2)^-2", 0.25, 1.0);
+    check("interval(2,4)^-1", 0.25, 0.5);
+}
+
+#[test]
+fn interval_with_fractional_endpoints() {
+    check("interval(1/3,2/3)+1", 4.0 / 3.0, 5.0 / 3.0);
+    check("interval(1/2,1/2)*2", 1.0, 1.0);
+}
+
+#[test]
+fn interval_with_real_endpoints() {
+    check(
+        "interval(approx(pi,30),approx(pi,30)+1)",
+        3.141592653589793,
+        4.141592653589793,
+    );
+}
+
+#[test]
+fn interval_arity_errors() {
+    let mut session = Session::new();
+    for source in ["interval()", "interval(1)", "interval(1,2,3)"] {
+        let error = session.eval_statement(source).unwrap_err();
+        assert_eq!(error.code, mithqal::ErrorCode::EvalArity, "source {source}");
+    }
+}
+
+#[test]
+fn interval_compiled_path() {
+    let mut session = Session::new();
+    let value = session.eval_compiled_statement("interval(1,2)+3").unwrap();
+    let (low, high) = interval_bounds(&session, value);
+    assert!((low - 4.0).abs() < 1e-9);
+    assert!((high - 5.0).abs() < 1e-9);
 }
 
 #[test]

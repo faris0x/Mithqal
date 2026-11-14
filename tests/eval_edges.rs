@@ -1,8 +1,8 @@
-use cas::diag::ErrorCode;
-use cas::eval::{evaluate, evaluate_with_limits};
-use cas::expr::Arena;
-use cas::print::infix;
-use cas::syntax::parse_statement;
+use mithqal::diag::ErrorCode;
+use mithqal::eval::{evaluate, evaluate_with_limits};
+use mithqal::expr::Arena;
+use mithqal::print::infix;
+use mithqal::syntax::parse_statement;
 
 fn evaluated(source: &str) -> (Arena, u32) {
     let mut arena = Arena::new();
@@ -97,7 +97,7 @@ fn gaussian_arithmetic_edges() {
     assert_eq!(ep("(1+i)/(1-i)"), "i");
     let (arena, id) = evaluated("(1+i)^-1");
     assert_eq!(
-        cas::print::canonical(&arena, id),
+        mithqal::print::canonical(&arena, id),
         "plus(1/2,negate(times(1/2,i)))"
     );
     assert_eq!(ep("(a+b*i)*(c+d*i)"), "(a+b*i)*(c+d*i)");

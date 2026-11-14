@@ -1,10 +1,16 @@
-use cas::{Config, ErrorCode, ExprView, NumError, Rat, Real, Session};
+use mithqal::{Config, ErrorCode, ExprView, NumError, Rat, Real, Session};
 
 fn approx(source: &str) -> (Session, String) {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
     let text = session.format_infix(value);
     (session, text)
+}
+
+fn evaluated(source: &str) -> (Session, u32) {
+    let mut session = Session::new();
+    let value = session.eval_statement(source).unwrap();
+    (session, value)
 }
 
 #[test]
@@ -132,4 +138,135 @@ fn approximate_budget_errors_are_reported() {
 
 fn third() -> Real {
     Real::from_rat(&Rat::from_i64(1, 3).unwrap(), 30).unwrap()
+}
+
+fn real_value(source: &str) -> f64 {
+    let mut session = Session::new();
+    let value = session.eval_statement(source).unwrap();
+    match session.view(value) {
+        ExprView::Real(value) => value.to_f64(),
+        ExprView::Integer(value) => value.to_i64().unwrap() as f64,
+        ExprView::Rational(value) => {
+            value.num().to_i64().unwrap() as f64 / value.den().to_i64().unwrap() as f64
+        }
+        _ => panic!("expected a real value for {source}"),
+    }
+}
+
+#[test]
+fn real_constructors_and_predicates() {
+    let zero = Real::zero(30).unwrap();
+    let one = Real::one(30).unwrap();
+    assert!(zero.is_zero());
+    assert!(!one.is_zero());
+    assert_eq!(zero.sign(), 0);
+    assert_eq!(one.sign(), 1);
+    assert_eq!(Real::from_i64(-5, 30).unwrap().sign(), -1);
+    assert_eq!(Real::from_i64(-5, 30).unwrap().to_f64(), -5.0);
+}
+
+#[test]
+fn real_add_sub_mul_div() {
+    let a = Real::from_i64(5, 30).unwrap();
+    let b = Real::from_i64(3, 30).unwrap();
+    assert_eq!(a.add(&b).unwrap().to_f64(), 8.0);
+    assert_eq!(a.sub(&b).unwrap().to_f64(), 2.0);
+    assert_eq!(a.mul(&b).unwrap().to_f64(), 15.0);
+    assert_eq!(a.div(&b).unwrap().to_f64(), 5.0 / 3.0);
+    assert_eq!(a.neg().unwrap().to_f64(), -5.0);
+    assert_eq!(a.neg().unwrap().abs().unwrap().to_f64(), 5.0);
+}
+
+#[test]
+fn real_powers() {
+    let two = Real::from_i64(2, 30).unwrap();
+    assert_eq!(two.pow_si(0).unwrap().to_f64(), 1.0);
+    assert_eq!(two.pow_si(1).unwrap().to_f64(), 2.0);
+    assert_eq!(two.pow_si(10).unwrap().to_f64(), 1024.0);
+    assert_eq!(two.pow_si(-1).unwrap().to_f64(), 0.5);
+    assert_eq!(two.pow_si(-2).unwrap().to_f64(), 0.25);
+}
+
+#[test]
+fn real_elementary_functions() {
+    let zero = Real::zero(30).unwrap();
+    let one = Real::one(30).unwrap();
+    let two = Real::from_i64(2, 30).unwrap();
+    assert_eq!(zero.sin().unwrap().to_f64(), 0.0);
+    assert_eq!(zero.cos().unwrap().to_f64(), 1.0);
+    assert_eq!(zero.tan().unwrap().to_f64(), 0.0);
+    assert_eq!(zero.exp().unwrap().to_f64(), 1.0);
+    assert_eq!(one.ln().unwrap().to_f64(), 0.0);
+    assert!((two.sqrt().unwrap().to_f64() - 2f64.sqrt()).abs() < 1e-14);
+    assert!((zero.atan().unwrap().to_f64() - 0.0).abs() < 1e-14);
+    assert!((one.atan().unwrap().to_f64() - std::f64::consts::FRAC_PI_4).abs() < 1e-14);
+}
+
+#[test]
+fn real_comparisons() {
+    let one = Real::from_i64(1, 30).unwrap();
+    let two = Real::from_i64(2, 30).unwrap();
+    assert_eq!(one.cmp(&two), core::cmp::Ordering::Less);
+    assert_eq!(two.cmp(&one), core::cmp::Ordering::Greater);
+    assert_eq!(one.cmp(&one.clone()), core::cmp::Ordering::Equal);
+}
+
+#[test]
+fn real_precision_responds_to_digits() {
+    let low = Real::from_rat(&Rat::from_i64(1, 3).unwrap(), 10).unwrap();
+    let high = Real::from_rat(&Rat::from_i64(1, 3).unwrap(), 40).unwrap();
+    assert!(high.precision_digits() > low.precision_digits());
+    assert!(high.accuracy_digits() > low.accuracy_digits());
+    assert!(low.to_decimal().starts_with("0.3333333333"));
+}
+
+#[test]
+fn approximate_integers_and_negatives() {
+    assert_eq!(real_value("approx(0,30)"), 0.0);
+    assert_eq!(real_value("approx(42,30)"), 42.0);
+    assert_eq!(real_value("approx(-7,30)"), -7.0);
+    assert_eq!(real_value("approx(1/2,30)"), 0.5);
+    assert_eq!(real_value("approx(-3/4,30)"), -0.75);
+}
+
+#[test]
+fn approximate_arithmetic_values() {
+    assert_eq!(real_value("approx(1+2,30)"), 3.0);
+    assert_eq!(real_value("approx(2*3+4,30)"), 10.0);
+    assert_eq!(real_value("approx(2^-2,30)"), 0.25);
+    assert_eq!(
+        real_value("approx(2^100,30)"),
+        1267650600228229401496703205376.0
+    );
+    assert_eq!(real_value("approx(sqrt(2)^2,30)"), 2.0);
+    assert_eq!(real_value("approx(exp(ln(2)),30)"), 2.0);
+    assert!((real_value("approx(atan(1),30)") - std::f64::consts::FRAC_PI_4).abs() < 1e-12);
+}
+
+#[test]
+fn approximate_default_digits() {
+    let (session, value) = evaluated("approx(pi)");
+    match session.view(value) {
+        ExprView::Real(value) => assert!(value.to_decimal().starts_with("3.1415")),
+        _ => panic!("expected a real"),
+    }
+}
+
+#[test]
+fn approximate_symbolic_sums_stay_unevaluated() {
+    let (session, value) = evaluated("approx(1+x,30)");
+    assert!(session.format_infix(value).contains("approx"));
+}
+
+#[test]
+fn approximate_rational_power_stays_unevaluated() {
+    let (session, value) = evaluated("approx(2^(1/2),30)");
+    assert!(session.format_infix(value).contains("approx"));
+}
+
+#[test]
+fn approximate_digit_count_must_be_an_integer() {
+    let mut session = Session::new();
+    let error = session.eval_statement("approx(1/3,1/2)").unwrap_err();
+    assert_eq!(error.code, ErrorCode::EvalDefinition);
 }

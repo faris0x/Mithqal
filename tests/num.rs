@@ -1,4 +1,4 @@
-use cas::num::{Int, NumError, Rat};
+use mithqal::num::{Int, NumError, Rat};
 
 #[test]
 fn integer_decimal_round_trip() {

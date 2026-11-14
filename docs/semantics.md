@@ -51,6 +51,12 @@ Interval arithmetic is available for addition, multiplication, negation, and int
 
 Interval endpoints are converted to `Real` with a default precision for the operation. The current implementation propagates significance error but does not yet use directed rounding for rigorous outward bounds. Rigorous interval arithmetic is a later refinement.
 
+## Approximate complex values
+
+An approximate complex value is a call with the protected `complex(real,imaginary)` head. The `approx` boundary recognizes the symbol `i`, converts real and imaginary parts to `Real` values, and returns a `complex` expression when the imaginary part is nonzero. A zero imaginary part normalizes to the real value.
+
+The numeric boundary supports complex addition, subtraction, multiplication, division through reciprocal powers, integer powers, and absolute value. Complex transcendental functions remain unevaluated. MPC is vendored for a later complex elementary function layer.
+
 ## Symbolic constants
 
 The constants are `i`, `pi`, `e`, and `inf`.
