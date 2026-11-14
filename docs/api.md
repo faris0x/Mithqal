@@ -101,6 +101,8 @@ pub struct Real { /* MPFR value, binary precision, absolute error */ }
 
 `approx(expression,digits)` is the session level numeric boundary. It returns a `Real` expression when the input can be evaluated numerically.
 
+Intervals are expressions with the protected `interval(low,high)` head. Their endpoints are exact values or `Real` values. The evaluator supplies addition, multiplication, negation, and integer powers for intervals.
+
 ## Diagnostics
 
 ```rust

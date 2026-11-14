@@ -263,6 +263,15 @@ approx(sin(pi/6),30)
 
 The digit count is optional and defaults to 16. Approximate values print as decimal output. They do not have a source literal syntax in the current version.
 
+`interval(low,high)` constructs an approximate interval. Intervals support addition, multiplication, negation, and integer powers.
+
+```text
+interval(1,2)+3
+interval(1,2)*interval(3,4)
+-interval(1,2)
+interval(-2,3)^2
+```
+
 ## Control forms
 
 `if` is a normal call with three arguments. It holds the branch arguments.

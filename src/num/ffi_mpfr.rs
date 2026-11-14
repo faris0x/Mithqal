@@ -21,6 +21,7 @@ unsafe extern "C" {
     pub(crate) fn mpfr_clear(value: *mut Mpfr);
     pub(crate) fn mpfr_set(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_set_ui(rop: *mut Mpfr, op: c_ulong, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_set_si(rop: *mut Mpfr, op: c_long, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_set_q(rop: *mut Mpfr, op: *const Mpq, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_get_d(op: *const Mpfr, rnd: c_int) -> f64;
     pub(crate) fn mpfr_get_str(

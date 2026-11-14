@@ -43,6 +43,28 @@ impl Real {
         Ok(out)
     }
 
+    /// Convert an `i64` to a real with a requested decimal digit count.
+    pub fn from_i64(value: i64, digits: u32) -> Result<Self, NumError> {
+        let bits = bits_for_digits(digits);
+        let mut out = Self::initialized(bits);
+        // SAFETY: the value is initialized.
+        unsafe {
+            ffi_mpfr::mpfr_set_si(&mut out.inner, value as core::ffi::c_long, MPFR_RNDN);
+        }
+        out.error = rounding_error(&out);
+        Ok(out)
+    }
+
+    /// The approximate zero at a requested decimal digit count.
+    pub fn zero(digits: u32) -> Result<Self, NumError> {
+        Self::from_i64(0, digits)
+    }
+
+    /// The approximate one at a requested decimal digit count.
+    pub fn one(digits: u32) -> Result<Self, NumError> {
+        Self::from_i64(1, digits)
+    }
+
     /// The constant pi with a requested decimal digit count.
     pub fn pi(digits: u32) -> Result<Self, NumError> {
         let bits = bits_for_digits(digits);
@@ -361,7 +383,8 @@ impl Real {
         )
     }
 
-    fn to_f64(&self) -> f64 {
+    /// Convert to a machine `f64` for diagnostics and external display.
+    pub fn to_f64(&self) -> f64 {
         // SAFETY: the value is initialized.
         unsafe { ffi_mpfr::mpfr_get_d(&self.inner, MPFR_RNDN) }
     }

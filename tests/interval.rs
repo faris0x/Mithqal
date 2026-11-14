@@ -1,0 +1,114 @@
+use cas::{ExprView, Session};
+
+fn evaluate(source: &str) -> (Session, u32) {
+    let mut session = Session::new();
+    let value = session.eval_statement(source).unwrap();
+    (session, value)
+}
+
+fn interval_bounds(session: &Session, id: u32) -> (f64, f64) {
+    let (head, args) = match session.view(id) {
+        ExprView::Call { head, args } => (head, args),
+        _ => panic!("expected a call"),
+    };
+    match session.view(head) {
+        ExprView::Symbol(name) => assert_eq!(name, "interval"),
+        _ => panic!("expected an interval head"),
+    }
+    assert_eq!(args.len(), 2);
+    let low = match session.view(args[0]) {
+        ExprView::Real(value) => value.to_f64(),
+        ExprView::Integer(value) => value.to_i64().unwrap() as f64,
+        ExprView::Rational(value) => {
+            value.num().to_i64().unwrap() as f64 / value.den().to_i64().unwrap() as f64
+        }
+        _ => panic!("expected a numeric endpoint"),
+    };
+    let high = match session.view(args[1]) {
+        ExprView::Real(value) => value.to_f64(),
+        ExprView::Integer(value) => value.to_i64().unwrap() as f64,
+        ExprView::Rational(value) => {
+            value.num().to_i64().unwrap() as f64 / value.den().to_i64().unwrap() as f64
+        }
+        _ => panic!("expected a numeric endpoint"),
+    };
+    (low, high)
+}
+
+fn check(source: &str, low: f64, high: f64) {
+    let (session, value) = evaluate(source);
+    let (actual_low, actual_high) = interval_bounds(&session, value);
+    assert!(
+        (actual_low - low).abs() < 1e-9,
+        "{source}: low {actual_low}, expected {low}"
+    );
+    assert!(
+        (actual_high - high).abs() < 1e-9,
+        "{source}: high {actual_high}, expected {high}"
+    );
+}
+
+#[test]
+fn interval_addition() {
+    check("interval(1,2)+3", 4.0, 5.0);
+    check("3+interval(1,2)", 4.0, 5.0);
+    check("interval(1,2)+interval(3,4)", 4.0, 6.0);
+}
+
+#[test]
+fn interval_multiplication() {
+    check("interval(1,2)*2", 2.0, 4.0);
+    check("2*interval(-1,2)", -2.0, 4.0);
+    check("interval(1,2)*interval(3,4)", 3.0, 8.0);
+    check("interval(-2,1)*interval(-3,4)", -8.0, 6.0);
+}
+
+#[test]
+fn interval_negation() {
+    check("-interval(1,2)", -2.0, -1.0);
+    check("-interval(-3,-1)", 1.0, 3.0);
+}
+
+#[test]
+fn interval_powers() {
+    check("interval(1,2)^2", 1.0, 4.0);
+    check("interval(-2,3)^2", 0.0, 9.0);
+    check("interval(-2,3)^3", -8.0, 27.0);
+    check("interval(1,2)^-1", 0.5, 1.0);
+}
+
+#[test]
+fn interval_spanning_zero_has_no_reciprocal() {
+    let (session, value) = evaluate("interval(-1,1)^-1");
+    match session.view(value) {
+        ExprView::Call { head, .. } => match session.view(head) {
+            ExprView::Symbol(name) => assert_eq!(name, "power"),
+            _ => panic!("expected a power call"),
+        },
+        _ => panic!("expected a call"),
+    }
+}
+
+#[test]
+fn invalid_intervals_fail() {
+    let (_session, value) = evaluate("interval(2,1)");
+    assert_eq!(value, _session.last_result().unwrap());
+    assert_eq!(_session.format_infix(value), "failed");
+}
+
+#[test]
+fn symbolic_intervals_stay_symbolic() {
+    let (session, value) = evaluate("interval(a,b)+1");
+    let text = session.format_infix(value);
+    assert!(text.contains("interval(a,b)"), "{text}");
+}
+
+#[test]
+fn intervals_survive_collection() {
+    let mut session = Session::new();
+    let value = session.eval_statement("interval(1,2)+3").unwrap();
+    session.collect_garbage(&[value]);
+    let (low, high) = interval_bounds(&session, value);
+    assert!((low - 4.0).abs() < 1e-9);
+    assert!((high - 5.0).abs() < 1e-9);
+}

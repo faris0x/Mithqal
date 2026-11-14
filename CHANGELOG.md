@@ -18,6 +18,8 @@ Initial kernel work.
 - Added approximate `Real` values with MPFR storage, significance tracking, precision and accuracy reporting, and first order error propagation.
 - Added the `approx` numeric boundary with exact rational conversion, `pi` and `e`, arithmetic, powers, roots, exponentials, logarithms, and trigonometric functions.
 - Added approximate value views, printing, collection, compiled path support, and numeric tests.
+- Added approximate interval arithmetic with addition, multiplication, negation, integer powers, validation, collection support, and tests.
+- Added fast small integer construction for real endpoints and reused real zero and real one values in interval and approximation paths.
 - Added own values, down values, protected symbol checks, definition specificity, and immediate and delayed definitions.
 - Added pattern matching for blanks, named patterns, sequence patterns, repeated variables, and conditions.
 - Added lexical `let` bindings with local shadowing.

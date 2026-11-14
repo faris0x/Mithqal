@@ -23,6 +23,18 @@ fn main() {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 
+    let mut cold_arena = Arena::new();
+    measure("cold approx pi 30", 5_000, || {
+        let parsed = parse_statement(&mut cold_arena, "approx(pi,30)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold interval add", 20_000, || {
+        let parsed = parse_statement(&mut cold_arena, "interval(1,2)+3").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut session = Session::new();
     measure("cached parse and evaluate 1+2", 20_000, || {
         black_box(session.eval_statement("1+2").unwrap());

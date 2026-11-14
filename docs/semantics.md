@@ -43,7 +43,13 @@ Significance propagation uses first order error estimates:
 
 Approximate values are printed as decimal output. They are not accepted as source literals in the current version, and the printer does not provide a round trip for approximate values.
 
-Interval arithmetic is not implemented yet. The MPFR and MPC libraries are vendored so the interval and approximate complex layers can be added without changing the build model.
+## Intervals
+
+An interval is a call with the protected `interval(low,high)` head. Endpoints may be exact numbers or `Real` values. The constructor rejects a low endpoint greater than the high endpoint by returning `failed`.
+
+Interval arithmetic is available for addition, multiplication, negation, and integer powers. Scalar values combine with intervals by treating the scalar as a zero width interval. Multiplication evaluates the four endpoint products and takes the minimum and maximum. Even powers that cross zero produce a lower bound of zero. A negative power requires an interval that does not contain zero.
+
+Interval endpoints are converted to `Real` with a default precision for the operation. The current implementation propagates significance error but does not yet use directed rounding for rigorous outward bounds. Rigorous interval arithmetic is a later refinement.
 
 ## Symbolic constants
 

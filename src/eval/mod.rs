@@ -50,6 +50,7 @@ struct Heads {
     function: ExprId,
     closure: ExprId,
     approx: ExprId,
+    interval: ExprId,
     pi: ExprId,
     e: ExprId,
     null: ExprId,
@@ -127,6 +128,7 @@ impl<'a> Evaluator<'a> {
             function: head(arena, "function"),
             closure: head(arena, "closure"),
             approx: head(arena, "approx"),
+            interval: head(arena, "interval"),
             pi: head(arena, "pi"),
             e: head(arena, "e"),
             null: head(arena, "null"),
@@ -212,6 +214,9 @@ impl<'a> Evaluator<'a> {
         if head == self.heads.approx {
             return self.eval_approx(&args);
         }
+        if head == self.heads.interval {
+            return self.eval_interval(&args);
+        }
         if head == self.heads.set {
             return self.eval_definition(&args, false);
         }
@@ -281,6 +286,206 @@ impl<'a> Evaluator<'a> {
         None
     }
 
+    fn eval_interval(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.len() != 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "interval expects two endpoints",
+            ));
+        }
+        let low = self.eval(args[0])?;
+        let high = self.eval(args[1])?;
+        if let (Some(low_value), Some(high_value)) =
+            (self.real_endpoint(low), self.real_endpoint(high))
+        {
+            if low_value.cmp(&high_value) == Ordering::Greater {
+                return Ok(self.heads.failed);
+            }
+        }
+        Ok(self.arena.intern_call(self.heads.interval, &[low, high]))
+    }
+
+    fn real_endpoint(&self, id: ExprId) -> Option<Real> {
+        match self.arena.node(id) {
+            Node::Int(value) => {
+                if let Some(value) = value.to_i64() {
+                    Real::from_i64(value, 30).ok()
+                } else {
+                    let rational = Rat::from_ints(value.clone(), Int::one()).ok()?;
+                    Real::from_rat(&rational, 30).ok()
+                }
+            }
+            Node::Rat(value) => Real::from_rat(value, 30).ok(),
+            Node::Real(value) => Some(value.clone()),
+            _ => None,
+        }
+    }
+
+    fn interval_parts(&self, id: ExprId) -> Option<(ExprId, ExprId)> {
+        match self.arena.node(id) {
+            Node::Call { head, args } if *head == self.heads.interval && args.len() == 2 => {
+                Some((args[0], args[1]))
+            }
+            _ => None,
+        }
+    }
+
+    fn interval_bounds(&self, id: ExprId) -> Option<(Real, Real)> {
+        let (low, high) = self.interval_parts(id)?;
+        Some((self.real_endpoint(low)?, self.real_endpoint(high)?))
+    }
+
+    fn interval_node(&mut self, low: Real, high: Real) -> ExprId {
+        let (low, high) = if low.cmp(&high) == Ordering::Greater {
+            (high, low)
+        } else {
+            (low, high)
+        };
+        let low = self.arena.intern_real(low);
+        let high = self.arena.intern_real(high);
+        self.arena.intern_call(self.heads.interval, &[low, high])
+    }
+
+    fn add_interval(
+        &mut self,
+        low: &Real,
+        high: &Real,
+        other_low: &Real,
+        other_high: &Real,
+    ) -> Result<(Real, Real), Diagnostic> {
+        let low = low
+            .add(other_low)
+            .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "interval addition failed"))?;
+        let high = high
+            .add(other_high)
+            .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "interval addition failed"))?;
+        Ok((low, high))
+    }
+
+    fn mul_interval(
+        &mut self,
+        low: &Real,
+        high: &Real,
+        other_low: &Real,
+        other_high: &Real,
+    ) -> Result<(Real, Real), Diagnostic> {
+        let products = [
+            low.mul(other_low),
+            low.mul(other_high),
+            high.mul(other_low),
+            high.mul(other_high),
+        ];
+        let mut values = Vec::with_capacity(4);
+        for product in products {
+            values.push(product.map_err(|_| {
+                Diagnostic::eval(ErrorCode::NumericFailure, "interval product failed")
+            })?);
+        }
+        let mut low = values[0].clone();
+        let mut high = values[0].clone();
+        for value in values.iter().skip(1) {
+            if value.cmp(&low) == Ordering::Less {
+                low = value.clone();
+            }
+            if value.cmp(&high) == Ordering::Greater {
+                high = value.clone();
+            }
+        }
+        Ok((low, high))
+    }
+
+    fn plus_intervals(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        let mut scalars = Vec::new();
+        let mut intervals = Vec::new();
+        for arg in args {
+            if let Some(bounds) = self.interval_bounds(*arg) {
+                intervals.push(bounds);
+            } else {
+                scalars.push(*arg);
+            }
+        }
+        let scalar = if scalars.is_empty() {
+            Real::zero(30)
+                .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real failed"))?
+        } else {
+            let sum = self.plus(&scalars)?;
+            let Some(value) = self.real_endpoint(sum) else {
+                return Ok(self.arena.intern_call(self.heads.plus, args));
+            };
+            value
+        };
+        let mut low = scalar.clone();
+        let mut high = scalar;
+        for (other_low, other_high) in intervals {
+            let (next_low, next_high) = self.add_interval(&low, &high, &other_low, &other_high)?;
+            low = next_low;
+            high = next_high;
+        }
+        Ok(self.interval_node(low, high))
+    }
+
+    fn times_intervals(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        let mut scalars = Vec::new();
+        let mut intervals = Vec::new();
+        for arg in args {
+            if let Some(bounds) = self.interval_bounds(*arg) {
+                intervals.push(bounds);
+            } else {
+                scalars.push(*arg);
+            }
+        }
+        let scalar = if scalars.is_empty() {
+            Real::one(30).map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real failed"))?
+        } else {
+            let product = self.times(&scalars)?;
+            let Some(value) = self.real_endpoint(product) else {
+                return Ok(self.arena.intern_call(self.heads.times, args));
+            };
+            value
+        };
+        let mut low = scalar.clone();
+        let mut high = scalar;
+        for (other_low, other_high) in intervals {
+            let (next_low, next_high) = self.mul_interval(&low, &high, &other_low, &other_high)?;
+            low = next_low;
+            high = next_high;
+        }
+        Ok(self.interval_node(low, high))
+    }
+
+    fn interval_power(&mut self, low: &Real, high: &Real, exponent: i64) -> Option<ExprId> {
+        if exponent == 0 {
+            return Some(self.arena.intern_int(Int::one()));
+        }
+        if exponent < 0 {
+            if low.sign() <= 0 && high.sign() >= 0 {
+                return None;
+            }
+            let one = Real::one(30).ok()?;
+            let low_result = one.div(high).ok()?;
+            let high_result = one.div(low).ok()?;
+            return Some(self.interval_node(low_result, high_result));
+        }
+        let low_power = low.pow_si(exponent).ok()?;
+        let high_power = high.pow_si(exponent).ok()?;
+        if exponent % 2 == 0 && low.sign() < 0 && high.sign() > 0 {
+            let zero = Real::zero(30).ok()?;
+            let low_abs = low.abs().ok()?;
+            let high_abs = high.abs().ok()?;
+            let high_magnitude = if low_abs.cmp(&high_abs) == Ordering::Greater {
+                low_abs
+            } else {
+                high_abs
+            };
+            let high_power = high_magnitude.pow_si(exponent).ok()?;
+            return Some(self.interval_node(zero, high_power));
+        }
+        if exponent % 2 == 0 && high.sign() <= 0 {
+            return Some(self.interval_node(high_power, low_power));
+        }
+        Some(self.interval_node(low_power, high_power))
+    }
+
     fn eval_approx(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
         if args.is_empty() || args.len() > 2 {
             return Err(Diagnostic::eval(
@@ -317,6 +522,12 @@ impl<'a> Evaluator<'a> {
     ) -> Result<Option<ExprId>, Diagnostic> {
         match self.arena.node(expression) {
             Node::Int(value) => {
+                if let Some(value) = value.to_i64() {
+                    let real = Real::from_i64(value, digits).map_err(|_| {
+                        Diagnostic::eval(ErrorCode::NumericFailure, "real conversion failed")
+                    })?;
+                    return Ok(Some(self.arena.intern_real(real)));
+                }
                 let rational = Rat::from_ints(value.clone(), Int::one()).map_err(|_| {
                     Diagnostic::eval(ErrorCode::NumericFailure, "rational conversion failed")
                 })?;
@@ -345,7 +556,7 @@ impl<'a> Evaluator<'a> {
                     .map(|symbol| self.arena.symbol_name(symbol).to_string());
                 match name.as_deref() {
                     Some("plus") => {
-                        let mut value = Real::from_rat(&Rat::zero(), digits).map_err(|_| {
+                        let mut value = Real::zero(digits).map_err(|_| {
                             Diagnostic::eval(ErrorCode::NumericFailure, "real failed")
                         })?;
                         for arg in args {
@@ -362,7 +573,7 @@ impl<'a> Evaluator<'a> {
                         self.real_node(Ok(value))
                     }
                     Some("times") => {
-                        let mut value = Real::from_rat(&Rat::one(), digits).map_err(|_| {
+                        let mut value = Real::one(digits).map_err(|_| {
                             Diagnostic::eval(ErrorCode::NumericFailure, "real failed")
                         })?;
                         for arg in args {
@@ -903,6 +1114,9 @@ impl<'a> Evaluator<'a> {
     }
 
     fn plus(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.iter().any(|arg| self.interval_bounds(*arg).is_some()) {
+            return self.plus_intervals(args);
+        }
         if let Some(value) = self.error_value(args) {
             return Ok(value);
         }
@@ -939,6 +1153,9 @@ impl<'a> Evaluator<'a> {
     }
 
     fn times(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.iter().any(|arg| self.interval_bounds(*arg).is_some()) {
+            return self.times_intervals(args);
+        }
         let has_zero = args
             .iter()
             .any(|arg| self.as_rat(*arg).is_some_and(|v| v.is_zero()));
@@ -1014,6 +1231,16 @@ impl<'a> Evaluator<'a> {
         }
         if self.is_error(exponent) {
             return Ok(exponent);
+        }
+        if let (Some((low, high)), Some(exp)) = (self.interval_bounds(base), self.as_rat(exponent))
+        {
+            if exp.den().is_one() {
+                if let Some(power) = exp.num().to_i64() {
+                    if let Some(result) = self.interval_power(&low, &high, power) {
+                        return Ok(result);
+                    }
+                }
+            }
         }
         if let Some(exp) = self.as_rat(exponent) {
             if exp.is_zero() {
@@ -1122,6 +1349,15 @@ impl<'a> Evaluator<'a> {
         let value = args[0];
         if self.is_error(value) {
             return Ok(value);
+        }
+        if let Some((low, high)) = self.interval_bounds(value) {
+            let negated_low = high.neg().map_err(|_| {
+                Diagnostic::eval(ErrorCode::NumericFailure, "interval negation failed")
+            })?;
+            let negated_high = low.neg().map_err(|_| {
+                Diagnostic::eval(ErrorCode::NumericFailure, "interval negation failed")
+            })?;
+            return Ok(self.interval_node(negated_low, negated_high));
         }
         if let Some(number) = self.as_rat(value) {
             return Ok(self.arena.intern_rat(number.neg()));

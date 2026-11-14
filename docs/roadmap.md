@@ -15,6 +15,7 @@ Included:
 - Definitions, lexical `let`, closures, listable arithmetic, comparisons, and logic.
 - Symbolic `Q(i)` normalization.
 - Approximate reals through MPFR with significance tracking and a numeric boundary.
+- Approximate interval arithmetic with compiled expression endpoints.
 - Typed instruction virtual machine and a reference interpreter.
 - Explicit mark and sweep garbage collection.
 - Structured diagnostics with stable codes and source spans.
