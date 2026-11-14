@@ -83,6 +83,7 @@ Initial kernel work.
 - Restricted Hensel lifting to degree four and above, added early irreducibility exit from a square-free prime reduction, and started modular divisor search at degree two.
 - Raised multivariate power extraction to degree twelve.
 - Added polynomial-leading quadratic factoring for monomial leading coefficients.
+- Removed per-term polynomial allocation from polynomial-leading coefficient extraction.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.
 - Added irrational and complex two by two eigenvectors.

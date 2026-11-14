@@ -545,14 +545,18 @@ fn quadratic_coefficients(
         if vertical_power > 0 {
             powers.push((vertical, vertical_power));
         }
-        let term = Poly {
-            terms: std::collections::BTreeMap::from([(Monomial { powers }, coefficient.clone())]),
-        };
-        match horizontal_power {
-            2 => leading = leading.add(&term),
-            1 => linear = linear.add(&term),
-            0 => constant = constant.add(&term),
+        let monomial = Monomial { powers };
+        let target = match horizontal_power {
+            2 => &mut leading,
+            1 => &mut linear,
+            0 => &mut constant,
             _ => return None,
+        };
+        match target.terms.get_mut(&monomial) {
+            Some(existing) => *existing = existing.add(coefficient),
+            None => {
+                target.terms.insert(monomial, coefficient.clone());
+            }
         }
     }
     if degree != 2 {
