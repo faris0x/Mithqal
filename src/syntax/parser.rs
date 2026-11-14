@@ -206,6 +206,7 @@ impl Parser<'_> {
         let left = self.parse_additive()?;
         let name = match self.peek() {
             Some(TokenKind::Equal3) => "equal",
+            Some(TokenKind::Equal2) => "equal",
             Some(TokenKind::NotEqual) => "notEqual",
             Some(TokenKind::Tilde) => "same",
             Some(TokenKind::Less) => "less",
@@ -500,6 +501,7 @@ fn is_comparison(kind: Option<&TokenKind>) -> bool {
     matches!(
         kind,
         Some(TokenKind::Equal3)
+            | Some(TokenKind::Equal2)
             | Some(TokenKind::NotEqual)
             | Some(TokenKind::Tilde)
             | Some(TokenKind::Less)

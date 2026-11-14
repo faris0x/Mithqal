@@ -133,7 +133,7 @@ fn write_infix_inner(arena: &Arena, id: ExprId, out: &mut String) {
             let _ = out.write_str(arena.symbol_name(*symbol));
         }
         Node::Call { args, .. } => match head_name(arena, id) {
-            Some("plus") => write_join(arena, args, "+", P_ADD, P_ADD + 1, out),
+            Some("plus") => write_sum(arena, args, P_ADD, P_ADD + 1, out),
             Some("times") => write_join(arena, args, "*", P_MUL, P_MUL + 1, out),
             Some("and") => write_join(arena, args, "&&", P_AND, P_AND + 1, out),
             Some("or") => write_join(arena, args, "||", P_OR, P_OR + 1, out),
@@ -249,6 +249,32 @@ fn write_infix_inner(arena: &Arena, id: ExprId, out: &mut String) {
             _ => write_call(arena, id, args, out),
         },
     }
+}
+
+fn write_sum(arena: &Arena, args: &[ExprId], prec: u8, child: u8, out: &mut String) {
+    if args.is_empty() {
+        out.push_str("()");
+        return;
+    }
+    for (index, arg) in args.iter().enumerate() {
+        let negative = match arena.node(*arg) {
+            Node::Call { head, args } if args.len() == 1 => match arena.node(*head) {
+                Node::Symbol(symbol) if arena.symbol_name(*symbol) == "negate" => Some(args[0]),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(inner) = negative {
+            out.push('-');
+            write_infix(arena, inner, child, out);
+        } else {
+            if index > 0 {
+                out.push('+');
+            }
+            write_infix(arena, *arg, child, out);
+        }
+    }
+    let _ = prec;
 }
 
 fn write_join(

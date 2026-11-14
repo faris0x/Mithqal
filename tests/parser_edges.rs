@@ -294,3 +294,13 @@ fn zero_is_an_integer_node() {
         _ => panic!("expected an integer"),
     }
 }
+
+#[test]
+fn double_equals_parses_as_equality() {
+    let (arena, id) = parse_one("x+1==2");
+    assert_eq!(head_name(&arena, id), "equal");
+    let (arena, id) = parse_one("a=b");
+    assert_eq!(head_name(&arena, id), "set");
+    let (arena, id) = parse_one("a===b");
+    assert_eq!(head_name(&arena, id), "equal");
+}

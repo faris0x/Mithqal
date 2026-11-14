@@ -102,6 +102,32 @@ impl NumericHead {
     }
 }
 
+#[derive(Copy, Clone)]
+enum AlgebraHead {
+    Expand,
+    Factor,
+    Together,
+    Cancel,
+    PolynomialGcd,
+    Resultant,
+    Solve,
+}
+
+impl AlgebraHead {
+    fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "expand" => Self::Expand,
+            "factor" => Self::Factor,
+            "together" => Self::Together,
+            "cancel" => Self::Cancel,
+            "polynomialGcd" => Self::PolynomialGcd,
+            "resultant" => Self::Resultant,
+            "solve" => Self::Solve,
+            _ => return None,
+        })
+    }
+}
+
 struct Heads {
     plus: ExprId,
     times: ExprId,
@@ -1304,12 +1330,96 @@ impl<'a> Evaluator<'a> {
         if head == self.heads.greater_equal {
             return self.ordering(args, Ordering::Greater, self.heads.greater_equal);
         }
+        let algebra_head = self
+            .arena
+            .symbol_id(head)
+            .and_then(|symbol| AlgebraHead::from_name(self.arena.symbol_name(symbol)));
+        if let Some(algebra_head) = algebra_head {
+            let algebra = crate::algebra::Context {
+                plus: self.heads.plus,
+                times: self.heads.times,
+                power: self.heads.power,
+                negate: self.heads.negate,
+                list: self.heads.list,
+                equal: self.heads.equal,
+            };
+            match algebra_head {
+                AlgebraHead::Expand => {
+                    return self.algebra_unary(args, head, algebra, crate::algebra::expand);
+                }
+                AlgebraHead::Factor => {
+                    return self.algebra_unary(args, head, algebra, crate::algebra::factor);
+                }
+                AlgebraHead::Together => {
+                    return self.algebra_unary(args, head, algebra, crate::algebra::together);
+                }
+                AlgebraHead::Cancel => {
+                    return self.algebra_unary(args, head, algebra, crate::algebra::cancel);
+                }
+                AlgebraHead::PolynomialGcd => {
+                    if args.len() != 3 {
+                        return Err(Diagnostic::eval(
+                            ErrorCode::EvalArity,
+                            "polynomialGcd expects two polynomials and a variable",
+                        ));
+                    }
+                    let original = self.arena.intern_call(head, args);
+                    return Ok(crate::algebra::polynomial_gcd(
+                        self.arena, args[0], args[1], args[2], &algebra,
+                    )
+                    .unwrap_or(original));
+                }
+                AlgebraHead::Resultant => {
+                    if args.len() != 3 {
+                        return Err(Diagnostic::eval(
+                            ErrorCode::EvalArity,
+                            "resultant expects two polynomials and a variable",
+                        ));
+                    }
+                    let original = self.arena.intern_call(head, args);
+                    return Ok(crate::algebra::resultant(
+                        self.arena, args[0], args[1], args[2], &algebra,
+                    )
+                    .unwrap_or(original));
+                }
+                AlgebraHead::Solve => {
+                    if args.len() != 2 {
+                        return Err(Diagnostic::eval(
+                            ErrorCode::EvalArity,
+                            "solve expects an equation and a variable",
+                        ));
+                    }
+                    let original = self.arena.intern_call(head, args);
+                    return Ok(
+                        crate::algebra::solve(self.arena, args[0], args[1], &algebra)
+                            .unwrap_or(original),
+                    );
+                }
+            }
+        }
         if let Some(symbol) = self.arena.symbol_id(head) {
             if let Some(result) = self.apply_user(symbol, head, args)? {
                 return Ok(result);
             }
         }
         Ok(self.arena.intern_call(head, args))
+    }
+
+    fn algebra_unary(
+        &mut self,
+        args: &[ExprId],
+        head: ExprId,
+        context: crate::algebra::Context,
+        operation: fn(&mut Arena, ExprId, &crate::algebra::Context) -> Option<ExprId>,
+    ) -> Result<ExprId, Diagnostic> {
+        if args.len() != 1 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "algebra function expects one argument",
+            ));
+        }
+        let original = self.arena.intern_call(head, args);
+        Ok(operation(self.arena, args[0], &context).unwrap_or(original))
     }
 
     fn apply_user(

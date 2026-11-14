@@ -52,6 +52,8 @@ pub enum TokenKind {
     FatArrow,
     /// `===`
     Equal3,
+    /// `==`
+    Equal2,
     /// `=/=`
     NotEqual,
     /// `~`
@@ -482,6 +484,17 @@ fn tokenize_line(
                     push(
                         tokens,
                         TokenKind::FatArrow,
+                        line_number,
+                        line_start,
+                        start,
+                        pos,
+                    );
+                } else if line[pos..].starts_with("==") {
+                    let start = pos;
+                    pos += 2;
+                    push(
+                        tokens,
+                        TokenKind::Equal2,
                         line_number,
                         line_start,
                         start,

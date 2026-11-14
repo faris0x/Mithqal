@@ -17,6 +17,7 @@ Included:
 - Approximate reals through MPFR with significance tracking and a numeric boundary.
 - Approximate interval arithmetic with directed endpoint rounding and significance widening.
 - Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, and absolute value.
+- Exact polynomial expansion, factoring, polynomial gcd, resultants, rational function cancellation, and linear or quadratic solving.
 - Typed instruction virtual machine and a reference interpreter.
 - Explicit mark and sweep garbage collection.
 - Structured diagnostics with stable codes and source spans.
@@ -25,7 +26,8 @@ Included:
 Excluded:
 
 - Branch cut conformance for complex inverse functions.
-- Calculus, algebra, linear algebra, and assumptions.
+- Full multivariate factorization and calculus.
+- Linear algebra and assumptions.
 - Strings, files, and sets beyond `emptyset`.
 - A command line interface.
 - Unicode source and LaTeX rendering.
@@ -65,7 +67,7 @@ Fixtures use the `.expr` extension in the current version.
 
 ## Later layers
 
-The next numeric layer adds MPFR and MPC, significance tracking, and interval values. After that, the engine gains polynomial arithmetic, expansion, factoring, differentiation, and simplification under assumptions. A command line interface and a graphical interface follow once the library surface is stable.
+The next layers add broader univariate and multivariate factorization, calculus, differentiation, and simplification under assumptions. A command line interface and a graphical interface follow once the library surface is stable.
 
 The project remains a library at its core. Front ends are consumers of the public API.
 

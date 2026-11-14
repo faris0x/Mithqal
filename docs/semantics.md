@@ -207,6 +207,26 @@ The cancellation in the previous example assumes generic symbolic values. Users 
 
 A list evaluates its elements. A list does not flatten nested lists. A list does not evaluate its own structure with arithmetic rules.
 
+## Polynomial algebra
+
+Exact polynomial operations live in a separate algebra layer. Polynomials are sparse maps from canonical monomials to rational coefficients. This representation is independent of the expression arena and is converted back to canonical `plus`, `times`, and `power` forms at the boundary.
+
+The algebra boundary provides these heads:
+
+- `expand` distributes products over sums and expands nonnegative integer powers.
+- `factor` extracts numeric content, common monomial content, univariate rational roots, differences of squares, and perfect square trinomials.
+- `together` combines a rational expression over a common denominator.
+- `cancel` removes common factors from a rational expression.
+- `polynomialGcd` returns the monic greatest common divisor of two univariate polynomials.
+- `resultant` computes the Sylvester resultant of two univariate polynomials.
+- `solve` returns a list of exact solutions for linear and quadratic equations.
+
+`factor` and `cancel` cover common cases rather than the general multivariate factorization problem. A polynomial that cannot be factored by the supported rules is returned unchanged. A univariate factor that has no rational roots is retained as one factor, so `factor(x^4+1)` returns the original polynomial.
+
+`solve` accepts an equation or a polynomial. A bare polynomial is solved as an equation with zero. Rational roots are extracted first. A remaining quadratic is solved with the quadratic formula, including exact irrational and complex radicals. Higher degree equations are left unevaluated when the remaining factor has degree above two.
+
+The algebra layer rejects exponents above 4096, expanded forms above 20000 terms, and resultant inputs with a combined degree above 64. Products with more than two million coefficient pairs are rejected before multiplication starts. These limits keep a bad input from exhausting memory in a single evaluation. Rejected inputs stay in their original unevaluated form.
+
 ## Exact complex normalization
 
 Expressions built from exact rationals and the unshadowed symbol `i` using `plus`, `times`, `negate`, integer `power`, and division are Gaussian rationals. They normalize automatically to the form `a+b*i`, where `a` and `b` are exact rationals.

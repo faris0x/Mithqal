@@ -23,6 +23,9 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         "map" | "apply" | "fold" | "nest" => A::new().with(A::PROTECTED),
         "function" | "let" | "closure" | "approx" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "interval" | "complex" => A::new().with(A::PROTECTED),
+        "expand" | "factor" | "together" | "cancel" | "polynomialGcd" | "resultant" | "solve" => {
+            A::new().with(A::PROTECTED)
+        }
         "pattern" | "blank" | "blankSequence" | "blankNullSequence" | "condition" => {
             A::new().with(A::PROTECTED)
         }

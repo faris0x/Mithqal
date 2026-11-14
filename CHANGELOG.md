@@ -45,4 +45,10 @@ Initial kernel work.
 - Added constant folding of numeric atoms in the compiler so integer and rational literals avoid an evaluation instruction.
 - Added a machine call frame stack that isolates caller and callee operand stack regions for symbol calls.
 - Added a benchmark harness for cold parsing, cached evaluation, pattern calls, closure calls, compiled execution, and collection.
-- Expanded the suite to more than 300 tests covering normal behavior, boundaries, malformed input, numeric significance, intervals, complex arithmetic, and error propagation.
+- Added exact sparse multivariate polynomial algebra with `expand`, `factor`, `polynomialGcd`, `resultant`, `together`, `cancel`, and `solve`.
+- Added rational root factoring, difference of squares patterns, perfect square trinomials, monic univariate gcd, and Sylvester resultants.
+- Added exact linear and quadratic solving with rational, irrational, and complex roots.
+- Added `==` equation syntax and protected algebra symbols.
+- Added polynomial size limits for exponents, expanded term counts, and resultant degree.
+- Added lazy algebra head resolution and mutable polynomial accumulation on hot algebra paths.
+- Expanded the suite to more than 300 tests covering normal behavior, boundaries, malformed input, numeric significance, intervals, complex arithmetic, polynomial algebra, and error propagation.

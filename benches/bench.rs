@@ -59,6 +59,24 @@ fn main() {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 
+    let mut cold_arena = Arena::new();
+    measure("cold expand (x+y)^8", 2_000, || {
+        let parsed = parse_statement(&mut cold_arena, "expand((x+y)^8)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold factor x^6-1", 1_000, || {
+        let parsed = parse_statement(&mut cold_arena, "factor(x^6-1)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold solve quadratic", 2_000, || {
+        let parsed = parse_statement(&mut cold_arena, "solve(x^2-3*x+2==0,x)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut session = Session::new();
     measure("cached parse and evaluate 1+2", 20_000, || {
         black_box(session.eval_statement("1+2").unwrap());

@@ -117,6 +117,7 @@ The surface operators and their canonical heads:
 | `||` | `or` |
 | `!` | `not` |
 | `===` | `equal` |
+| `==` | `equal` |
 | `=/=` | `notEqual` |
 | `~` | `same` |
 | `<` | `less` |
@@ -134,7 +135,7 @@ Precedence from lowest to highest:
 2. `->` and `:>`
 3. `||`
 4. `&&`
-5. `===`, `=/=`, `~`, `<`, `<=`, `>`, `>=`
+5. `===`, `==`, `=/=`, `~`, `<`, `<=`, `>`, `>=`
 6. `+` and `-`
 7. `*`, `/`, and implicit multiplication
 8. unary `-`

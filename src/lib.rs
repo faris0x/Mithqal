@@ -8,6 +8,7 @@
 #![warn(missing_docs)]
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+mod algebra;
 pub mod api;
 pub mod builtins;
 pub mod config;
