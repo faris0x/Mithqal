@@ -26,15 +26,35 @@ pub struct Program {
     pub body: Vec<Stmt>,
 }
 
-/// A source statement.
+/// A parsed pattern source.
+#[derive(Clone, Debug)]
+pub enum PatternSource {
+    /// A binding name.
+    Name(String),
+    /// A literal expression pattern.
+    Literal(ExprSource),
+}
+
+/// One match case.
+#[derive(Clone, Debug)]
+pub struct Case {
+    /// Case pattern.
+    pub pattern: PatternSource,
+    /// Case body.
+    pub body: Vec<Stmt>,
+}
+
+/// A parsed source statement.
 #[derive(Clone, Debug)]
 pub enum Stmt {
     /// A definition with named parameters.
     Def {
         /// Function name.
         name: String,
-        /// Parameter names.
-        parameters: Vec<String>,
+        /// Parameter patterns.
+        parameters: Vec<PatternSource>,
+        /// Optional guard.
+        guard: Option<ExprSource>,
         /// Body expression.
         body: ExprSource,
     },
@@ -52,6 +72,15 @@ pub enum Stmt {
         /// Statements taken when true.
         then_body: Vec<Stmt>,
         /// Statements taken when false.
+        else_body: Vec<Stmt>,
+    },
+    /// A pattern match block.
+    Match {
+        /// Inspected expression.
+        scrutinee: ExprSource,
+        /// Ordered cases.
+        cases: Vec<Case>,
+        /// Optional fallback body.
         else_body: Vec<Stmt>,
     },
     /// A print statement.
@@ -147,6 +176,13 @@ pub fn parse_program(source: &str) -> Result<Program, Diagnostic> {
                 "unexpected else outside a conditional",
             ));
         }
+        Terminator::Case => {
+            return Err(parse_error(
+                first.number,
+                first.column,
+                "unexpected case outside a match",
+            ));
+        }
     }
     if let Some(line) = lines.get(cursor) {
         return Err(parse_error(
@@ -165,6 +201,7 @@ pub fn parse_program(source: &str) -> Result<Program, Diagnostic> {
 enum Terminator {
     End,
     Else,
+    Case,
 }
 
 fn parse_block<'a>(
@@ -195,6 +232,11 @@ fn parse_block<'a>(
                 ensure_empty(rest, line)?;
                 *cursor += 1;
                 return Ok((body, Terminator::Else));
+            }
+            "case" => return Ok((body, Terminator::Case)),
+            "match" => {
+                body.push(parse_match(lines, cursor)?);
+                continue;
             }
             "def" => {
                 let start = line.text.len() - rest.len();
@@ -238,8 +280,24 @@ fn parse_definition(rest: &str, line: &Line<'_>, base: usize) -> Result<Stmt, Di
     let Some(equal) = find_assignment_equal(rest) else {
         return Err(parse_error(line.number, column, "a definition requires ="));
     };
-    let signature = rest[..equal].trim();
+    let left = rest[..equal].trim();
     let body_text = rest[equal + 1..].trim();
+    let Some(open) = left.find('(') else {
+        return Err(parse_error(
+            line.number,
+            column,
+            "a definition requires a parameter list",
+        ));
+    };
+    let Some(close_offset) = left[open + 1..].find(')') else {
+        return Err(parse_error(
+            line.number,
+            column,
+            "a definition requires a closing parenthesis",
+        ));
+    };
+    let close = open + 1 + close_offset;
+    let signature = &left[..=close];
     if let Some(index) = signature.find(char::is_whitespace) {
         return Err(parse_error(
             line.number,
@@ -247,29 +305,41 @@ fn parse_definition(rest: &str, line: &Line<'_>, base: usize) -> Result<Stmt, Di
             "whitespace is not allowed inside a definition signature",
         ));
     }
-    let Some(open) = signature.find('(') else {
-        return Err(parse_error(
-            line.number,
-            column,
-            "a definition requires a parameter list",
-        ));
-    };
-    if !signature.ends_with(')') {
-        return Err(parse_error(
-            line.number,
-            column,
-            "a definition requires a closing parenthesis",
-        ));
-    }
-    let name = &signature[..open];
+    let name = &left[..open];
     validate_identifier(name, line.number, column)?;
-    let parameters = parse_parameters(&signature[open + 1..signature.len() - 1], line)?;
+    let parameters = parse_parameters(&left[open + 1..close], line, column + open + 1)?;
+    let remainder = left[close + 1..].trim();
+    let guard = if remainder.is_empty() {
+        None
+    } else {
+        let Some(guard_text) = remainder.strip_prefix("when") else {
+            return Err(parse_error(
+                line.number,
+                column + close + 1,
+                "expected when before a definition guard",
+            ));
+        };
+        if !guard_text.starts_with(char::is_whitespace) {
+            return Err(parse_error(
+                line.number,
+                column + close + 1,
+                "expected space after when",
+            ));
+        }
+        let guard_text = guard_text.trim();
+        Some(expression_source(
+            guard_text,
+            line.number,
+            column + close + 1 + 5,
+        )?)
+    };
     let body_column =
         column + equal + 1 + (rest[equal + 1..].len() - rest[equal + 1..].trim_start().len());
     let body = expression_source(body_text, line.number, body_column)?;
     Ok(Stmt::Def {
         name: name.to_string(),
         parameters,
+        guard,
         body,
     })
 }
@@ -319,14 +389,18 @@ fn parse_if<'a>(lines: &[Line<'a>], cursor: &mut usize) -> Result<Stmt, Diagnost
     let _ = condition_column;
     *cursor += 1;
     let (then_body, terminator) = parse_block(lines, cursor)?;
+    if matches!(terminator, Terminator::Case) {
+        let line = lines[*cursor];
+        return Err(parse_error(line.number, line.column, "unexpected case"));
+    }
     let else_body = if matches!(terminator, Terminator::Else) {
         let (else_body, terminator) = parse_block(lines, cursor)?;
-        if matches!(terminator, Terminator::Else) {
+        if !matches!(terminator, Terminator::End) {
             let line = lines[*cursor - 1];
             return Err(parse_error(
                 line.number,
                 line.column,
-                "unexpected second else",
+                "expected end after else",
             ));
         }
         else_body
@@ -340,23 +414,120 @@ fn parse_if<'a>(lines: &[Line<'a>], cursor: &mut usize) -> Result<Stmt, Diagnost
     })
 }
 
-fn parse_parameters(source: &str, line: &Line<'_>) -> Result<Vec<String>, Diagnostic> {
-    if source.is_empty() {
-        return Ok(Vec::new());
-    }
-    if source.contains(char::is_whitespace) {
+fn parse_match<'a>(lines: &[Line<'a>], cursor: &mut usize) -> Result<Stmt, Diagnostic> {
+    let line = lines[*cursor];
+    let (_, rest) = split_keyword(line.text);
+    let rest_start = line.text.len() - rest.len();
+    let offset = rest.len() - rest.trim_start().len();
+    let scrutinee = expression_source(rest.trim(), line.number, line.column + rest_start + offset)?;
+    *cursor += 1;
+    let mut cases = Vec::new();
+    let mut else_body = Vec::new();
+    let (preamble, mut terminator) = parse_block(lines, cursor)?;
+    if !preamble.is_empty() {
         return Err(parse_error(
             line.number,
             line.column,
+            "a match requires a case before statements",
+        ));
+    }
+    loop {
+        match terminator {
+            Terminator::Case => {
+                let case_line = lines[*cursor];
+                let (_, case_rest) = split_keyword(case_line.text);
+                let case_start = case_line.text.len() - case_rest.len();
+                let case_offset = case_rest.len() - case_rest.trim_start().len();
+                let pattern_text = case_rest.trim();
+                let pattern = if is_identifier(pattern_text) {
+                    PatternSource::Name(pattern_text.to_string())
+                } else {
+                    PatternSource::Literal(expression_source(
+                        pattern_text,
+                        case_line.number,
+                        case_line.column + case_start + case_offset,
+                    )?)
+                };
+                *cursor += 1;
+                let (body, next) = parse_block(lines, cursor)?;
+                cases.push(Case { pattern, body });
+                terminator = next;
+            }
+            Terminator::Else => {
+                let (body, next) = parse_block(lines, cursor)?;
+                if !matches!(next, Terminator::End) {
+                    let line = lines[*cursor - 1];
+                    return Err(parse_error(
+                        line.number,
+                        line.column,
+                        "expected end after else",
+                    ));
+                }
+                else_body = body;
+                break;
+            }
+            Terminator::End => break,
+        }
+    }
+    if cases.is_empty() && else_body.is_empty() {
+        return Err(parse_error(
+            line.number,
+            line.column,
+            "a match requires a case",
+        ));
+    }
+    Ok(Stmt::Match {
+        scrutinee,
+        cases,
+        else_body,
+    })
+}
+
+fn parse_parameters(
+    source: &str,
+    line: &Line<'_>,
+    base: usize,
+) -> Result<Vec<PatternSource>, Diagnostic> {
+    if source.is_empty() {
+        return Ok(Vec::new());
+    }
+    if let Some((index, _)) = source.char_indices().find(|(_, ch)| ch.is_whitespace()) {
+        return Err(parse_error(
+            line.number,
+            base + index,
             "whitespace is not allowed inside a parameter list",
         ));
     }
     let mut parameters = Vec::new();
+    let mut start = 0usize;
     for parameter in source.split(',') {
-        validate_identifier(parameter, line.number, line.column)?;
-        parameters.push(parameter.to_string());
+        if parameter.is_empty() {
+            return Err(parse_error(
+                line.number,
+                base + start,
+                "expected a parameter",
+            ));
+        }
+        if is_identifier(parameter) {
+            parameters.push(PatternSource::Name(parameter.to_string()));
+        } else {
+            parameters.push(PatternSource::Literal(expression_source(
+                parameter,
+                line.number,
+                base + start,
+            )?));
+        }
+        start += parameter.len() + 1;
     }
     Ok(parameters)
+}
+
+fn is_identifier(source: &str) -> bool {
+    let mut chars = source.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    first.is_ascii_lowercase() && chars.all(|ch| ch.is_ascii_alphanumeric())
 }
 
 fn expression_source(text: &str, line: usize, column: usize) -> Result<ExprSource, Diagnostic> {

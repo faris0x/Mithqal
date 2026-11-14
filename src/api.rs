@@ -5,12 +5,12 @@ use std::collections::HashMap;
 use crate::config::Config;
 use crate::diag::{Diagnostic, ErrorCode, Span};
 use crate::eval::{SessionDefinitions, evaluate_with_definitions};
-use crate::expr::{Arena, ExprId, Node};
+use crate::expr::{Arena, ExprId, Node, SymbolId};
 use crate::hash::FnvBuildHasher;
 use crate::num::{Int, Rat};
 use crate::print;
 use crate::runtime;
-use crate::syntax::{self, ExprSource, Stmt};
+use crate::syntax::{self, Case, ExprSource, PatternSource, Stmt};
 
 /// A view of an expression.
 #[derive(Clone, Copy, Debug)]
@@ -42,6 +42,7 @@ pub struct Session {
     eval_cache: HashMap<(ExprId, u64), ExprId, FnvBuildHasher>,
     compiled_results: HashMap<(ExprId, u64), ExprId, FnvBuildHasher>,
     output: Vec<String>,
+    language_scopes: Vec<HashMap<SymbolId, ExprId, FnvBuildHasher>>,
     config: Config,
 }
 
@@ -62,6 +63,7 @@ impl Session {
             eval_cache: HashMap::default(),
             compiled_results: HashMap::default(),
             output: Vec::new(),
+            language_scopes: Vec::new(),
             config,
         }
     }
@@ -90,7 +92,10 @@ impl Session {
     /// Parse and evaluate a complete surface language module.
     pub fn eval_language(&mut self, source: &str) -> Result<ExprId, Diagnostic> {
         let program = syntax::parse_program(source)?;
-        self.eval_language_statements(&program.body)
+        self.language_scopes.push(HashMap::default());
+        let result = self.eval_language_statements(&program.body);
+        self.language_scopes.pop();
+        result
     }
 
     /// Printed output produced by `prt` statements.
@@ -116,30 +121,54 @@ impl Session {
             Stmt::Def {
                 name,
                 parameters,
+                guard,
                 body,
             } => {
-                let body = self.language_expression(body)?;
                 let blank_head = self.arena.builtin_head("blank");
                 let blank = self.arena.intern_call(blank_head, &[]);
                 let pattern_head = self.arena.builtin_head("pattern");
                 let mut patterns = Vec::with_capacity(parameters.len());
+                let mut parameter_symbols = Vec::new();
                 for parameter in parameters {
-                    let symbol = self.arena.symbol_or_intern(parameter);
-                    let name = self.arena.symbol_expr(symbol);
-                    patterns.push(self.arena.intern_call(pattern_head, &[name, blank]));
+                    match parameter {
+                        PatternSource::Name(parameter) => {
+                            let symbol = self.arena.symbol_or_intern(parameter);
+                            parameter_symbols.push(symbol);
+                            let name = self.arena.symbol_expr(symbol);
+                            patterns.push(self.arena.intern_call(pattern_head, &[name, blank]));
+                        }
+                        PatternSource::Literal(source) => {
+                            patterns.push(self.language_expression(source)?);
+                        }
+                    }
                 }
+                let body = self.resolved_language_expression(body, &parameter_symbols)?;
+                let guard = if let Some(guard) = guard {
+                    Some(self.resolved_language_expression(guard, &parameter_symbols)?)
+                } else {
+                    None
+                };
                 let symbol = self.arena.symbol_or_intern(name);
                 let head = self.arena.symbol_expr(symbol);
-                let lhs = self.arena.intern_call(head, &patterns);
+                let mut lhs = self.arena.intern_call(head, &patterns);
+                if let Some(guard) = guard {
+                    let condition = self.arena.builtin_head("condition");
+                    lhs = self.arena.intern_call(condition, &[lhs, guard]);
+                }
                 self.definitions.define(&self.arena, lhs, body, true)?;
                 Ok(self.arena.builtin_head("null"))
             }
             Stmt::Let { name, body } => {
-                let value = self.language_expression(body)?;
+                let value = self.resolved_language_expression(body, &[])?;
                 let value = self.eval(value)?;
                 let symbol = self.arena.symbol_or_intern(name);
-                let target = self.arena.symbol_expr(symbol);
-                self.definitions.define(&self.arena, target, value, false)?;
+                if let Some(scope) = self.language_scopes.last_mut() {
+                    scope.insert(symbol, value);
+                } else {
+                    let mut scope = HashMap::default();
+                    scope.insert(symbol, value);
+                    self.language_scopes.push(scope);
+                }
                 Ok(value)
             }
             Stmt::If {
@@ -147,22 +176,66 @@ impl Session {
                 then_body,
                 else_body,
             } => {
-                let condition = self.language_expression(condition)?;
+                let condition = self.resolved_language_expression(condition, &[])?;
                 let condition = self.eval(condition)?;
                 let truth = self.language_boolean(condition)?;
-                if truth {
+                self.language_scopes.push(HashMap::default());
+                let result = if truth {
                     self.eval_language_statements(then_body)
                 } else {
                     self.eval_language_statements(else_body)
+                };
+                self.language_scopes.pop();
+                result
+            }
+            Stmt::Match {
+                scrutinee,
+                cases,
+                else_body,
+            } => {
+                let scrutinee = self.resolved_language_expression(scrutinee, &[])?;
+                let scrutinee = self.eval(scrutinee)?;
+                for case in cases {
+                    if self.eval_case(case, scrutinee)? {
+                        let result = self.eval_language_statements(&case.body);
+                        self.language_scopes.pop();
+                        return result;
+                    }
                 }
+                self.language_scopes.push(HashMap::default());
+                let result = self.eval_language_statements(else_body);
+                self.language_scopes.pop();
+                result
             }
             Stmt::Print { body } => {
-                let value = self.language_expression(body)?;
+                let value = self.resolved_language_expression(body, &[])?;
                 let value = self.eval(value)?;
                 self.output.push(self.format_infix(value));
                 Ok(value)
             }
         }
+    }
+
+    fn eval_case(&mut self, case: &Case, scrutinee: ExprId) -> Result<bool, Diagnostic> {
+        self.language_scopes.push(HashMap::default());
+        let matched = match &case.pattern {
+            PatternSource::Name(name) => {
+                let symbol = self.arena.symbol_or_intern(name);
+                if let Some(scope) = self.language_scopes.last_mut() {
+                    scope.insert(symbol, scrutinee);
+                }
+                true
+            }
+            PatternSource::Literal(source) => {
+                let literal = self.language_expression(source)?;
+                let literal = self.eval(literal)?;
+                literal == scrutinee
+            }
+        };
+        if !matched {
+            self.language_scopes.pop();
+        }
+        Ok(matched)
     }
 
     fn language_expression(&mut self, source: &ExprSource) -> Result<ExprId, Diagnostic> {
@@ -177,6 +250,43 @@ impl Session {
                 }
                 Err(diagnostic)
             }
+        }
+    }
+
+    fn resolved_language_expression(
+        &mut self,
+        source: &ExprSource,
+        excluded: &[SymbolId],
+    ) -> Result<ExprId, Diagnostic> {
+        let expression = self.language_expression(source)?;
+        Ok(self.resolve_expression(expression, excluded))
+    }
+
+    fn resolve_expression(&mut self, expression: ExprId, excluded: &[SymbolId]) -> ExprId {
+        match self.arena.node(expression) {
+            Node::Symbol(symbol) => {
+                let symbol = *symbol;
+                if excluded.contains(&symbol) {
+                    return expression;
+                }
+                for scope in self.language_scopes.iter().rev() {
+                    if let Some(value) = scope.get(&symbol) {
+                        return *value;
+                    }
+                }
+                expression
+            }
+            Node::Call { head, args } => {
+                let head = *head;
+                let args = args.to_vec();
+                let head = self.resolve_expression(head, excluded);
+                let mut resolved = Vec::with_capacity(args.len());
+                for arg in args {
+                    resolved.push(self.resolve_expression(arg, excluded));
+                }
+                self.arena.intern_call(head, &resolved)
+            }
+            _ => expression,
         }
     }
 

@@ -19,7 +19,7 @@ Included:
 - Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, and absolute value.
 - Exact polynomial expansion, factoring, polynomial gcd, resultants, rational function cancellation, and linear or quadratic solving.
 - Exact symbolic differentiation, basic antiderivatives, and definite integrals.
-- A line based surface language with modules, definitions, bindings, conditionals, and print statements.
+- A line based surface language with modules, definitions, literal patterns, guards, lexical bindings, conditionals, match blocks, and print statements.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
 - A versioned structured IR scaffold for a future language frontend.
 - Typed instruction virtual machine and a reference interpreter.

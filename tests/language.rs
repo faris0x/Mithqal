@@ -11,6 +11,12 @@ fn output(source: &str) -> Vec<String> {
     session.output().to_vec()
 }
 
+fn source_output(source: &str) -> Vec<String> {
+    let mut session = Session::new();
+    session.eval_source(source).unwrap();
+    session.output().to_vec()
+}
+
 #[test]
 fn module_with_bindings_and_printing() {
     let source = r#"
@@ -295,4 +301,229 @@ fn lowercase_keywords_are_required() {
 fn zero_parameter_definitions_work() {
     let source = "mod zero\ndef value()=42\nprt value()\nprt value()+1\nend";
     assert_eq!(output(source), vec!["42", "43"]);
+}
+
+#[test]
+fn literal_parameter_patterns_enable_recursion() {
+    let source = r#"
+mod recursive
+def fact(0)=1
+def fact(n)=n*fact(n-1)
+prt fact(0)
+prt fact(1)
+prt fact(5)
+prt fact(7)
+end
+"#;
+    assert_eq!(source_output(source), vec!["1", "1", "120", "5040"]);
+}
+
+#[test]
+fn multiple_literal_parameter_patterns() {
+    let source = r#"
+mod patterns
+def f(0,0)=0
+def f(0,n)=n
+def f(m,0)=m
+def f(m,n)=m+n
+prt f(0,0)
+prt f(0,3)
+prt f(4,0)
+prt f(4,5)
+end
+"#;
+    assert_eq!(source_output(source), vec!["0", "3", "4", "9"]);
+}
+
+#[test]
+fn guarded_definitions() {
+    let source = r#"
+mod guards
+def sign(x) when x<0=-1
+def sign(x) when x==0=0
+def sign(x)=1
+prt sign(-5)
+prt sign(-1)
+prt sign(0)
+prt sign(1)
+prt sign(5)
+end
+"#;
+    assert_eq!(source_output(source), vec!["-1", "-1", "0", "1", "1"]);
+}
+
+#[test]
+fn guarded_definitions_use_other_parameters() {
+    let source = r#"
+mod guards
+def clamp(x,low,high) when x<low=low
+def clamp(x,low,high) when x>high=high
+def clamp(x,low,high)=x
+prt clamp(-5,0,10)
+prt clamp(15,0,10)
+prt clamp(5,0,10)
+end
+"#;
+    assert_eq!(source_output(source), vec!["0", "10", "5"]);
+}
+
+#[test]
+fn bindings_are_block_scoped() {
+    let source = r#"
+mod scopes
+let x=1
+if true then
+  let x=2
+  let y=3
+  prt x
+  prt y
+end
+prt x
+if false then
+  let x=9
+else
+  let x=7
+  prt x
+end
+prt x
+end
+"#;
+    assert_eq!(source_output(source), vec!["2", "3", "1", "7", "1"]);
+}
+
+#[test]
+fn definitions_capture_outer_bindings() {
+    let source = r#"
+mod capture
+let base=10
+def addBase(x)=x+base
+prt addBase(5)
+if true then
+  let base=20
+  def localAdd(x)=x+base
+  prt localAdd(5)
+end
+prt addBase(5)
+end
+"#;
+    assert_eq!(source_output(source), vec!["15", "25", "15"]);
+}
+
+#[test]
+fn match_with_literal_and_name_cases() {
+    let source = r#"
+mod matching
+let x=2
+match x
+case 0
+  prt 100
+case 1
+  prt 200
+case n
+  prt n+10
+else
+  prt -1
+end
+end
+"#;
+    assert_eq!(source_output(source), vec!["12"]);
+}
+
+#[test]
+fn match_falls_back_to_else() {
+    let source = r#"
+mod matching
+let x=9
+match x
+case 0
+  prt 0
+case 1
+  prt 1
+else
+  prt 99
+end
+end
+"#;
+    assert_eq!(source_output(source), vec!["99"]);
+}
+
+#[test]
+fn match_literal_can_be_an_expression() {
+    let source = r#"
+mod matching
+match 3
+case 1+2
+  prt 7
+else
+  prt 8
+end
+end
+"#;
+    assert_eq!(source_output(source), vec!["7"]);
+}
+
+#[test]
+fn match_case_bindings_are_scoped() {
+    let source = r#"
+mod matching
+let n=100
+match 5
+case n
+  prt n
+end
+prt n
+end
+"#;
+    assert_eq!(source_output(source), vec!["5", "100"]);
+}
+
+#[test]
+fn nested_matches_share_end() {
+    let source = r#"
+mod matching
+match 1
+case 1
+  match 2
+  case 2
+    prt 12
+  else
+    prt 10
+  end
+else
+  prt 0
+end
+end
+"#;
+    assert_eq!(source_output(source), vec!["12"]);
+}
+
+#[test]
+fn match_requires_a_case() {
+    let source = "mod m\nmatch 1\nend";
+    let mut session = Session::new();
+    let error = session.eval_source(source).unwrap_err();
+    assert_eq!(error.code, ErrorCode::ParseUnexpectedToken);
+}
+
+#[test]
+fn case_outside_match_is_rejected() {
+    let source = "mod m\ncase 1\nend";
+    let mut session = Session::new();
+    let error = session.eval_source(source).unwrap_err();
+    assert_eq!(error.code, ErrorCode::ParseUnexpectedToken);
+}
+
+#[test]
+fn guard_requires_when_keyword() {
+    let source = "mod m\ndef f(x) x>0=x\nend";
+    let mut session = Session::new();
+    assert!(session.eval_source(source).is_err());
+}
+
+#[test]
+fn guard_expression_is_whitespace_free() {
+    let source = "mod m\ndef f(x) when x > 0=x\nend";
+    let mut session = Session::new();
+    let error = session.eval_source(source).unwrap_err();
+    assert_eq!(error.code, ErrorCode::ParseUnexpectedToken);
 }

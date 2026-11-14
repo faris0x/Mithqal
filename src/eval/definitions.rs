@@ -73,8 +73,23 @@ impl Definitions {
                 self.version = self.version.wrapping_add(1);
                 Ok(())
             }
-            Node::Call { head, .. } => {
-                let symbol = arena.symbol_id(*head).ok_or_else(|| {
+            Node::Call { head, args } => {
+                let target_head = if arena
+                    .symbol_id(*head)
+                    .map(|symbol| arena.symbol_name(symbol))
+                    == Some("condition")
+                {
+                    if let Some(Node::Call { head: inner, .. }) =
+                        args.first().map(|argument| arena.node(*argument))
+                    {
+                        *inner
+                    } else {
+                        *head
+                    }
+                } else {
+                    *head
+                };
+                let symbol = arena.symbol_id(target_head).ok_or_else(|| {
                     Diagnostic::eval(
                         ErrorCode::EvalDefinition,
                         "a definition head must be a symbol",

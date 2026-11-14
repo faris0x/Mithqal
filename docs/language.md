@@ -14,6 +14,9 @@ The first version provides modules, single-line definitions, bindings, condition
 | Conditional | `if` |
 | Then | `then` |
 | Else | `else` |
+| Match | `match` |
+| Case | `case` |
+| Guard | `when` |
 | Block end | `end` |
 | Print | `prt` |
 
@@ -43,7 +46,26 @@ def value()=42
 
 A definition has a name, a parameter list, and one expression after `=`. Parameter lists contain no whitespace. The body is evaluated when the function is called.
 
-Definitions may be called before later statements, and a definition body may call another defined function.
+Parameters can be plain names or literal patterns.
+
+```text
+def fact(0)=1
+def fact(n)=n*fact(n-1)
+```
+
+Literal patterns are more specific than name patterns, so the base case is selected first.
+
+A definition can include a guard after the parameter list.
+
+```text
+def sign(x) when x<0=-1
+def sign(x) when x==0=0
+def sign(x)=1
+```
+
+The guard is a whitespace-free expression. Rules are ordered by specificity, and guards are checked after pattern matching.
+
+Definitions capture the bindings visible at definition time.
 
 ## Bindings
 
@@ -52,7 +74,7 @@ let x=3
 let y=square(x+1)
 ```
 
-`let` evaluates its expression immediately and binds the result for later statements. Bindings use the session scope in the first language version.
+`let` evaluates its expression immediately and binds the result in the current block. Bindings are lexical. A binding inside `if` or `match` does not escape that block.
 
 ## Conditionals
 
@@ -67,6 +89,23 @@ end
 `else` is optional. Nested conditionals share the same `end` keyword and close one block at a time.
 
 A condition must evaluate to `true` or `false`.
+
+## Match blocks
+
+```text
+match x
+case 0
+  prt 100
+case n
+  prt n+10
+else
+  prt -1
+end
+```
+
+A case pattern is either a literal expression or a binding name. Literal cases are tested first in source order until one matches. A name case binds the scrutinee in the case body. `else` is optional.
+
+Match case bindings are scoped to the case body.
 
 ## Printing
 
@@ -161,11 +200,11 @@ end
 ## Current limits
 
 - One module per source.
-- Definitions use plain parameters in this version.
-- Patterns and guards are not part of the surface language yet.
-- Bindings use session scope.
+- Definition parameters support names and literal patterns.
+- Guards are single expressions.
+- Match patterns support literals and binding names.
 - `prt` is the only output statement.
-- Recursion with conditional base cases arrives with pattern clauses or block bodies.
+- List patterns, sequence patterns, and nested constructor patterns are future work.
 
 ## Session entry points
 
