@@ -28,6 +28,9 @@ Initial kernel work.
 - Added directed MPFR rounding for interval addition, multiplication, negation, and powers, with outward bound selection for products and reciprocals.
 - Added binary MPFR interning keys for real values instead of decimal string keys.
 - Added real derivative corrections for sine, cosine, and integer powers.
+- Added real hyperbolic and inverse hyperbolic functions with derivative based error propagation and domain checks.
+- Added complex inverse trigonometric and hyperbolic functions, real domain promotion to complex values, and principal branch orientation for real inverse trigonometric arguments above one.
+- Added non finite result rejection for real and complex functions, stable complex magnitude through MPC, allocation free interval multiplication, and numeric head dispatch without per call string allocation.
 - Expanded numeric, interval, and complex tests to cover normal values, boundaries, malformed input, errors, precision changes, collection, and the compiled path.
 - Added own values, down values, protected symbol checks, definition specificity, and immediate and delayed definitions.
 - Added pattern matching for blanks, named patterns, sequence patterns, repeated variables, and conditions.

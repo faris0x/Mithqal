@@ -29,7 +29,7 @@ Approximate values are `Real` atoms backed by MPFR. Each value carries an absolu
 
 `approx(expression,digits)` is the numeric boundary. It evaluates its argument exactly first, then converts numeric subexpressions to `Real` values. The digit count defaults to 16 when omitted.
 
-The numeric boundary handles exact integers and rationals, `pi`, `e`, `plus`, `times`, `negate`, integer and real `power`, `sqrt`, `exp`, `ln`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, and `abs`. Negative real square roots and logarithms produce complex values. A symbolic argument that cannot be converted leaves the `approx` call unevaluated.
+The numeric boundary handles exact integers and rationals, `pi`, `e`, `plus`, `times`, `negate`, integer and real `power`, `sqrt`, `exp`, `ln`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh`, and `abs`. Negative real square roots and logarithms produce complex values. A symbolic argument that cannot be converted leaves the `approx` call unevaluated.
 
 Significance propagation uses first order error estimates:
 
@@ -55,7 +55,7 @@ Interval endpoints are converted to `Real` with a default precision for the oper
 
 An approximate complex value is a call with the protected `complex(real,imaginary)` head. The `approx` boundary recognizes the symbol `i`, converts real and imaginary parts to `Real` values, and returns a `complex` expression when the imaginary part is nonzero. A zero imaginary part normalizes to the real value.
 
-The numeric boundary supports complex addition, subtraction, multiplication, stable division, integer powers, real and complex powers, absolute value, exponential, logarithm, square root, sine, cosine, and tangent. MPC supplies the complex elementary functions. Inverse trigonometric and hyperbolic functions remain real only for now.
+The numeric boundary supports complex addition, subtraction, multiplication, stable division, integer powers, real and complex powers, absolute value, exponential, logarithm, square root, sine, cosine, tangent, inverse sine, inverse cosine, inverse tangent, hyperbolic functions, and inverse hyperbolic functions. MPC supplies the complex elementary functions. Real arguments outside a real domain are promoted to complex values, including square roots and logarithms of negative numbers and inverse trigonometric or hyperbolic arguments outside their real ranges. Promoted inverse trigonometric values use the principal branch with the same orientation as Mathematica for real arguments above one. Non finite complex results, such as the logarithm of zero or the inverse tangent of the imaginary unit, leave the `approx` call unevaluated because the stored significance model cannot represent a meaningful enclosure.
 
 ## Symbolic constants
 

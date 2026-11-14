@@ -36,8 +36,26 @@ fn main() {
     });
 
     let mut cold_arena = Arena::new();
+    measure("cold approx real sinh", 5_000, || {
+        let parsed = parse_statement(&mut cold_arena, "approx(sinh(2),30)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold approx complex asin", 2_000, || {
+        let parsed = parse_statement(&mut cold_arena, "approx(asin(2),30)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
     measure("cold interval add", 20_000, || {
         let parsed = parse_statement(&mut cold_arena, "interval(1,2)+3").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold interval multiply", 20_000, || {
+        let parsed = parse_statement(&mut cold_arena, "interval(1,2)*interval(3,4)").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 

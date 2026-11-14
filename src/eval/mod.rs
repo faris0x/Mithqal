@@ -27,6 +27,81 @@ enum Numeric {
     Error(ExprId),
 }
 
+#[derive(Copy, Clone)]
+enum NumericHead {
+    Plus,
+    Times,
+    Negate,
+    Power,
+    Complex,
+    Abs,
+    Sqrt,
+    Exp,
+    Ln,
+    Sin,
+    Cos,
+    Tan,
+    Asin,
+    Acos,
+    Atan,
+    Sinh,
+    Cosh,
+    Tanh,
+    Asinh,
+    Acosh,
+    Atanh,
+}
+
+impl NumericHead {
+    fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "plus" => Self::Plus,
+            "times" => Self::Times,
+            "negate" => Self::Negate,
+            "power" => Self::Power,
+            "complex" => Self::Complex,
+            "abs" => Self::Abs,
+            "sqrt" => Self::Sqrt,
+            "exp" => Self::Exp,
+            "ln" => Self::Ln,
+            "sin" => Self::Sin,
+            "cos" => Self::Cos,
+            "tan" => Self::Tan,
+            "asin" => Self::Asin,
+            "acos" => Self::Acos,
+            "atan" => Self::Atan,
+            "sinh" => Self::Sinh,
+            "cosh" => Self::Cosh,
+            "tanh" => Self::Tanh,
+            "asinh" => Self::Asinh,
+            "acosh" => Self::Acosh,
+            "atanh" => Self::Atanh,
+            _ => return None,
+        })
+    }
+
+    fn is_unary(self) -> bool {
+        matches!(
+            self,
+            Self::Sqrt
+                | Self::Exp
+                | Self::Ln
+                | Self::Sin
+                | Self::Cos
+                | Self::Tan
+                | Self::Asin
+                | Self::Acos
+                | Self::Atan
+                | Self::Sinh
+                | Self::Cosh
+                | Self::Tanh
+                | Self::Asinh
+                | Self::Acosh
+                | Self::Atanh
+        )
+    }
+}
+
 struct Heads {
     plus: ExprId,
     times: ExprId,
@@ -401,34 +476,39 @@ impl<'a> Evaluator<'a> {
         other_low: &Real,
         other_high: &Real,
     ) -> Result<(Real, Real), Diagnostic> {
-        let mut lower_products = Vec::with_capacity(4);
-        let mut upper_products = Vec::with_capacity(4);
+        let mut lower_bound: Option<Real> = None;
+        let mut upper_bound: Option<Real> = None;
         for (left, right) in [
             (low, other_low),
             (low, other_high),
             (high, other_low),
             (high, other_high),
         ] {
-            lower_products.push(left.mul_round(right, MPFR_RNDD).map_err(|_| {
+            let lower = left.mul_round(right, MPFR_RNDD).map_err(|_| {
                 Diagnostic::eval(ErrorCode::NumericFailure, "interval product failed")
-            })?);
-            upper_products.push(left.mul_round(right, MPFR_RNDU).map_err(|_| {
+            })?;
+            let upper = left.mul_round(right, MPFR_RNDU).map_err(|_| {
                 Diagnostic::eval(ErrorCode::NumericFailure, "interval product failed")
-            })?);
-        }
-        let mut low = lower_products[0].clone();
-        for value in lower_products.iter().skip(1) {
-            if value.cmp(&low) == Ordering::Less {
-                low = value.clone();
+            })?;
+            let replace_low = match &lower_bound {
+                Some(current) => lower.cmp(current) == Ordering::Less,
+                None => true,
+            };
+            if replace_low {
+                lower_bound = Some(lower);
+            }
+            let replace_high = match &upper_bound {
+                Some(current) => upper.cmp(current) == Ordering::Greater,
+                None => true,
+            };
+            if replace_high {
+                upper_bound = Some(upper);
             }
         }
-        let mut high = upper_products[0].clone();
-        for value in upper_products.iter().skip(1) {
-            if value.cmp(&high) == Ordering::Greater {
-                high = value.clone();
-            }
-        }
-        Ok((low, high))
+        Ok((
+            lower_bound.expect("interval product has a lower bound"),
+            upper_bound.expect("interval product has an upper bound"),
+        ))
     }
 
     fn plus_intervals(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -613,12 +693,12 @@ impl<'a> Evaluator<'a> {
             Node::Call { head, args } => {
                 let head = *head;
                 let args = args.to_vec();
-                let name = self
+                let function = self
                     .arena
                     .symbol_id(head)
-                    .map(|symbol| self.arena.symbol_name(symbol).to_string());
-                match name.as_deref() {
-                    Some("plus") => {
+                    .and_then(|symbol| NumericHead::from_name(self.arena.symbol_name(symbol)));
+                match function {
+                    Some(NumericHead::Plus) => {
                         let mut value = Numeric::Real(Real::zero(digits).map_err(|_| {
                             Diagnostic::eval(ErrorCode::NumericFailure, "real failed")
                         })?);
@@ -633,7 +713,7 @@ impl<'a> Evaluator<'a> {
                         }
                         Ok(Some(value))
                     }
-                    Some("times") => {
+                    Some(NumericHead::Times) => {
                         let mut value = Numeric::Real(Real::one(digits).map_err(|_| {
                             Diagnostic::eval(ErrorCode::NumericFailure, "real failed")
                         })?);
@@ -648,13 +728,13 @@ impl<'a> Evaluator<'a> {
                         }
                         Ok(Some(value))
                     }
-                    Some("negate") if args.len() == 1 => {
+                    Some(NumericHead::Negate) if args.len() == 1 => {
                         let Some(argument) = self.approximate(args[0], digits)? else {
                             return Ok(None);
                         };
                         Ok(numeric_neg(&argument))
                     }
-                    Some("power") if args.len() == 2 => {
+                    Some(NumericHead::Power) if args.len() == 2 => {
                         let exponent = match self.arena.node(args[1]) {
                             Node::Int(value) => value.to_i64(),
                             Node::Rat(value) if value.den().is_one() => value.num().to_i64(),
@@ -671,7 +751,20 @@ impl<'a> Evaluator<'a> {
                         };
                         match (base, exponent) {
                             (Numeric::Real(base), Numeric::Real(exponent)) => {
-                                Ok(base.pow(&exponent).ok().map(Numeric::Real))
+                                match base.pow(&exponent) {
+                                    Ok(value) if value.is_finite() => {
+                                        Ok(Some(Numeric::Real(value)))
+                                    }
+                                    _ => {
+                                        let Some(zero) = Real::zero(digits).ok() else {
+                                            return Ok(None);
+                                        };
+                                        Ok(numeric_complex_pow(
+                                            &(base, zero.clone()),
+                                            &(exponent, zero),
+                                        ))
+                                    }
+                                }
                             }
                             (
                                 Numeric::Complex(real, imaginary),
@@ -703,7 +796,7 @@ impl<'a> Evaluator<'a> {
                             }
                         }
                     }
-                    Some("complex") if args.len() == 2 => {
+                    Some(NumericHead::Complex) if args.len() == 2 => {
                         let Some(real) = self.approximate(args[0], digits)? else {
                             return Ok(None);
                         };
@@ -720,34 +813,10 @@ impl<'a> Evaluator<'a> {
                             _ => Ok(None),
                         }
                     }
-                    Some("sqrt") if args.len() == 1 => {
-                        self.approximate_named_unary(args[0], digits, "sqrt")
+                    Some(function) if args.len() == 1 && function.is_unary() => {
+                        self.approximate_named_unary(args[0], digits, function)
                     }
-                    Some("exp") if args.len() == 1 => {
-                        self.approximate_named_unary(args[0], digits, "exp")
-                    }
-                    Some("ln") if args.len() == 1 => {
-                        self.approximate_named_unary(args[0], digits, "ln")
-                    }
-                    Some("sin") if args.len() == 1 => {
-                        self.approximate_named_unary(args[0], digits, "sin")
-                    }
-                    Some("cos") if args.len() == 1 => {
-                        self.approximate_named_unary(args[0], digits, "cos")
-                    }
-                    Some("tan") if args.len() == 1 => {
-                        self.approximate_named_unary(args[0], digits, "tan")
-                    }
-                    Some("asin") if args.len() == 1 => {
-                        self.approximate_named_unary(args[0], digits, "asin")
-                    }
-                    Some("acos") if args.len() == 1 => {
-                        self.approximate_named_unary(args[0], digits, "acos")
-                    }
-                    Some("atan") if args.len() == 1 => {
-                        self.approximate_named_unary(args[0], digits, "atan")
-                    }
-                    Some("abs") if args.len() == 1 => {
+                    Some(NumericHead::Abs) if args.len() == 1 => {
                         let Some(argument) = self.approximate(args[0], digits)? else {
                             return Ok(None);
                         };
@@ -759,64 +828,84 @@ impl<'a> Evaluator<'a> {
         }
     }
 
+    fn complex_unary(real: &Real, imaginary: &Real, function: NumericHead) -> Option<(Real, Real)> {
+        let complex = ComplexMpc::from_parts(real, imaginary)?;
+        match function {
+            NumericHead::Sqrt => complex.sqrt(),
+            NumericHead::Exp => complex.exp(),
+            NumericHead::Ln => complex.log(),
+            NumericHead::Sin => complex.sin(),
+            NumericHead::Cos => complex.cos(),
+            NumericHead::Tan => complex.tan(),
+            NumericHead::Asin => complex.asin(),
+            NumericHead::Acos => complex.acos(),
+            NumericHead::Atan => complex.atan(),
+            NumericHead::Sinh => complex.sinh(),
+            NumericHead::Cosh => complex.cosh(),
+            NumericHead::Tanh => complex.tanh(),
+            NumericHead::Asinh => complex.asinh(),
+            NumericHead::Acosh => complex.acosh(),
+            NumericHead::Atanh => complex.atanh(),
+            _ => None,
+        }
+    }
+
     fn approximate_named_unary(
         &mut self,
         argument: ExprId,
         digits: u32,
-        name: &str,
+        function: NumericHead,
     ) -> Result<Option<Numeric>, Diagnostic> {
         let Some(argument) = self.approximate(argument, digits)? else {
             return Ok(None);
         };
         match argument {
             Numeric::Real(value) => {
-                if name == "sqrt" && value.sign() < 0 {
-                    let Some(root) = value.abs().ok().and_then(|value| value.sqrt().ok()) else {
-                        return Ok(None);
-                    };
-                    let Some(zero) = Real::zero(digits).ok() else {
-                        return Ok(None);
-                    };
-                    return Ok(Some(Numeric::Complex(zero, root)));
-                }
-                if name == "ln" && value.sign() < 0 {
-                    let Some(real) = value.abs().ok().and_then(|value| value.ln().ok()) else {
-                        return Ok(None);
-                    };
-                    let Some(imaginary) = Real::pi(digits).ok() else {
-                        return Ok(None);
-                    };
-                    return Ok(Some(Numeric::Complex(real, imaginary)));
-                }
-                let result = match name {
-                    "sqrt" => value.sqrt(),
-                    "exp" => value.exp(),
-                    "ln" => value.ln(),
-                    "sin" => value.sin(),
-                    "cos" => value.cos(),
-                    "tan" => value.tan(),
-                    "asin" => value.asin(),
-                    "acos" => value.acos(),
-                    "atan" => value.atan(),
+                let result = match function {
+                    NumericHead::Sqrt => value.sqrt(),
+                    NumericHead::Exp => value.exp(),
+                    NumericHead::Ln => value.ln(),
+                    NumericHead::Sin => value.sin(),
+                    NumericHead::Cos => value.cos(),
+                    NumericHead::Tan => value.tan(),
+                    NumericHead::Asin => value.asin(),
+                    NumericHead::Acos => value.acos(),
+                    NumericHead::Atan => value.atan(),
+                    NumericHead::Sinh => value.sinh(),
+                    NumericHead::Cosh => value.cosh(),
+                    NumericHead::Tanh => value.tanh(),
+                    NumericHead::Asinh => value.asinh(),
+                    NumericHead::Acosh => value.acosh(),
+                    NumericHead::Atanh => value.atanh(),
                     _ => return Ok(None),
                 };
-                Ok(result.ok().map(Numeric::Real))
+                if let Ok(real) = result {
+                    if real.is_finite() {
+                        return Ok(Some(Numeric::Real(real)));
+                    }
+                }
+                let zero = if matches!(function, NumericHead::Asin | NumericHead::Acos) {
+                    let Some(one) = Real::one(digits).ok() else {
+                        return Ok(None);
+                    };
+                    if value.cmp(&one) == Ordering::Greater {
+                        Real::zero(digits).ok().and_then(|zero| zero.neg().ok())
+                    } else {
+                        Real::zero(digits).ok()
+                    }
+                } else {
+                    Real::zero(digits).ok()
+                };
+                let Some(zero) = zero else {
+                    return Ok(None);
+                };
+                Ok(Self::complex_unary(&value, &zero, function)
+                    .map(|(real, imaginary)| Numeric::Complex(real, imaginary)))
             }
             Numeric::Error(value) => Ok(Some(Numeric::Error(value))),
             Numeric::Complex(real, imaginary) => {
-                let Some(complex) = ComplexMpc::from_parts(&real, &imaginary) else {
-                    return Ok(None);
-                };
-                let result = match name {
-                    "exp" => complex.exp(),
-                    "ln" => complex.log(),
-                    "sin" => complex.sin(),
-                    "cos" => complex.cos(),
-                    "tan" => complex.tan(),
-                    "sqrt" => complex.sqrt(),
-                    _ => return Ok(None),
-                };
-                Ok(result.map(|(real, imaginary)| Numeric::Complex(real, imaginary)))
+                Ok(Self::complex_unary(&real, &imaginary, function)
+                    .map(|(real, imaginary)| Numeric::Complex(real, imaginary)))
             }
         }
     }
@@ -829,9 +918,18 @@ impl<'a> Evaluator<'a> {
 
     fn numeric_expr(&mut self, value: Numeric) -> ExprId {
         match value {
-            Numeric::Real(value) => self.arena.intern_real(value),
+            Numeric::Real(value) => {
+                if value.is_finite() {
+                    self.arena.intern_real(value)
+                } else {
+                    self.heads.undefined
+                }
+            }
             Numeric::Error(value) => value,
             Numeric::Complex(real, imaginary) => {
+                if !real.is_finite() || !imaginary.is_finite() {
+                    return self.heads.undefined;
+                }
                 if imaginary.is_zero() {
                     self.arena.intern_real(real)
                 } else {
@@ -1963,12 +2061,8 @@ fn numeric_abs(value: &Numeric) -> Option<Numeric> {
         Numeric::Real(value) => Some(Numeric::Real(value.abs().ok()?)),
         Numeric::Error(value) => Some(Numeric::Error(*value)),
         Numeric::Complex(real, imaginary) => {
-            let squared = real
-                .mul(real)
-                .ok()?
-                .add(&imaginary.mul(imaginary).ok()?)
-                .ok()?;
-            Some(Numeric::Real(squared.sqrt().ok()?))
+            let complex = ComplexMpc::from_parts(real, imaginary)?;
+            Some(Numeric::Real(complex.abs()?))
         }
     }
 }

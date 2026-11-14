@@ -56,6 +56,10 @@ impl Real {
         Self::from_i64_round(value, digits, MPFR_RNDN)
     }
 
+    pub(crate) fn blank(bits: u32) -> Self {
+        Self::initialized(bits)
+    }
+
     pub(crate) fn from_i64_round(
         value: i64,
         digits: u32,
@@ -388,7 +392,11 @@ impl Real {
         } else {
             exponent_value.abs() * base.abs().powf(exponent_value - 1.0)
         };
-        let derivative_exponent = out.absolute_value() * base.abs().ln().abs();
+        let derivative_exponent = if base == 0.0 {
+            0.0
+        } else {
+            out.absolute_value() * base.abs().ln().abs()
+        };
         out.error = derivative_base * self.error
             + derivative_exponent * exponent.error
             + rounding_error(&out);
@@ -487,8 +495,8 @@ impl Real {
         let mut out = Self::initialized(self.bits);
         // SAFETY: both values are initialized.
         unsafe { ffi_mpfr::mpfr_asin(&mut out.inner, &self.inner, MPFR_RNDN) };
-        let derivative = 1.0 / (1.0 - self.to_f64().powi(2)).sqrt().max(f64::MIN_POSITIVE);
-        out.error = derivative * self.error + rounding_error(&out);
+        let cosine = out.to_f64().cos().abs().max(f64::MIN_POSITIVE);
+        out.error = self.error / cosine + rounding_error(&out);
         Ok(out)
     }
 
@@ -497,8 +505,8 @@ impl Real {
         let mut out = Self::initialized(self.bits);
         // SAFETY: both values are initialized.
         unsafe { ffi_mpfr::mpfr_acos(&mut out.inner, &self.inner, MPFR_RNDN) };
-        let derivative = 1.0 / (1.0 - self.to_f64().powi(2)).sqrt().max(f64::MIN_POSITIVE);
-        out.error = derivative * self.error + rounding_error(&out);
+        let cosine = out.to_f64().cos().abs().max(f64::MIN_POSITIVE);
+        out.error = self.error / cosine + rounding_error(&out);
         Ok(out)
     }
 
@@ -510,6 +518,79 @@ impl Real {
         let derivative = 1.0 / (1.0 + self.to_f64().powi(2));
         out.error = derivative * self.error + rounding_error(&out);
         Ok(out)
+    }
+
+    /// Hyperbolic sine.
+    pub fn sinh(&self) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_sinh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        out.error = self.to_f64().cosh().abs() * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// Hyperbolic cosine.
+    pub fn cosh(&self) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_cosh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        out.error = self.to_f64().sinh().abs() * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// Hyperbolic tangent.
+    pub fn tanh(&self) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_tanh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let derivative = 1.0 - out.to_f64().powi(2);
+        out.error = derivative.abs() * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// Inverse hyperbolic sine.
+    pub fn asinh(&self) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_asinh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let derivative = 1.0 / out.to_f64().cosh().abs().max(f64::MIN_POSITIVE);
+        out.error = derivative * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// Inverse hyperbolic cosine.
+    pub fn acosh(&self) -> Result<Real, NumError> {
+        // SAFETY: the value is initialized.
+        if unsafe { ffi_mpfr::mpfr_cmp_ui(&self.inner, 1) } < 0 {
+            return Err(NumError::Domain);
+        }
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_acosh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let sinh = out.to_f64().sinh().abs();
+        let derivative = if sinh == 0.0 { 0.0 } else { 1.0 / sinh };
+        out.error = derivative * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// Inverse hyperbolic tangent.
+    pub fn atanh(&self) -> Result<Real, NumError> {
+        // SAFETY: the value is initialized.
+        if unsafe { ffi_mpfr::mpfr_cmpabs_ui(&self.inner, 1) } >= 0 {
+            return Err(NumError::Domain);
+        }
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_atanh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let derivative = out.to_f64().cosh().powi(2);
+        out.error = derivative * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// True when the stored value is neither infinite nor NaN.
+    pub(crate) fn is_finite(&self) -> bool {
+        // SAFETY: the value is initialized.
+        unsafe { ffi_mpfr::mpfr_nan_p(&self.inner) == 0 && ffi_mpfr::mpfr_inf_p(&self.inner) == 0 }
     }
 
     /// A stable identity string for interning.

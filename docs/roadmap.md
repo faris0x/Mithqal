@@ -16,7 +16,7 @@ Included:
 - Symbolic `Q(i)` normalization.
 - Approximate reals through MPFR with significance tracking and a numeric boundary.
 - Approximate interval arithmetic with directed endpoint rounding and significance widening.
-- Approximate complex arithmetic, elementary functions, powers, reciprocals, and absolute value.
+- Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, and absolute value.
 - Typed instruction virtual machine and a reference interpreter.
 - Explicit mark and sweep garbage collection.
 - Structured diagnostics with stable codes and source spans.
@@ -24,7 +24,7 @@ Included:
 
 Excluded:
 
-- Complex inverse trigonometric and hyperbolic functions.
+- Branch cut conformance for complex inverse functions.
 - Calculus, algebra, linear algebra, and assumptions.
 - Strings, files, and sets beyond `emptyset`.
 - A command line interface.

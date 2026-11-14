@@ -292,3 +292,58 @@ fn approximate_digit_count_must_be_an_integer() {
     let error = session.eval_statement("approx(1/3,1/2)").unwrap_err();
     assert_eq!(error.code, ErrorCode::EvalDefinition);
 }
+
+#[test]
+fn real_hyperbolic_functions() {
+    let one = Real::one(30).unwrap();
+    let two = Real::from_i64(2, 30).unwrap();
+    let half = Real::from_rat(&Rat::from_i64(1, 2).unwrap(), 30).unwrap();
+    assert!((one.sinh().unwrap().to_f64() - 1f64.sinh()).abs() < 1e-14);
+    assert!((one.cosh().unwrap().to_f64() - 1f64.cosh()).abs() < 1e-14);
+    assert!((one.tanh().unwrap().to_f64() - 1f64.tanh()).abs() < 1e-14);
+    assert!((two.asinh().unwrap().to_f64() - 2f64.asinh()).abs() < 1e-14);
+    assert!((two.acosh().unwrap().to_f64() - 2f64.acosh()).abs() < 1e-14);
+    assert!((half.atanh().unwrap().to_f64() - 0.5f64.atanh()).abs() < 1e-14);
+}
+
+#[test]
+fn real_inverse_hyperbolic_domains() {
+    let zero = Real::zero(30).unwrap();
+    let one = Real::one(30).unwrap();
+    let two = Real::from_i64(2, 30).unwrap();
+    assert!(matches!(zero.acosh(), Err(NumError::Domain)));
+    assert!(matches!(one.atanh(), Err(NumError::Domain)));
+    assert!(matches!(two.atanh(), Err(NumError::Domain)));
+    assert!((one.acosh().unwrap().to_f64()).abs() < 1e-14);
+    assert_eq!(zero.sinh().unwrap().to_f64(), 0.0);
+    assert_eq!(zero.cosh().unwrap().to_f64(), 1.0);
+}
+
+#[test]
+fn approximate_hyperbolic_evaluates() {
+    assert!((real_value("approx(sinh(1),30)") - 1f64.sinh()).abs() < 1e-12);
+    assert!((real_value("approx(cosh(1),30)") - 1f64.cosh()).abs() < 1e-12);
+    assert!((real_value("approx(tanh(1),30)") - 1f64.tanh()).abs() < 1e-12);
+    assert!((real_value("approx(asinh(2),30)") - 2f64.asinh()).abs() < 1e-12);
+    assert!((real_value("approx(acosh(2),30)") - 2f64.acosh()).abs() < 1e-12);
+    assert!((real_value("approx(atanh(1/2),30)") - 0.5f64.atanh()).abs() < 1e-12);
+    assert!((real_value("approx(sinh(1)^2-cosh(1)^2,30)") + 1.0).abs() < 1e-12);
+}
+
+#[test]
+fn real_power_of_zero_base_has_finite_error() {
+    let zero = Real::zero(30).unwrap();
+    let exponent = Real::from_rat(&Rat::from_i64(5, 2).unwrap(), 30).unwrap();
+    let value = zero.pow(&exponent).unwrap();
+    assert_eq!(value.to_f64(), 0.0);
+    assert!(value.precision_digits().is_infinite());
+    assert_eq!(real_value("approx(0^pi,30)"), 0.0);
+}
+
+#[test]
+fn real_hyperbolic_error_shrinks_precision() {
+    let one = Real::one(30).unwrap();
+    let value = one.sinh().unwrap();
+    assert!(value.precision_digits() < one.precision_digits() + 1.0);
+    assert!(value.accuracy_digits() < one.accuracy_digits());
+}

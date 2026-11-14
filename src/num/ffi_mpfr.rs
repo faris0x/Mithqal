@@ -82,7 +82,16 @@ unsafe extern "C" {
     pub(crate) fn mpfr_asin(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_acos(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_atan(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_sinh(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_cosh(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_tanh(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_asinh(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_acosh(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_atanh(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_const_pi(rop: *mut Mpfr, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_cmp(left: *const Mpfr, right: *const Mpfr) -> c_int;
     pub(crate) fn mpfr_cmp_ui(left: *const Mpfr, right: c_ulong) -> c_int;
+    pub(crate) fn mpfr_cmpabs_ui(left: *const Mpfr, right: c_ulong) -> c_int;
+    pub(crate) fn mpfr_nan_p(op: *const Mpfr) -> c_int;
+    pub(crate) fn mpfr_inf_p(op: *const Mpfr) -> c_int;
 }

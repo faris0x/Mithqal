@@ -151,7 +151,7 @@ fn approximate_complex_error_and_symbolic_paths() {
         "{}",
         session.format_infix(value)
     );
-    let (session, value) = evaluate("approx(asin(i),30)");
+    let (session, value) = evaluate("approx(zeta(i),30)");
     assert!(
         session.format_infix(value).contains("approx"),
         "{}",
@@ -277,4 +277,95 @@ fn approximate_complex_values_survive_collection() {
     let (real, imaginary) = complex_parts(&session, value).unwrap();
     assert!((real - 1.0).abs() < 1e-9);
     assert!((imaginary - 2.0).abs() < 1e-9);
+}
+
+#[test]
+fn approximate_complex_inverse_trigonometric_functions() {
+    check("approx(asin(i),30)", 0.0, 0.881373587019543);
+    check(
+        "approx(acos(i),30)",
+        std::f64::consts::FRAC_PI_2,
+        -0.881373587019543,
+    );
+    check(
+        "approx(atan(2*i),30)",
+        std::f64::consts::FRAC_PI_2,
+        0.5493061443340548,
+    );
+}
+
+#[test]
+fn approximate_real_inverse_trigonometry_promotes_to_complex() {
+    check(
+        "approx(asin(2),30)",
+        std::f64::consts::FRAC_PI_2,
+        -1.3169578969248166,
+    );
+    check("approx(acos(2),30)", 0.0, 1.3169578969248166);
+    check(
+        "approx(asin(-2),30)",
+        -std::f64::consts::FRAC_PI_2,
+        1.3169578969248166,
+    );
+    check(
+        "approx(acos(-2),30)",
+        std::f64::consts::PI,
+        -1.3169578969248166,
+    );
+    check("approx(acosh(0),30)", 0.0, std::f64::consts::FRAC_PI_2);
+    check(
+        "approx(atanh(2),30)",
+        0.5493061443340548,
+        std::f64::consts::FRAC_PI_2,
+    );
+    check(
+        "approx(atanh(-2),30)",
+        -0.5493061443340548,
+        std::f64::consts::FRAC_PI_2,
+    );
+}
+
+#[test]
+fn approximate_complex_hyperbolic_functions() {
+    check("approx(sinh(i),30)", 0.0, 1f64.sin());
+    check("approx(cosh(i),30)", 1f64.cos(), 0.0);
+    check("approx(tanh(i),30)", 0.0, 1f64.tan());
+    check("approx(asinh(i),30)", 0.0, std::f64::consts::FRAC_PI_2);
+    check("approx(acosh(0),30)", 0.0, std::f64::consts::FRAC_PI_2);
+}
+
+#[test]
+fn approximate_negative_real_powers_use_principal_branch() {
+    check("approx((-1)^(1/2),30)", 0.0, 1.0);
+    check("approx((-8)^(1/3),30)", 1.0, 3f64.sqrt());
+}
+
+#[test]
+fn approximate_complex_singularities_stay_unevaluated() {
+    let (session, value) = evaluate("approx(ln(0),30)");
+    assert!(session.format_infix(value).contains("approx"));
+    let (session, value) = evaluate("approx(atanh(1),30)");
+    assert!(session.format_infix(value).contains("approx"));
+    let (session, value) = evaluate("approx(atan(i),30)");
+    assert!(session.format_infix(value).contains("approx"));
+}
+
+#[test]
+fn approximate_complex_absolute_value_is_stable() {
+    let (session, value) = evaluate("approx(abs(3*10^200+4*10^200*i),30)");
+    match session.view(value) {
+        ExprView::Real(value) => {
+            let expected = 5e200;
+            assert!((value.to_f64() / expected - 1.0).abs() < 1e-9);
+        }
+        _ => panic!("expected a real"),
+    }
+    let (session, value) = evaluate("approx(abs(3*10^-200+4*10^-200*i),30)");
+    match session.view(value) {
+        ExprView::Real(value) => {
+            let expected = 5e-200;
+            assert!((value.to_f64() / expected - 1.0).abs() < 1e-9);
+        }
+        _ => panic!("expected a real"),
+    }
 }
