@@ -35,7 +35,6 @@ unsafe extern "C" {
     pub(crate) fn mpc_tanh(rop: *mut Mpc, op: *const Mpc, rnd: c_int) -> c_int;
     pub(crate) fn mpc_asinh(rop: *mut Mpc, op: *const Mpc, rnd: c_int) -> c_int;
     pub(crate) fn mpc_acosh(rop: *mut Mpc, op: *const Mpc, rnd: c_int) -> c_int;
-    pub(crate) fn mpc_atanh(rop: *mut Mpc, op: *const Mpc, rnd: c_int) -> c_int;
     pub(crate) fn mpc_abs(rop: *mut Mpfr, op: *const Mpc, rnd: c_int) -> c_int;
     pub(crate) fn mpc_pow(
         rop: *mut Mpc,

@@ -248,11 +248,11 @@ pub(crate) fn substitute(arena: &mut Arena, expression: ExprId, bindings: &Bindi
             let head = substitute(arena, head, bindings);
             let mut replaced = Vec::with_capacity(args.len());
             for arg in args {
-                if let Node::Symbol(symbol) = arena.node(arg) {
-                    if let Some(Binding::Seq(values)) = bindings.get(*symbol) {
-                        replaced.extend_from_slice(values);
-                        continue;
-                    }
+                if let Node::Symbol(symbol) = arena.node(arg)
+                    && let Some(Binding::Seq(values)) = bindings.get(*symbol)
+                {
+                    replaced.extend_from_slice(values);
+                    continue;
                 }
                 replaced.push(substitute(arena, arg, bindings));
             }

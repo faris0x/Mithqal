@@ -316,13 +316,39 @@ fn approximate_real_inverse_trigonometry_promotes_to_complex() {
     check(
         "approx(atanh(2),30)",
         0.5493061443340548,
-        std::f64::consts::FRAC_PI_2,
+        -std::f64::consts::FRAC_PI_2,
     );
     check(
         "approx(atanh(-2),30)",
         -0.5493061443340548,
         std::f64::consts::FRAC_PI_2,
     );
+}
+
+#[test]
+fn approximate_complex_branch_conformance() {
+    check("approx(ln(-1),30)", 0.0, std::f64::consts::PI);
+    check(
+        "approx(ln(-1-i),30)",
+        0.5 * 2f64.ln(),
+        -3.0 * std::f64::consts::FRAC_PI_4,
+    );
+    check("approx(sqrt(-1),30)", 0.0, 1.0);
+    check("approx((-1)^(1/2),30)", 0.0, 1.0);
+    check("approx((-1)^(1/3),30)", 0.5, 3f64.sqrt() / 2.0);
+    check("approx((-8)^(1/3),30)", 1.0, 3f64.sqrt());
+    check(
+        "approx(acosh(-2),30)",
+        (2.0 + 3f64.sqrt()).ln(),
+        std::f64::consts::PI,
+    );
+    check("approx(atanh(2)-((ln(3)-ln(-1))/2),30)", 0.0, 0.0);
+    check(
+        "approx(asin(1+i)+acos(1+i),30)",
+        std::f64::consts::FRAC_PI_2,
+        0.0,
+    );
+    check("approx(ln(exp(i*pi)),30)", 0.0, std::f64::consts::PI);
 }
 
 #[test]

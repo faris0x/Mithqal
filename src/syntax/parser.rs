@@ -266,15 +266,15 @@ impl Parser<'_> {
                 Some(TokenKind::Slash) => {
                     self.advance();
                     let right = self.parse_unary()?;
-                    if let (Some(numerator), Some(denominator)) =
-                        (self.as_rat(left), self.as_rat(right))
-                    {
-                        if !denominator.is_zero() {
-                            if let Ok(value) = numerator.div(&denominator) {
-                                left = self.arena.intern_rat(value);
-                                continue;
-                            }
+                    let quotient = match (self.as_rat(left), self.as_rat(right)) {
+                        (Some(numerator), Some(denominator)) if !denominator.is_zero() => {
+                            numerator.div(&denominator).ok()
                         }
+                        _ => None,
+                    };
+                    if let Some(value) = quotient {
+                        left = self.arena.intern_rat(value);
+                        continue;
                     }
                     let minus_one = self.integer(-1);
                     let inverse = self.call_name("power", &[right, minus_one]);

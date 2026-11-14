@@ -60,6 +60,22 @@ impl Real {
         Self::initialized(bits)
     }
 
+    pub(crate) fn one_bits(bits: u32) -> Self {
+        let mut out = Self::initialized(bits);
+        // SAFETY: the value is initialized.
+        unsafe { ffi_mpfr::mpfr_set_ui(&mut out.inner, 1, MPFR_RNDN) };
+        out.error = rounding_error(&out);
+        out
+    }
+
+    pub(crate) fn from_i64_bits(value: i64, bits: u32) -> Result<Self, NumError> {
+        let mut out = Self::initialized(bits);
+        // SAFETY: the value is initialized.
+        unsafe { ffi_mpfr::mpfr_set_si(&mut out.inner, value as core::ffi::c_long, MPFR_RNDN) };
+        out.error = rounding_error(&out);
+        Ok(out)
+    }
+
     pub(crate) fn from_i64_round(
         value: i64,
         digits: u32,
@@ -166,6 +182,20 @@ impl Real {
         let mut out = Self::initialized(self.bits);
         // SAFETY: both values are initialized.
         unsafe { ffi_mpfr::mpfr_log(&mut out.inner, &self.inner, rounding) };
+        Ok(out)
+    }
+
+    pub(crate) fn sin_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_sin(&mut out.inner, &self.inner, rounding) };
+        Ok(out)
+    }
+
+    pub(crate) fn cos_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_cos(&mut out.inner, &self.inner, rounding) };
         Ok(out)
     }
 

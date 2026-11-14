@@ -1023,21 +1023,21 @@ pub(crate) fn factor(arena: &mut Arena, expression: ExprId, context: &Context) -
         factors.push(arena.intern_int(Int::from_i64(-1)));
         remaining = remaining.neg();
     }
-    if let Some(monomial) = remaining.monomial_content() {
-        if !monomial.is_one() {
-            let mut powers = Vec::with_capacity(monomial.powers.len());
-            for (symbol, exponent) in &monomial.powers {
-                let base = arena.symbol_expr(*symbol);
-                if *exponent == 1 {
-                    powers.push(base);
-                } else {
-                    let exponent = arena.intern_int(Int::from_u64(*exponent as u64));
-                    powers.push(arena.intern_call(context.power, &[base, exponent]));
-                }
+    if let Some(monomial) = remaining.monomial_content()
+        && !monomial.is_one()
+    {
+        let mut powers = Vec::with_capacity(monomial.powers.len());
+        for (symbol, exponent) in &monomial.powers {
+            let base = arena.symbol_expr(*symbol);
+            if *exponent == 1 {
+                powers.push(base);
+            } else {
+                let exponent = arena.intern_int(Int::from_u64(*exponent as u64));
+                powers.push(arena.intern_call(context.power, &[base, exponent]));
             }
-            factors.push(product(arena, &powers, context));
-            remaining = remaining.divide_monomial(&monomial)?;
         }
+        factors.push(product(arena, &powers, context));
+        remaining = remaining.divide_monomial(&monomial)?;
     }
 
     if !remaining.is_constant() {
@@ -1254,15 +1254,11 @@ fn cancel_function(function: &RationalFunction) -> RationalFunction {
         {
             let gcd = dense_gcd(&numerator_dense, &denominator_dense);
             if gcd.len() > 1 {
-                if let Some((quotient, remainder)) = dense_div_rem(&numerator_dense, &gcd) {
-                    if remainder.is_empty() {
-                        numerator = Poly::from_dense(variable, &quotient);
-                    }
+                if let Some(value) = divide_by_gcd(&numerator_dense, &gcd, variable) {
+                    numerator = value;
                 }
-                if let Some((quotient, remainder)) = dense_div_rem(&denominator_dense, &gcd) {
-                    if remainder.is_empty() {
-                        denominator = Poly::from_dense(variable, &quotient);
-                    }
+                if let Some(value) = divide_by_gcd(&denominator_dense, &gcd, variable) {
+                    denominator = value;
                 }
             }
         }
@@ -1270,16 +1266,26 @@ fn cancel_function(function: &RationalFunction) -> RationalFunction {
 
     if let Some((_, coefficient)) = denominator.leading_term() {
         let coefficient = coefficient.clone();
-        if !coefficient.is_zero() && !coefficient.is_one() {
-            if let Ok(inverse) = Rat::one().div(&coefficient) {
-                numerator = numerator.scale(&inverse);
-                denominator = denominator.scale(&inverse);
-            }
+        if !coefficient.is_zero()
+            && !coefficient.is_one()
+            && let Ok(inverse) = Rat::one().div(&coefficient)
+        {
+            numerator = numerator.scale(&inverse);
+            denominator = denominator.scale(&inverse);
         }
     }
     RationalFunction {
         numerator,
         denominator,
+    }
+}
+
+fn divide_by_gcd(coefficients: &[Rat], gcd: &[Rat], variable: SymbolId) -> Option<Poly> {
+    let (quotient, remainder) = dense_div_rem(coefficients, gcd)?;
+    if remainder.is_empty() {
+        Some(Poly::from_dense(variable, &quotient))
+    } else {
+        None
     }
 }
 

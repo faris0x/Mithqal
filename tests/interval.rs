@@ -247,10 +247,35 @@ fn interval_elementary_functions() {
     assert!(low <= 0.0 && high >= 3.0 - 1e-12);
     let (session, value) = evaluate("sin(interval(0,1))");
     let (low, high) = interval_bounds(&session, value);
-    assert!(low <= -1.0 + 1e-12 && high >= 1.0 - 1e-12);
+    assert!(low <= 1e-12 && high >= 1f64.sin() - 1e-12 && high < 0.9);
     let (session, value) = evaluate("cos(interval(0,1))");
     let (low, high) = interval_bounds(&session, value);
-    assert!(low <= -1.0 + 1e-12 && high >= 1.0 - 1e-12);
+    assert!(low <= 1f64.cos() + 1e-12 && low > 0.5 && high >= 1.0 - 1e-12);
     assert!(text("ln(interval(-1,2))").contains("ln"));
     assert!(text("sqrt(interval(-4,-1))").contains("sqrt"));
+}
+
+#[test]
+fn interval_trigonometric_bounds() {
+    let (session, value) = evaluate("sin(interval(1,2))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= 1f64.sin() + 1e-12 && high >= 1.0 - 1e-12);
+    let (session, value) = evaluate("cos(interval(1,2))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= 2f64.cos() + 1e-12 && high >= 1f64.cos() - 1e-12);
+    let (session, value) = evaluate("sin(interval(-2,2))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= -1.0 + 1e-12 && high >= 1.0 - 1e-12);
+    let (session, value) = evaluate("cos(interval(3,4))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= -1.0 + 1e-12 && high >= 4f64.cos() - 1e-12);
+    let (session, value) = evaluate("sin(interval(-1,1))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= -1f64.sin() + 1e-12 && high >= 1f64.sin() - 1e-12);
+    let (session, value) = evaluate("sin(interval(0,7))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= -1.0 + 1e-12 && high >= 1.0 - 1e-12);
+    let (session, value) = evaluate("cos(interval(0,7))");
+    let (low, high) = interval_bounds(&session, value);
+    assert!(low <= -1.0 + 1e-12 && high >= 1.0 - 1e-12);
 }

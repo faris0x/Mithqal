@@ -69,6 +69,9 @@ Initial kernel work.
 - Added exact two sided and one sided limits at finite points and at infinity, with rational degree comparison, local Taylor comparison, continuous composition, and exponential or logarithmic growth rules.
 - Added truncated Taylor series through repeated exact differentiation, plus `converges` for finite limit existence.
 - Added rational infinity limits to the algebra layer.
+- Added principal branch conformance for complex logarithms, square roots, powers, and inverse functions, with `atanh` evaluated through the principal logarithm difference.
+- Tightened interval `sin` and `cos` bounds with directed endpoint rounding and critical point inclusion.
+- Refactored deeply nested selection statements across the evaluator, calculus, algebra, parser, arena, and linear algebra layers, eliminating collapsible selection warnings.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.
 - Added irrational and complex two by two eigenvectors.
 - Added broader polynomial algebra with degree, coefficient, polynomial division, discriminants, and sum or difference of cubes factoring.
@@ -78,4 +81,4 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to more than 620 test functions and more than 1460 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.
+- Expanded the suite to more than 620 test functions and more than 1470 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.

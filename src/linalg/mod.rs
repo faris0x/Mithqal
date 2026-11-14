@@ -516,12 +516,11 @@ fn expression_multiply(arena: &mut Arena, left: ExprId, right: ExprId) -> ExprId
 }
 
 fn expression_reciprocal(arena: &mut Arena, value: ExprId) -> ExprId {
-    if let Some(value) = as_rat(arena, value) {
-        if !value.is_zero() {
-            if let Ok(inverse) = Rat::one().div(&value) {
-                return rational_expression(arena, &inverse);
-            }
-        }
+    if let Some(value) = as_rat(arena, value)
+        && !value.is_zero()
+        && let Ok(inverse) = Rat::one().div(&value)
+    {
+        return rational_expression(arena, &inverse);
     }
     let minus_one = arena.intern_int(Int::from_i64(-1));
     let head = arena.builtin_head("power");
@@ -702,10 +701,10 @@ pub(crate) fn trace_symbolic(arena: &mut Arena, expression: ExprId) -> Option<Ex
 }
 
 pub(crate) fn inverse_symbolic(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    if let Some(matrix) = matrix_from_expr(arena, expression) {
-        if matrix.determinant()?.is_zero() {
-            return None;
-        }
+    if let Some(matrix) = matrix_from_expr(arena, expression)
+        && matrix.determinant()?.is_zero()
+    {
+        return None;
     }
     let matrix = symbolic_matrix(arena, expression)?;
     symbolic_inverse(arena, &matrix)
@@ -966,32 +965,32 @@ pub(crate) fn eigenvectors(arena: &mut Arena, expression: ExprId) -> Option<Expr
         .sub(&matrix.get(0, 1).mul(&matrix.get(1, 0)));
     let four = Rat::from_i64(4, 1).ok()?;
     let discriminant = trace.mul(&trace).sub(&four.mul(&determinant));
-    if discriminant.sign() >= 0 {
-        if let Some(root) = rational_square_root(&discriminant) {
-            let two = Rat::from_i64(2, 1).ok()?;
-            let first = trace.sub(&root).div(&two).ok()?;
-            let second = trace.add(&root).div(&two).ok()?;
-            let mut vectors = Vec::with_capacity(2);
-            for eigenvalue in [first, second] {
-                let a = matrix.get(0, 0).sub(&eigenvalue);
-                let b = matrix.get(0, 1);
-                let c = matrix.get(1, 0);
-                let d = matrix.get(1, 1).sub(&eigenvalue);
-                let values = if !b.is_zero() {
-                    vec![b, eigenvalue.sub(&matrix.get(0, 0))]
-                } else if !c.is_zero() {
-                    vec![eigenvalue.sub(&matrix.get(1, 1)), c.neg()]
-                } else if a.is_zero() {
-                    vec![Rat::one(), Rat::zero()]
-                } else if d.is_zero() {
-                    vec![Rat::zero(), Rat::one()]
-                } else {
-                    vec![Rat::one(), Rat::zero()]
-                };
-                vectors.push(vector_expression(arena, &values));
-            }
-            return Some(arena.intern_call(list, &vectors));
+    if discriminant.sign() >= 0
+        && let Some(root) = rational_square_root(&discriminant)
+    {
+        let two = Rat::from_i64(2, 1).ok()?;
+        let first = trace.sub(&root).div(&two).ok()?;
+        let second = trace.add(&root).div(&two).ok()?;
+        let mut vectors = Vec::with_capacity(2);
+        for eigenvalue in [first, second] {
+            let a = matrix.get(0, 0).sub(&eigenvalue);
+            let b = matrix.get(0, 1);
+            let c = matrix.get(1, 0);
+            let d = matrix.get(1, 1).sub(&eigenvalue);
+            let values = if !b.is_zero() {
+                vec![b, eigenvalue.sub(&matrix.get(0, 0))]
+            } else if !c.is_zero() {
+                vec![eigenvalue.sub(&matrix.get(1, 1)), c.neg()]
+            } else if a.is_zero() {
+                vec![Rat::one(), Rat::zero()]
+            } else if d.is_zero() {
+                vec![Rat::zero(), Rat::one()]
+            } else {
+                vec![Rat::one(), Rat::zero()]
+            };
+            vectors.push(vector_expression(arena, &values));
         }
+        return Some(arena.intern_call(list, &vectors));
     }
 
     let trace_expression = rational_expression(arena, &trace);
@@ -1034,10 +1033,10 @@ pub(crate) fn eigenvectors(arena: &mut Arena, expression: ExprId) -> Option<Expr
 
 fn sqrt_expression_simplified(arena: &mut Arena, expression: ExprId) -> ExprId {
     let expression = crate::eval::fold_numeric_call(arena, expression).unwrap_or(expression);
-    if let Some(value) = as_rat(arena, expression) {
-        if let Some(root) = rational_square_root(&value) {
-            return rational_expression(arena, &root);
-        }
+    if let Some(value) = as_rat(arena, expression)
+        && let Some(root) = rational_square_root(&value)
+    {
+        return rational_expression(arena, &root);
     }
     let head = arena.builtin_head("sqrt");
     arena.intern_call(head, &[expression])

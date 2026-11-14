@@ -135,12 +135,6 @@ impl Complex {
         })
     }
 
-    pub(crate) fn atanh(&self) -> Option<(Real, Real)> {
-        self.unary(ffi_mpc::mpc_atanh, |x, y, _, _| {
-            1.0 / cabs(1.0 - (x * x - y * y), -2.0 * x * y)
-        })
-    }
-
     pub(crate) fn abs(&self) -> Option<Real> {
         let mut out = Real::blank(self.bits);
         // SAFETY: the output is initialized and the input is initialized.

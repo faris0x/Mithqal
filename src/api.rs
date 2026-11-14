@@ -242,11 +242,11 @@ impl Session {
         match syntax::parse_statement(&mut self.arena, &source.text) {
             Ok(expression) => Ok(expression),
             Err(mut diagnostic) => {
-                if let Some(span) = diagnostic.span.as_mut() {
-                    if span.line == 1 {
-                        span.line = source.line;
-                        span.column = span.column.saturating_add(source.column - 1);
-                    }
+                if let Some(span) = diagnostic.span.as_mut()
+                    && span.line == 1
+                {
+                    span.line = source.line;
+                    span.column = span.column.saturating_add(source.column - 1);
                 }
                 Err(diagnostic)
             }

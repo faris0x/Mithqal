@@ -128,10 +128,11 @@ fn negation(arena: &mut Arena, context: &Context, value: ExprId) -> ExprId {
     if let Some(rational) = as_rat(arena, value) {
         return rat_expression(arena, &rational.neg());
     }
-    if let Node::Call { head, args } = arena.node(value) {
-        if *head == context.negate && args.len() == 1 {
-            return args[0];
-        }
+    if let Node::Call { head, args } = arena.node(value)
+        && *head == context.negate
+        && args.len() == 1
+    {
+        return args[0];
     }
     arena.intern_call(context.negate, &[value])
 }
@@ -461,13 +462,12 @@ fn integrate_raw(
                     constants.push(integral);
                     return Some(product(arena, context, &constants));
                 }
-                if dependent.len() == 2 {
-                    if let Some(integral) =
+                if dependent.len() == 2
+                    && let Some(integral) =
                         integrate_by_parts(arena, dependent[0], dependent[1], variable, context)?
-                    {
-                        constants.push(integral);
-                        return Some(product(arena, context, &constants));
-                    }
+                {
+                    constants.push(integral);
+                    return Some(product(arena, context, &constants));
                 }
                 let combined = product(arena, context, &dependent);
                 let algebra = crate::algebra::Context {
@@ -571,27 +571,18 @@ pub(crate) fn definite_integrate(
 
 fn infinite_bound(arena: &Arena, expression: ExprId) -> Option<bool> {
     if let Node::Symbol(symbol) = arena.node(expression) {
-        return if arena.symbol_name(*symbol) == "inf" {
-            Some(true)
-        } else {
-            None
-        };
+        return (arena.symbol_name(*symbol) == "inf").then_some(true);
     }
-    if let Node::Call { head, args } = arena.node(expression) {
-        if args.len() == 1
-            && arena
-                .symbol_id(*head)
-                .map(|symbol| arena.symbol_name(symbol))
-                == Some("negate")
-        {
-            if let Node::Symbol(symbol) = arena.node(args[0]) {
-                if arena.symbol_name(*symbol) == "inf" {
-                    return Some(false);
-                }
-            }
-        }
+    let Node::Call { head, args } = arena.node(expression) else {
+        return None;
+    };
+    if args.len() != 1 || function_name(arena, *head) != Some("negate") {
+        return None;
     }
-    None
+    let Node::Symbol(symbol) = arena.node(args[0]) else {
+        return None;
+    };
+    (arena.symbol_name(*symbol) == "inf").then_some(false)
 }
 
 fn limit_at_infinity(
@@ -633,23 +624,13 @@ fn limit_at_infinity(
                 if dependent.len() > 1 {
                     let mut decaying = false;
                     for factor in &dependent {
-                        if let Node::Call { head, args } = arena.node(*factor) {
-                            if args.len() == 1 && function_name(arena, *head) == Some("exp") {
-                                let slope = differentiate(arena, args[0], variable, context)?;
-                                if !contains(arena, slope, variable) {
-                                    if let Some(slope) = as_rat(arena, slope) {
-                                        let decays = if positive {
-                                            slope.sign() < 0
-                                        } else {
-                                            slope.sign() > 0
-                                        };
-                                        if decays {
-                                            decaying = true;
-                                            continue;
-                                        }
-                                    }
-                                }
+                        match decaying_exponential(arena, *factor, variable, positive, context) {
+                            Some(true) => {
+                                decaying = true;
+                                continue;
                             }
+                            Some(false) => return None,
+                            None => {}
                         }
                         if !is_polynomial_in(arena, *factor, variable, context) {
                             return None;
@@ -689,17 +670,15 @@ fn limit_at_infinity(
                 }
                 return None;
             }
-            if name == Some("atan") && args.len() == 1 {
-                if args[0] == variable {
-                    let pi = arena.builtin_head("pi");
-                    let two = int_expression(arena, 2);
-                    let half = divide(arena, context, pi, two);
-                    return if positive {
-                        Some(half)
-                    } else {
-                        Some(negation(arena, context, half))
-                    };
-                }
+            if name == Some("atan") && args.len() == 1 && args[0] == variable {
+                let pi = arena.builtin_head("pi");
+                let two = int_expression(arena, 2);
+                let half = divide(arena, context, pi, two);
+                return if positive {
+                    Some(half)
+                } else {
+                    Some(negation(arena, context, half))
+                };
             }
             None
         }
@@ -727,31 +706,31 @@ fn substitute(arena: &mut Arena, expression: ExprId, variable: ExprId, value: Ex
 }
 
 fn is_power_of_variable(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {
-    if let Node::Call { head, args } = arena.node(expression) {
-        if args.len() == 2 && function_name(arena, *head) == Some("power") {
-            return args[0] == variable
-                && as_rat(arena, args[1]).is_some_and(|value| {
-                    value == Rat::from_i64(2, 1).unwrap_or_else(|_| Rat::zero())
-                });
-        }
-    }
-    false
+    let Node::Call { head, args } = arena.node(expression) else {
+        return false;
+    };
+    args.len() == 2
+        && function_name(arena, *head) == Some("power")
+        && args[0] == variable
+        && as_rat(arena, args[1])
+            .is_some_and(|value| value == Rat::from_i64(2, 1).unwrap_or_else(|_| Rat::zero()))
 }
 
 fn is_one_plus_square(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {
-    if let Node::Call { head, args } = arena.node(expression) {
-        if args.len() == 2 && function_name(arena, *head) == Some("plus") {
-            let one = Rat::from_i64(1, 1).unwrap_or_else(|_| Rat::zero());
-            let has_one = args
-                .iter()
-                .any(|arg| as_rat(arena, *arg).is_some_and(|value| value == one));
-            let has_square = args
-                .iter()
-                .any(|arg| is_power_of_variable(arena, *arg, variable));
-            return has_one && has_square;
-        }
+    let Node::Call { head, args } = arena.node(expression) else {
+        return false;
+    };
+    if args.len() != 2 || function_name(arena, *head) != Some("plus") {
+        return false;
     }
-    false
+    let one = Rat::from_i64(1, 1).unwrap_or_else(|_| Rat::zero());
+    let has_one = args
+        .iter()
+        .any(|arg| as_rat(arena, *arg).is_some_and(|value| value == one));
+    let has_square = args
+        .iter()
+        .any(|arg| is_power_of_variable(arena, *arg, variable));
+    has_one && has_square
 }
 
 fn is_negative_square(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {
@@ -776,50 +755,89 @@ fn is_negative_square(arena: &Arena, expression: ExprId, variable: ExprId) -> bo
 }
 
 fn is_one_minus_square(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {
-    if let Node::Call { head, args } = arena.node(expression) {
-        if args.len() == 2 && function_name(arena, *head) == Some("plus") {
-            let one = Rat::from_i64(1, 1).unwrap_or_else(|_| Rat::zero());
-            let has_one = args
-                .iter()
-                .any(|arg| as_rat(arena, *arg).is_some_and(|value| value == one));
-            let has_negative_square = args
-                .iter()
-                .any(|arg| is_negative_square(arena, *arg, variable));
-            return has_one && has_negative_square;
-        }
+    let Node::Call { head, args } = arena.node(expression) else {
+        return false;
+    };
+    if args.len() != 2 || function_name(arena, *head) != Some("plus") {
+        return false;
     }
-    false
+    let one = Rat::from_i64(1, 1).unwrap_or_else(|_| Rat::zero());
+    let has_one = args
+        .iter()
+        .any(|arg| as_rat(arena, *arg).is_some_and(|value| value == one));
+    let has_negative_square = args
+        .iter()
+        .any(|arg| is_negative_square(arena, *arg, variable));
+    has_one && has_negative_square
 }
 
 fn sqrt_argument(arena: &Arena, expression: ExprId) -> Option<ExprId> {
-    if let Node::Call { head, args } = arena.node(expression) {
-        if args.len() == 1 && function_name(arena, *head) == Some("sqrt") {
-            return Some(args[0]);
-        }
+    let Node::Call { head, args } = arena.node(expression) else {
+        return None;
+    };
+    if args.len() == 1 && function_name(arena, *head) == Some("sqrt") {
+        Some(args[0])
+    } else {
+        None
     }
-    None
 }
 
 fn is_polynomial_in(
-    arena: &mut Arena,
+    arena: &Arena,
     expression: ExprId,
     variable: ExprId,
     context: &Context,
 ) -> bool {
-    let mut current = expression;
-    for _ in 0..16 {
-        if !contains(arena, current, variable) {
-            return true;
-        }
-        let Some(next) = differentiate(arena, current, variable, context) else {
-            return false;
-        };
-        if next == current {
-            return false;
-        }
-        current = next;
+    if !contains(arena, expression, variable) {
+        return true;
     }
-    false
+    match arena.node(expression) {
+        Node::Symbol(_) => expression == variable,
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) => true,
+        Node::Call { head, args } => {
+            if *head == context.plus || *head == context.times || *head == context.negate {
+                return args
+                    .iter()
+                    .all(|argument| is_polynomial_in(arena, *argument, variable, context));
+            }
+            if *head == context.power
+                && args.len() == 2
+                && let Some(exponent) = as_rat(arena, args[1])
+                && exponent.den().is_one()
+                && exponent.sign() >= 0
+            {
+                return is_polynomial_in(arena, args[0], variable, context);
+            }
+            false
+        }
+    }
+}
+
+fn decaying_exponential(
+    arena: &mut Arena,
+    expression: ExprId,
+    variable: ExprId,
+    positive: bool,
+    context: &Context,
+) -> Option<bool> {
+    let Node::Call { head, args } = arena.node(expression) else {
+        return None;
+    };
+    let head = *head;
+    let args = args.to_vec();
+    if args.len() != 1 || function_name(arena, head) != Some("exp") {
+        return None;
+    }
+    let slope = differentiate(arena, args[0], variable, context)?;
+    if contains(arena, slope, variable) {
+        return None;
+    }
+    let slope = as_rat(arena, slope)?;
+    Some(if positive {
+        slope.sign() < 0
+    } else {
+        slope.sign() > 0
+    })
 }
 
 fn elementary_argument(
@@ -879,12 +897,8 @@ fn integrate_by_parts(
     let v = integrate_raw(arena, dv, variable, context)?;
     let du = differentiate(arena, u, variable, context)?;
     let product_value = product(arena, context, &[u, v]);
-    if !contains(arena, du, variable) {
-        if let Some(zero) = as_rat(arena, du) {
-            if zero.is_zero() {
-                return Some(Some(product_value));
-            }
-        }
+    if !contains(arena, du, variable) && as_rat(arena, du).is_some_and(|value| value.is_zero()) {
+        return Some(Some(product_value));
     }
     let remainder = product(arena, context, &[v, du]);
     let algebra_context = crate::algebra::Context {

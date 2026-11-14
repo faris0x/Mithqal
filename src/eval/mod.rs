@@ -436,10 +436,11 @@ pub(crate) fn evaluate_with_definitions(
     max_steps: u64,
     max_depth: u32,
 ) -> Result<ExprId, Diagnostic> {
-    if max_steps >= 16 && max_depth >= 4 {
-        if let Some(value) = fold_numeric_call(arena, id) {
-            return Ok(value);
-        }
+    if max_steps >= 16
+        && max_depth >= 4
+        && let Some(value) = fold_numeric_call(arena, id)
+    {
+        return Ok(value);
     }
     let mut evaluator = Evaluator::new(arena, definitions);
     evaluator.max_steps = max_steps.max(1);
@@ -722,10 +723,10 @@ impl<'a> Evaluator<'a> {
             }
         }
 
-        if attrs.has(Attributes::LISTABLE) {
-            if let Some(result) = self.thread_listable(head, evaluated.as_slice())? {
-                return self.finish(id, result);
-            }
+        if attrs.has(Attributes::LISTABLE)
+            && let Some(result) = self.thread_listable(head, evaluated.as_slice())?
+        {
+            return self.finish(id, result);
         }
 
         let result = self.apply(head, evaluated.as_slice())?;
@@ -875,36 +876,29 @@ impl<'a> Evaluator<'a> {
     }
 
     fn simplify_sqrt(&mut self, argument: ExprId) -> Option<ExprId> {
-        if let Node::Call { head, args } = self.arena.node(argument) {
-            if args.len() == 2
-                && self
-                    .arena
-                    .symbol_id(*head)
-                    .map(|symbol| self.arena.symbol_name(symbol))
-                    == Some("power")
-            {
-                let exponent = match self.arena.node(args[1]) {
-                    Node::Int(value) => value.to_i64(),
-                    _ => None,
-                };
-                if exponent == Some(2) {
-                    let base = args[0];
-                    return match self.expression_sign(base) {
-                        Some(Sign::NonNegative) | Some(Sign::Positive) | Some(Sign::Zero) => {
-                            Some(base)
-                        }
-                        Some(Sign::NonPositive) | Some(Sign::Negative) => {
-                            Some(self.arena.intern_call(self.heads.negate, &[base]))
-                        }
-                        None => None,
-                    };
+        if let Node::Call { head, args } = self.arena.node(argument)
+            && args.len() == 2
+            && self
+                .arena
+                .symbol_id(*head)
+                .map(|symbol| self.arena.symbol_name(symbol))
+                == Some("power")
+            && let Node::Int(exponent) = self.arena.node(args[1])
+            && exponent.to_i64() == Some(2)
+        {
+            let base = args[0];
+            return match self.expression_sign(base) {
+                Some(Sign::NonNegative) | Some(Sign::Positive) | Some(Sign::Zero) => Some(base),
+                Some(Sign::NonPositive) | Some(Sign::Negative) => {
+                    Some(self.arena.intern_call(self.heads.negate, &[base]))
                 }
-            }
+                None => None,
+            };
         }
-        if let Node::Int(value) = self.arena.node(argument) {
-            if let Some(root) = integer_sqrt(value) {
-                return Some(self.arena.intern_int(root));
-            }
+        if let Node::Int(value) = self.arena.node(argument)
+            && let Some(root) = integer_sqrt(value)
+        {
+            return Some(self.arena.intern_int(root));
         }
         None
     }
@@ -937,10 +931,9 @@ impl<'a> Evaluator<'a> {
         let high = self.eval(args[1])?;
         if let (Some(low_value), Some(high_value)) =
             (self.real_endpoint(low), self.real_endpoint(high))
+            && low_value.cmp(&high_value) == Ordering::Greater
         {
-            if low_value.cmp(&high_value) == Ordering::Greater {
-                return Ok(self.heads.failed);
-            }
+            return Ok(self.heads.failed);
         }
         Ok(self.arena.intern_call(self.heads.interval, &[low, high]))
     }
@@ -954,10 +947,10 @@ impl<'a> Evaluator<'a> {
         }
         let real = self.eval(args[0])?;
         let imaginary = self.eval(args[1])?;
-        if let Some(value) = self.real_endpoint(imaginary) {
-            if value.is_zero() {
-                return Ok(real);
-            }
+        if let Some(value) = self.real_endpoint(imaginary)
+            && value.is_zero()
+        {
+            return Ok(real);
         }
         Ok(self
             .arena
@@ -1173,8 +1166,6 @@ impl<'a> Evaluator<'a> {
     }
 
     fn interval_unary(&mut self, head: ExprId, low: &Real, high: &Real) -> Option<ExprId> {
-        let minus_one = Real::from_i64(-1, 30).ok()?;
-        let one = Real::one(30).ok()?;
         let (low_value, high_value) = if head == self.heads.sqrt {
             if high.sign() < 0 {
                 return None;
@@ -1213,7 +1204,9 @@ impl<'a> Evaluator<'a> {
                 (Real::zero(30).ok()?, high_magnitude)
             }
         } else if head == self.heads.sin || head == self.heads.cos {
-            (minus_one, one)
+            let minus_one = Real::from_i64(-1, 30).ok()?;
+            let one = Real::one(30).ok()?;
+            self.interval_trig(low, high, head == self.heads.sin, &minus_one, &one)?
         } else {
             return None;
         };
@@ -1221,6 +1214,92 @@ impl<'a> Evaluator<'a> {
             return None;
         }
         Some(self.interval_node(low_value, high_value))
+    }
+
+    fn interval_trig(
+        &self,
+        low: &Real,
+        high: &Real,
+        sine: bool,
+        minus_one: &Real,
+        one: &Real,
+    ) -> Option<(Real, Real)> {
+        let low_value = low.to_f64();
+        let high_value = high.to_f64();
+        if !low_value.is_finite() || !high_value.is_finite() {
+            return None;
+        }
+        let magnitude = low_value.abs().max(high_value.abs());
+        let epsilon = 1e-12 * magnitude.max(1.0);
+        let two_pi = 2.0 * core::f64::consts::PI;
+        if high_value - low_value >= two_pi - epsilon || magnitude > 1e15 {
+            return Some((minus_one.clone(), one.clone()));
+        }
+        let (low_lower, low_upper) = if sine {
+            (
+                low.sin_round(MPFR_RNDD).ok()?,
+                low.sin_round(MPFR_RNDU).ok()?,
+            )
+        } else {
+            (
+                low.cos_round(MPFR_RNDD).ok()?,
+                low.cos_round(MPFR_RNDU).ok()?,
+            )
+        };
+        let (high_lower, high_upper) = if sine {
+            (
+                high.sin_round(MPFR_RNDD).ok()?,
+                high.sin_round(MPFR_RNDU).ok()?,
+            )
+        } else {
+            (
+                high.cos_round(MPFR_RNDD).ok()?,
+                high.cos_round(MPFR_RNDU).ok()?,
+            )
+        };
+        let mut lower = if low_lower.cmp(&high_lower) == Ordering::Less {
+            low_lower
+        } else {
+            high_lower
+        };
+        let mut upper = if low_upper.cmp(&high_upper) == Ordering::Greater {
+            low_upper
+        } else {
+            high_upper
+        };
+        let lower_phase = if sine {
+            -core::f64::consts::FRAC_PI_2
+        } else {
+            core::f64::consts::PI
+        };
+        let upper_phase = if sine {
+            core::f64::consts::FRAC_PI_2
+        } else {
+            0.0
+        };
+        if interval_contains_phase(
+            low_value - epsilon,
+            high_value + epsilon,
+            lower_phase,
+            two_pi,
+        ) {
+            lower = minus_one.clone();
+        }
+        if interval_contains_phase(
+            low_value - epsilon,
+            high_value + epsilon,
+            upper_phase,
+            two_pi,
+        ) {
+            upper = one.clone();
+        }
+        if lower.cmp(minus_one) == Ordering::Less {
+            lower = minus_one.clone();
+        }
+        if upper.cmp(one) == Ordering::Greater {
+            upper = one.clone();
+        }
+        Some((lower, upper))
     }
 
     fn eval_approx(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -1434,6 +1513,9 @@ impl<'a> Evaluator<'a> {
     }
 
     fn complex_unary(real: &Real, imaginary: &Real, function: NumericHead) -> Option<(Real, Real)> {
+        if matches!(function, NumericHead::Atanh) {
+            return Self::complex_atanh(real, imaginary);
+        }
         let complex = ComplexMpc::from_parts(real, imaginary)?;
         match function {
             NumericHead::Sqrt => complex.sqrt(),
@@ -1450,9 +1532,30 @@ impl<'a> Evaluator<'a> {
             NumericHead::Tanh => complex.tanh(),
             NumericHead::Asinh => complex.asinh(),
             NumericHead::Acosh => complex.acosh(),
-            NumericHead::Atanh => complex.atanh(),
+            NumericHead::Atanh => None,
             _ => None,
         }
+    }
+
+    fn complex_atanh(real: &Real, imaginary: &Real) -> Option<(Real, Real)> {
+        let bits = real.bits.max(imaginary.bits);
+        let one = Real::one_bits(bits);
+        let plus_real = one.add(real).ok()?;
+        let plus = ComplexMpc::from_parts(&plus_real, imaginary)?.log()?;
+        let minus_real = one.sub(real).ok()?;
+        let minus_imaginary = if imaginary.is_zero() {
+            Real::from_i64_bits(0, bits).ok()?
+        } else {
+            imaginary.neg().ok()?
+        };
+        let minus = ComplexMpc::from_parts(&minus_real, &minus_imaginary)?.log()?;
+        let real_difference = plus.0.sub(&minus.0).ok()?;
+        let imaginary_difference = plus.1.sub(&minus.1).ok()?;
+        let two = Real::from_i64_bits(2, bits).ok()?;
+        Some((
+            real_difference.div(&two).ok()?,
+            imaginary_difference.div(&two).ok()?,
+        ))
     }
 
     fn approximate_named_unary(
@@ -1491,10 +1594,10 @@ impl<'a> Evaluator<'a> {
                     NumericHead::Erfc => value.erfc(),
                     _ => return Ok(None),
                 };
-                if let Ok(real) = result {
-                    if real.is_finite() {
-                        return Ok(Some(Numeric::Real(real)));
-                    }
+                if let Ok(real) = result
+                    && real.is_finite()
+                {
+                    return Ok(Some(Numeric::Real(real)));
                 }
                 let zero = if matches!(function, NumericHead::Asin | NumericHead::Acos) {
                     let Some(one) = Real::one(digits).ok() else {
@@ -1835,22 +1938,17 @@ impl<'a> Evaluator<'a> {
     ) -> Result<Option<ExprId>, Diagnostic> {
         let mut length: Option<usize> = None;
         for arg in args {
-            if let Node::Call {
-                head: list_head,
-                args: items,
-            } = self.arena.node(*arg)
-            {
-                if *list_head == self.heads.list {
-                    match length {
-                        None => length = Some(items.len()),
-                        Some(existing) if existing == items.len() => {}
-                        Some(_) => {
-                            return Err(Diagnostic::eval(
-                                ErrorCode::EvalArity,
-                                "listable arguments have different lengths",
-                            ));
-                        }
-                    }
+            let Some(items) = self.list_items(*arg) else {
+                continue;
+            };
+            match length {
+                None => length = Some(items.len()),
+                Some(existing) if existing == items.len() => {}
+                Some(_) => {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalArity,
+                        "listable arguments have different lengths",
+                    ));
                 }
             }
         }
@@ -1861,22 +1959,20 @@ impl<'a> Evaluator<'a> {
         for index in 0..length {
             let mut call_args = Vec::with_capacity(args.len());
             for arg in args {
-                if let Node::Call {
-                    head: list_head,
-                    args: items,
-                } = self.arena.node(*arg)
-                {
-                    if *list_head == self.heads.list {
-                        call_args.push(items[index]);
-                        continue;
-                    }
-                }
-                call_args.push(*arg);
+                let value = self.list_items(*arg).map_or(*arg, |items| items[index]);
+                call_args.push(value);
             }
             let call = self.arena.intern_call(head, &call_args);
             results.push(self.eval(call)?);
         }
         Ok(Some(self.arena.intern_call(self.heads.list, &results)))
+    }
+
+    fn list_items(&self, expression: ExprId) -> Option<&[ExprId]> {
+        match self.arena.node(expression) {
+            Node::Call { head, args } if *head == self.heads.list => Some(args),
+            _ => None,
+        }
     }
 
     fn apply(&mut self, head: ExprId, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -1916,25 +2012,28 @@ impl<'a> Evaluator<'a> {
         if head == self.heads.greater_equal {
             return self.ordering(args, Ordering::Greater, self.heads.greater_equal);
         }
-        if args.len() == 1
-            && (head == self.heads.abs
+        if args.len() == 1 {
+            let interval_unary = head == self.heads.abs
                 || head == self.heads.sqrt
                 || head == self.heads.exp
                 || head == self.heads.ln
                 || head == self.heads.sin
-                || head == self.heads.cos)
-        {
-            if let Some((low, high)) = self.interval_bounds(args[0]) {
-                if let Some(result) = self.interval_unary(head, &low, &high) {
-                    return Ok(result);
-                }
+                || head == self.heads.cos;
+            if interval_unary
+                && let Some((low, high)) = self.interval_bounds(args[0])
+                && let Some(result) = self.interval_unary(head, &low, &high)
+            {
+                return Ok(result);
             }
-        }
-        if args.len() == 1 {
-            if head == self.heads.abs {
-                if let Some(result) = self.simplify_abs(args[0]) {
-                    return Ok(result);
-                }
+            if head == self.heads.abs
+                && let Some(result) = self.simplify_abs(args[0])
+            {
+                return Ok(result);
+            }
+            if head == self.heads.sqrt
+                && let Some(result) = self.simplify_sqrt(args[0])
+            {
+                return Ok(result);
             }
             if let Some(value) = self.exact_constant_value(args[0]) {
                 if head == self.heads.exp && value.is_zero() {
@@ -1953,11 +2052,6 @@ impl<'a> Evaluator<'a> {
                 }
             }
         }
-        if head == self.heads.sqrt && args.len() == 1 {
-            if let Some(result) = self.simplify_sqrt(args[0]) {
-                return Ok(result);
-            }
-        }
         let kernel = self
             .arena
             .symbol_id(head)
@@ -1965,10 +2059,10 @@ impl<'a> Evaluator<'a> {
         if let Some(kernel) = kernel {
             return self.apply_kernel(kernel, head, args);
         }
-        if let Some(symbol) = self.arena.symbol_id(head) {
-            if let Some(result) = self.apply_user(symbol, head, args)? {
-                return Ok(result);
-            }
+        if let Some(symbol) = self.arena.symbol_id(head)
+            && let Some(result) = self.apply_user(symbol, head, args)?
+        {
+            return Ok(result);
         }
         Ok(self.arena.intern_call(head, args))
     }
@@ -2295,12 +2389,11 @@ impl<'a> Evaluator<'a> {
             factors.push(power);
         }
         let factorial = Rat::from_ints(factorial.clone(), Int::one()).ok();
-        if let Some(factorial) = factorial {
-            if let Ok(reciprocal) = Rat::one().div(&factorial) {
-                if !reciprocal.is_one() {
-                    factors.push(self.rat_expression(&reciprocal));
-                }
-            }
+        if let Some(factorial) = factorial
+            && let Ok(reciprocal) = Rat::one().div(&factorial)
+            && !reciprocal.is_one()
+        {
+            factors.push(self.rat_expression(&reciprocal));
         }
         match factors.len() {
             0 => self.arena.intern_int(Int::one()),
@@ -2331,19 +2424,18 @@ impl<'a> Evaluator<'a> {
     }
 
     fn limit_target(&self, expression: ExprId) -> LimitTarget {
-        if let Node::Symbol(symbol) = self.arena.node(expression) {
-            if self.arena.symbol_name(*symbol) == "inf" {
-                return LimitTarget::PositiveInfinity;
-            }
+        if let Node::Symbol(symbol) = self.arena.node(expression)
+            && self.arena.symbol_name(*symbol) == "inf"
+        {
+            return LimitTarget::PositiveInfinity;
         }
-        if let Node::Call { head, args } = self.arena.node(expression) {
-            if args.len() == 1 && *head == self.heads.negate {
-                if let Node::Symbol(symbol) = self.arena.node(args[0]) {
-                    if self.arena.symbol_name(*symbol) == "inf" {
-                        return LimitTarget::NegativeInfinity;
-                    }
-                }
-            }
+        if let Node::Call { head, args } = self.arena.node(expression)
+            && args.len() == 1
+            && *head == self.heads.negate
+            && let Node::Symbol(symbol) = self.arena.node(args[0])
+            && self.arena.symbol_name(*symbol) == "inf"
+        {
+            return LimitTarget::NegativeInfinity;
         }
         LimitTarget::Finite(expression)
     }
@@ -2438,16 +2530,15 @@ impl<'a> Evaluator<'a> {
     }
 
     fn abs_argument(&self, expression: ExprId) -> Option<ExprId> {
-        if let Node::Call { head, args } = self.arena.node(expression) {
-            if args.len() == 1
-                && self
-                    .arena
-                    .symbol_id(*head)
-                    .map(|symbol| self.arena.symbol_name(symbol))
-                    == Some("abs")
-            {
-                return Some(args[0]);
-            }
+        if let Node::Call { head, args } = self.arena.node(expression)
+            && args.len() == 1
+            && self
+                .arena
+                .symbol_id(*head)
+                .map(|symbol| self.arena.symbol_name(symbol))
+                == Some("abs")
+        {
+            return Some(args[0]);
         }
         None
     }
@@ -2503,16 +2594,15 @@ impl<'a> Evaluator<'a> {
             return None;
         }
         let inner = self.limit_finite_side(argument, variable, point, side)?;
-        if name == "ln" {
-            if let LimitValue::Finite(value) = inner {
-                if self.expression_sign(value) == Some(Sign::Zero) {
-                    let sign = self.approach_sign(argument, variable, point, side)?;
-                    if sign == Sign::Negative {
-                        return None;
-                    }
-                    return Some(LimitValue::NegativeInfinity);
-                }
+        if name == "ln"
+            && let LimitValue::Finite(value) = inner
+            && self.expression_sign(value) == Some(Sign::Zero)
+        {
+            let sign = self.approach_sign(argument, variable, point, side)?;
+            if sign == Sign::Negative {
+                return None;
             }
+            return Some(LimitValue::NegativeInfinity);
         }
         self.apply_unary_limit(&name, inner)
     }
@@ -2574,33 +2664,31 @@ impl<'a> Evaluator<'a> {
         if self.contains_error_or_infinite(expression) {
             return true;
         }
-        if let Node::Call { head, args } = self.arena.node(expression) {
-            if let Some(name) = self
+        let Node::Call { head, args } = self.arena.node(expression) else {
+            return false;
+        };
+        if args.len() == 1
+            && let Some(name) = self
                 .arena
                 .symbol_id(*head)
                 .map(|symbol| self.arena.symbol_name(symbol))
-            {
-                if args.len() == 1 {
-                    let constant = match self.arena.node(args[0]) {
-                        Node::Int(value) => Rat::from_ints(value.clone(), Int::one()).ok(),
-                        Node::Rat(value) => Some(value.clone()),
-                        _ => None,
-                    };
-                    if let Some(constant) = constant {
-                        if name == "ln" && constant.sign() <= 0 {
-                            return true;
-                        }
-                        if name == "sqrt" && constant.sign() < 0 {
-                            return true;
-                        }
-                    }
+        {
+            let constant = match self.arena.node(args[0]) {
+                Node::Int(value) => Rat::from_ints(value.clone(), Int::one()).ok(),
+                Node::Rat(value) => Some(value.clone()),
+                _ => None,
+            };
+            if let Some(constant) = constant {
+                if name == "ln" && constant.sign() <= 0 {
+                    return true;
+                }
+                if name == "sqrt" && constant.sign() < 0 {
+                    return true;
                 }
             }
-            return args
-                .iter()
-                .any(|argument| self.is_invalid_finite_value(*argument));
         }
-        false
+        args.iter()
+            .any(|argument| self.is_invalid_finite_value(*argument))
     }
 
     fn cancel_expression(&mut self, expression: ExprId) -> ExprId {
@@ -2618,34 +2706,22 @@ impl<'a> Evaluator<'a> {
             let numerator = self.arena.intern_call(self.heads.negate, &[numerator]);
             return (numerator, denominator);
         }
-        if args.len() == 2 && head == self.heads.power {
-            if let Some((base, exponent)) = self.negative_power(args[0], args[1]) {
-                let denominator = if exponent == 1 {
-                    base
-                } else {
-                    self.arena.intern_call(self.heads.power, &[base, exponent])
-                };
-                return (self.arena.intern_int(Int::one()), denominator);
-            }
+        if args.len() == 2
+            && head == self.heads.power
+            && let Some((base, exponent)) = self.negative_power(args[0], args[1])
+        {
+            let denominator = if exponent == 1 {
+                base
+            } else {
+                self.arena.intern_call(self.heads.power, &[base, exponent])
+            };
+            return (self.arena.intern_int(Int::one()), denominator);
         }
         if head == self.heads.times {
             let mut numerator_factors = Vec::new();
             let mut denominator_parts = Vec::new();
             for factor in args {
-                let mut negative = None;
-                if let Node::Call { head, args } = self.arena.node(factor) {
-                    if args.len() == 2 && *head == self.heads.power {
-                        if let Some(value) = self.exact_constant_value(args[1]) {
-                            if value.den().is_one() {
-                                if let Some(exponent) = value.num().to_i64() {
-                                    if exponent < 0 {
-                                        negative = Some((args[0], -exponent));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                let negative = self.negative_factor(factor);
                 if let Some((base, exponent)) = negative {
                     denominator_parts.push((base, exponent));
                 } else {
@@ -2679,8 +2755,19 @@ impl<'a> Evaluator<'a> {
         (expression, self.arena.intern_int(Int::one()))
     }
 
-    fn negative_power(&mut self, base: ExprId, exponent: ExprId) -> Option<(ExprId, ExprId)> {
-        let value = self.exact_constant_value(exponent)?;
+    fn negative_factor(&self, expression: ExprId) -> Option<(ExprId, i64)> {
+        let Node::Call { head, args } = self.arena.node(expression) else {
+            return None;
+        };
+        if *head != self.heads.power || args.len() != 2 {
+            return None;
+        }
+        let exponent = self.negative_exponent(args[1])?;
+        Some((args[0], exponent))
+    }
+
+    fn negative_exponent(&self, expression: ExprId) -> Option<i64> {
+        let value = self.exact_constant_value(expression)?;
         if !value.den().is_one() {
             return None;
         }
@@ -2688,8 +2775,12 @@ impl<'a> Evaluator<'a> {
         if exponent >= 0 {
             return None;
         }
-        let positive = exponent.checked_neg()?;
-        let positive = self.arena.intern_int(Int::from_i64(positive));
+        exponent.checked_neg()
+    }
+
+    fn negative_power(&mut self, base: ExprId, exponent: ExprId) -> Option<(ExprId, ExprId)> {
+        let magnitude = self.negative_exponent(exponent)?;
+        let positive = self.arena.intern_int(Int::from_i64(magnitude));
         Some((base, positive))
     }
 
@@ -2919,14 +3010,13 @@ impl<'a> Evaluator<'a> {
                         .symbol_id(inner_head)
                         .map(|symbol| self.arena.symbol_name(symbol))
                         == Some("exp")
+                    && let Some(slope) = self.exponential_slope(inner_args[0], variable)
                 {
-                    if let Some(slope) = self.exponential_slope(inner_args[0], variable) {
-                        return if positive {
-                            slope.sign() > 0
-                        } else {
-                            slope.sign() < 0
-                        };
-                    }
+                    return if positive {
+                        slope.sign() > 0
+                    } else {
+                        slope.sign() < 0
+                    };
                 }
             }
         }
@@ -2988,17 +3078,19 @@ impl<'a> Evaluator<'a> {
     }
 
     fn is_negative_variable_power(&self, expression: ExprId, variable: ExprId) -> bool {
-        if let Node::Call { head, args } = self.arena.node(expression) {
-            if args.len() == 2 && *head == self.heads.power && args[0] == variable {
-                if let Node::Int(exponent) = self.arena.node(args[1]) {
-                    if let Some(value) = exponent.to_i64() {
-                        return value < 0;
-                    }
-                }
-                if let Node::Rat(exponent) = self.arena.node(args[1]) {
-                    return exponent.den().is_one()
-                        && exponent.num().to_i64().is_some_and(|value| value < 0);
-                }
+        if let Node::Call { head, args } = self.arena.node(expression)
+            && args.len() == 2
+            && *head == self.heads.power
+            && args[0] == variable
+        {
+            if let Node::Int(exponent) = self.arena.node(args[1])
+                && let Some(value) = exponent.to_i64()
+            {
+                return value < 0;
+            }
+            if let Node::Rat(exponent) = self.arena.node(args[1]) {
+                return exponent.den().is_one()
+                    && exponent.num().to_i64().is_some_and(|value| value < 0);
             }
         }
         false
@@ -3020,10 +3112,11 @@ impl<'a> Evaluator<'a> {
                         .iter()
                         .all(|argument| self.is_polynomial_in(*argument, variable));
                 }
-                if head == self.heads.power && args.len() == 2 {
-                    if nonnegative_integer(self.arena, args[1]).is_some() {
-                        return self.is_polynomial_in(args[0], variable);
-                    }
+                if head == self.heads.power
+                    && args.len() == 2
+                    && nonnegative_integer(self.arena, args[1]).is_some()
+                {
+                    return self.is_polynomial_in(args[0], variable);
                 }
                 false
             }
@@ -3562,16 +3655,16 @@ impl<'a> Evaluator<'a> {
         if let Some(value) = self.error_value(args) {
             return Ok(value);
         }
-        if args
-            .iter()
-            .any(|arg| matches!(self.arena.node(*arg), Node::Real(_)))
-            && args.iter().all(|arg| {
-                matches!(
-                    self.arena.node(*arg),
-                    Node::Int(_) | Node::Rat(_) | Node::Real(_)
-                )
-            })
-        {
+        let mut has_real = false;
+        let mut all_numeric = true;
+        for arg in args {
+            match self.arena.node(*arg) {
+                Node::Real(_) => has_real = true,
+                Node::Int(_) | Node::Rat(_) => {}
+                _ => all_numeric = false,
+            }
+        }
+        if has_real && all_numeric {
             let mut value = Real::zero(30)
                 .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real addition failed"))?;
             for arg in args {
@@ -3620,32 +3713,40 @@ impl<'a> Evaluator<'a> {
         if args.iter().any(|arg| self.interval_bounds(*arg).is_some()) {
             return self.times_intervals(args);
         }
-        let has_zero = args
-            .iter()
-            .any(|arg| self.as_rat(*arg).is_some_and(|v| v.is_zero()));
-        if args.iter().any(|arg| *arg == self.heads.indeterminate) {
-            return Ok(self.heads.indeterminate);
+        let mut has_zero = false;
+        let mut undefined = false;
+        let mut failed = false;
+        let mut has_real = false;
+        let mut all_numeric = true;
+        for arg in args {
+            if self.as_rat(*arg).is_some_and(|value| value.is_zero()) {
+                has_zero = true;
+            }
+            if *arg == self.heads.indeterminate {
+                return Ok(self.heads.indeterminate);
+            }
+            if *arg == self.heads.undefined {
+                undefined = true;
+            } else if *arg == self.heads.failed {
+                failed = true;
+            }
+            match self.arena.node(*arg) {
+                Node::Real(_) => has_real = true,
+                Node::Int(_) | Node::Rat(_) => {}
+                _ => all_numeric = false,
+            }
         }
-        if args.iter().any(|arg| *arg == self.heads.undefined) {
+        if undefined {
             return if has_zero {
                 Ok(self.heads.indeterminate)
             } else {
                 Ok(self.heads.undefined)
             };
         }
-        if args.iter().any(|arg| *arg == self.heads.failed) {
+        if failed {
             return Ok(self.heads.failed);
         }
-        if args
-            .iter()
-            .any(|arg| matches!(self.arena.node(*arg), Node::Real(_)))
-            && args.iter().all(|arg| {
-                matches!(
-                    self.arena.node(*arg),
-                    Node::Int(_) | Node::Rat(_) | Node::Real(_)
-                )
-            })
-        {
+        if has_real && all_numeric {
             let mut value = Real::one(30)
                 .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "real product failed"))?;
             for arg in args {
@@ -3718,127 +3819,142 @@ impl<'a> Evaluator<'a> {
         if self.is_error(exponent) {
             return Ok(exponent);
         }
-        if let Node::Real(real) = self.arena.node(base) {
-            if let Some(exp) = self.as_rat(exponent) {
-                if exp.den().is_one() {
-                    if let Some(power) = exp.num().to_i64() {
-                        let value = if power == 0 {
-                            Real::one(30)
-                        } else {
-                            real.pow_si(power)
-                        };
-                        if let Ok(value) = value {
-                            return Ok(self.arena.intern_real(value));
-                        }
-                    }
-                }
+        if let Node::Real(real) = self.arena.node(base)
+            && let Some(power) = self.integer_exponent(exponent)
+        {
+            let value = if power == 0 {
+                Real::one(30)
+            } else {
+                real.pow_si(power)
+            };
+            if let Ok(value) = value {
+                return Ok(self.arena.intern_real(value));
             }
         }
-        if let (Some((low, high)), Some(exp)) = (self.interval_bounds(base), self.as_rat(exponent))
+        if let (Some((low, high)), Some(power)) =
+            (self.interval_bounds(base), self.integer_exponent(exponent))
+            && let Some(result) = self.interval_power(&low, &high, power)
         {
-            if exp.den().is_one() {
-                if let Some(power) = exp.num().to_i64() {
-                    if let Some(result) = self.interval_power(&low, &high, power) {
-                        return Ok(result);
-                    }
-                }
-            }
+            return Ok(result);
         }
         if let Some(exp) = self.as_rat(exponent) {
-            if exp.is_zero() {
-                return if self.as_rat(base).is_some_and(|value| value.is_zero()) {
-                    Ok(self.heads.indeterminate)
-                } else {
-                    Ok(self.arena.intern_int(Int::one()))
-                };
-            }
-            if exp.is_one() {
-                return Ok(base);
-            }
-            if exp.den().is_one() {
-                if let Some(power) = exp.num().to_i64() {
-                    if let Some(base_value) = self.as_rat(base) {
-                        if base_value.is_zero() {
-                            return if power < 0 {
-                                Ok(self.heads.undefined)
-                            } else {
-                                Ok(self.arena.intern_int(Int::zero()))
-                            };
-                        }
-                        let value = rat_pow(&base_value, power).map_err(|_| {
-                            Diagnostic::eval(ErrorCode::NumericFailure, "numeric power failed")
-                        })?;
-                        return Ok(self.arena.intern_rat(value));
-                    }
-                    if base == self.heads.imaginary {
-                        return Ok(self.imaginary_power(power));
-                    }
-                    if let Some((real, imaginary)) = self.gaussian(base) {
-                        if real.is_zero() && imaginary.is_zero() {
-                            return if power < 0 {
-                                Ok(self.heads.undefined)
-                            } else {
-                                Ok(self.arena.intern_int(Int::zero()))
-                            };
-                        }
-                        return match gaussian_pow(&real, &imaginary, power) {
-                            Some((real, imaginary)) => Ok(self.gaussian_node(&real, &imaginary)),
-                            None => Ok(self.heads.undefined),
-                        };
-                    }
-                    let nested = match self.arena.node(base) {
-                        Node::Call { head, args }
-                            if *head == self.heads.power && args.len() == 2 =>
-                        {
-                            Some((args[0], args[1]))
-                        }
-                        _ => None,
-                    };
-                    if let Some((inner_base, inner_exponent)) = nested {
-                        if let Some(inner) = self.as_rat(inner_exponent) {
-                            let combined = inner.mul(&exp);
-                            let combined_node = self.arena.intern_rat(combined);
-                            return Ok(self
-                                .arena
-                                .intern_call(self.heads.power, &[inner_base, combined_node]));
-                        }
-                    }
-                    let negated_base = match self.arena.node(base) {
-                        Node::Call { head, args }
-                            if *head == self.heads.negate && args.len() == 1 =>
-                        {
-                            Some(args[0])
-                        }
-                        _ => None,
-                    };
-                    if let Some(inner_base) = negated_base {
-                        let inner = self
-                            .arena
-                            .intern_call(self.heads.power, &[inner_base, exponent]);
-                        let value = self.eval(inner)?;
-                        return if power % 2 == 0 {
-                            Ok(value)
-                        } else {
-                            Ok(self.arena.intern_call(self.heads.negate, &[value]))
-                        };
-                    }
-                }
-            } else {
-                if self.as_rat(base).is_some_and(|value| value.is_one()) {
-                    return Ok(self.arena.intern_int(Int::one()));
-                }
-                if self.as_rat(base).is_some_and(|value| value.is_zero()) {
-                    return if exp.sign() < 0 {
-                        Ok(self.heads.undefined)
-                    } else {
-                        Ok(self.arena.intern_int(Int::zero()))
-                    };
-                }
-            }
-        } else if self.as_rat(base).is_some_and(|value| value.is_one()) {
+            return self.power_from_rational(base, exponent, exp);
+        }
+        if self.as_rat(base).is_some_and(|value| value.is_one()) {
             return Ok(self.arena.intern_int(Int::one()));
         }
         Ok(self.arena.intern_call(self.heads.power, &[base, exponent]))
+    }
+
+    fn power_from_rational(
+        &mut self,
+        base: ExprId,
+        exponent: ExprId,
+        exp: Rat,
+    ) -> Result<ExprId, Diagnostic> {
+        if exp.is_zero() {
+            return if self.as_rat(base).is_some_and(|value| value.is_zero()) {
+                Ok(self.heads.indeterminate)
+            } else {
+                Ok(self.arena.intern_int(Int::one()))
+            };
+        }
+        if exp.is_one() {
+            return Ok(base);
+        }
+        if !exp.den().is_one() {
+            if self.as_rat(base).is_some_and(|value| value.is_one()) {
+                return Ok(self.arena.intern_int(Int::one()));
+            }
+            if self.as_rat(base).is_some_and(|value| value.is_zero()) {
+                return if exp.sign() < 0 {
+                    Ok(self.heads.undefined)
+                } else {
+                    Ok(self.arena.intern_int(Int::zero()))
+                };
+            }
+            return Ok(self.arena.intern_call(self.heads.power, &[base, exponent]));
+        }
+        let Some(power) = exp.num().to_i64() else {
+            return Ok(self.arena.intern_call(self.heads.power, &[base, exponent]));
+        };
+        if let Some(base_value) = self.as_rat(base) {
+            if base_value.is_zero() {
+                return if power < 0 {
+                    Ok(self.heads.undefined)
+                } else {
+                    Ok(self.arena.intern_int(Int::zero()))
+                };
+            }
+            let value = rat_pow(&base_value, power)
+                .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "numeric power failed"))?;
+            return Ok(self.arena.intern_rat(value));
+        }
+        if base == self.heads.imaginary {
+            return Ok(self.imaginary_power(power));
+        }
+        if let Some((real, imaginary)) = self.gaussian(base) {
+            if real.is_zero() && imaginary.is_zero() {
+                return if power < 0 {
+                    Ok(self.heads.undefined)
+                } else {
+                    Ok(self.arena.intern_int(Int::zero()))
+                };
+            }
+            return match gaussian_pow(&real, &imaginary, power) {
+                Some((real, imaginary)) => Ok(self.gaussian_node(&real, &imaginary)),
+                None => Ok(self.heads.undefined),
+            };
+        }
+        if let Some((inner_base, inner_exponent)) = self.nested_power(base)
+            && let Some(inner) = self.as_rat(inner_exponent)
+        {
+            let combined = inner.mul(&exp);
+            let combined_node = self.arena.intern_rat(combined);
+            return Ok(self
+                .arena
+                .intern_call(self.heads.power, &[inner_base, combined_node]));
+        }
+        if let Some(inner_base) = self.negated_operand(base) {
+            let inner = self
+                .arena
+                .intern_call(self.heads.power, &[inner_base, exponent]);
+            let value = self.eval(inner)?;
+            return if power % 2 == 0 {
+                Ok(value)
+            } else {
+                Ok(self.arena.intern_call(self.heads.negate, &[value]))
+            };
+        }
+        Ok(self.arena.intern_call(self.heads.power, &[base, exponent]))
+    }
+
+    fn integer_exponent(&self, expression: ExprId) -> Option<i64> {
+        let value = self.as_rat(expression)?;
+        if !value.den().is_one() {
+            return None;
+        }
+        value.num().to_i64()
+    }
+
+    fn nested_power(&self, expression: ExprId) -> Option<(ExprId, ExprId)> {
+        if let Node::Call { head, args } = self.arena.node(expression)
+            && *head == self.heads.power
+            && args.len() == 2
+        {
+            return Some((args[0], args[1]));
+        }
+        None
+    }
+
+    fn negated_operand(&self, expression: ExprId) -> Option<ExprId> {
+        if let Node::Call { head, args } = self.arena.node(expression)
+            && *head == self.heads.negate
+            && args.len() == 1
+        {
+            return Some(args[0]);
+        }
+        None
     }
 
     fn negate(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -4051,13 +4167,14 @@ impl<'a> Evaluator<'a> {
                     }
                     return Ok(());
                 }
-                if head == self.heads.power && args.len() == 2 {
-                    if let Some(exponent) = self.as_rat(args[1]) {
-                        if !exponent.is_zero() {
-                            self.add_base(bases, args[0], exponent);
-                        }
-                        return Ok(());
+                if head == self.heads.power
+                    && args.len() == 2
+                    && let Some(exponent) = self.as_rat(args[1])
+                {
+                    if !exponent.is_zero() {
+                        self.add_base(bases, args[0], exponent);
                     }
+                    return Ok(());
                 }
                 self.add_base(bases, id, Rat::one());
             }
@@ -4195,16 +4312,25 @@ impl<'a> Evaluator<'a> {
     }
 
     fn error_value(&self, args: &[ExprId]) -> Option<ExprId> {
-        if args.iter().any(|arg| *arg == self.heads.indeterminate) {
-            return Some(self.heads.indeterminate);
+        let mut undefined = false;
+        let mut failed = false;
+        for arg in args {
+            if *arg == self.heads.indeterminate {
+                return Some(self.heads.indeterminate);
+            }
+            if *arg == self.heads.undefined {
+                undefined = true;
+            } else if *arg == self.heads.failed {
+                failed = true;
+            }
         }
-        if args.iter().any(|arg| *arg == self.heads.undefined) {
-            return Some(self.heads.undefined);
+        if undefined {
+            Some(self.heads.undefined)
+        } else if failed {
+            Some(self.heads.failed)
+        } else {
+            None
         }
-        if args.iter().any(|arg| *arg == self.heads.failed) {
-            return Some(self.heads.failed);
-        }
-        None
     }
 }
 
@@ -4248,6 +4374,12 @@ fn multiply_signs(left: Sign, right: Sign) -> Option<Sign> {
         _ => return None,
     };
     Some(sign_of((left * right) as i8))
+}
+
+fn interval_contains_phase(low: f64, high: f64, phase: f64, period: f64) -> bool {
+    let first = ((low - phase) / period).ceil();
+    let last = ((high - phase) / period).floor();
+    first <= last
 }
 
 fn sign_product(left: Sign, right: Sign) -> Option<Sign> {

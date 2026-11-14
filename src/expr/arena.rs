@@ -201,20 +201,18 @@ impl Arena {
     pub fn intern_call(&mut self, head: ExprId, args: &[ExprId]) -> ExprId {
         let attrs = self.head_attributes(head);
         let mut flat: Vec<ExprId> = Vec::with_capacity(args.len());
-        for &arg in args {
-            if attrs.has(Attributes::FLAT) {
-                if let Node::Call {
-                    head: child_head,
-                    args: child_args,
-                } = self.node(arg)
-                {
-                    if *child_head == head {
-                        flat.extend_from_slice(child_args);
-                        continue;
-                    }
+        if attrs.has(Attributes::FLAT) {
+            for &arg in args {
+                match self.node(arg) {
+                    Node::Call {
+                        head: child_head,
+                        args: child_args,
+                    } if *child_head == head => flat.extend_from_slice(child_args),
+                    _ => flat.push(arg),
                 }
             }
-            flat.push(arg);
+        } else {
+            flat.extend_from_slice(args);
         }
         if attrs.has(Attributes::ORDERLESS) {
             flat.sort_by(|left, right| self.canonical_cmp(*left, *right));
@@ -283,10 +281,10 @@ impl Arena {
     }
 
     fn intern_node(&mut self, node: Node) -> ExprId {
-        if let Node::Rat(value) = &node {
-            if value.den().is_one() {
-                return self.intern_int(value.num());
-            }
+        if let Node::Rat(value) = &node
+            && value.den().is_one()
+        {
+            return self.intern_int(value.num());
         }
         let key = key_for(&node);
         if let Some(&id) = self.intern.get(&key) {
