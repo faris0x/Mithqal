@@ -32,7 +32,10 @@ Symbolic entries and approximate entries are not accepted by this layer yet. An 
 | `plu(a)` | Permutation, lower, and upper factors. |
 | `charpoly(a)` | Characteristic polynomial coefficients. |
 | `eigenvalues(a)` | Exact eigenvalues where supported. |
+| `eigenvectors(a)` | Exact eigenvectors where supported. |
 | `nullspace(a)` | Basis of the null space. |
+| `kernel(a)` | Alias for `nullspace(a)`. |
+| `qr(a)` | Thin QR factors for a full column rank matrix. |
 
 ## Examples
 
@@ -55,6 +58,9 @@ charpoly([[1,2],[3,4]])             -> [-2,-5,1]
 eigenvalues([[1,2],[3,4]])          -> [(1/2)*(5-sqrt(33)),(1/2)*(5+sqrt(33))]
 eigenvalues([[0,-1],[1,0]])         -> [-i,i]
 nullspace([[1,2],[2,4]])            -> [[-2,1]]
+kernel([[1,2],[2,4]])               -> [[-2,1]]
+eigenvectors([[1,1],[0,2]])         -> [[1,0],[1,1]]
+qr([[1,0],[0,1]])                   -> [[[1,0],[0,1]],[[1,0],[0,1]]]
 ```
 
 ## Exactness
@@ -75,5 +81,7 @@ Dimension mismatches and non-square inputs also leave the call unevaluated. Wron
 - `charpoly` accepts exact rational matrices up to eight by eight and returns coefficients in ascending order.
 - `identity` accepts sizes from zero to 256.
 - `eigenvalues` supports one by one and two by two exact or symbolic matrices, plus diagonal and triangular matrices of any size accepted by the layer.
-- `nullspace` accepts exact rational matrices.
+- `nullspace` and `kernel` accept exact rational matrices.
+- `eigenvectors` supports exact two by two matrices with rational eigenvalues, plus diagonal and triangular matrices.
+- `qr` accepts exact matrices with full column rank and up to six columns.
 - Sparse matrices and further decompositions arrive in later work.

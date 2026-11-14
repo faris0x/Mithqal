@@ -487,11 +487,17 @@ fn expression_zero(arena: &Arena, expression: ExprId) -> bool {
 }
 
 fn expression_add(arena: &mut Arena, left: ExprId, right: ExprId) -> ExprId {
+    if let (Some(left_value), Some(right_value)) = (as_rat(arena, left), as_rat(arena, right)) {
+        return rational_expression(arena, &left_value.add(&right_value));
+    }
     let head = arena.builtin_head("plus");
     arena.intern_call(head, &[left, right])
 }
 
 fn expression_negate(arena: &mut Arena, value: ExprId) -> ExprId {
+    if let Some(value) = as_rat(arena, value) {
+        return rational_expression(arena, &value.neg());
+    }
     let head = arena.builtin_head("negate");
     arena.intern_call(head, &[value])
 }
@@ -502,11 +508,21 @@ fn expression_subtract(arena: &mut Arena, left: ExprId, right: ExprId) -> ExprId
 }
 
 fn expression_multiply(arena: &mut Arena, left: ExprId, right: ExprId) -> ExprId {
+    if let (Some(left_value), Some(right_value)) = (as_rat(arena, left), as_rat(arena, right)) {
+        return rational_expression(arena, &left_value.mul(&right_value));
+    }
     let head = arena.builtin_head("times");
     arena.intern_call(head, &[left, right])
 }
 
 fn expression_reciprocal(arena: &mut Arena, value: ExprId) -> ExprId {
+    if let Some(value) = as_rat(arena, value) {
+        if !value.is_zero() {
+            if let Ok(inverse) = Rat::one().div(&value) {
+                return rational_expression(arena, &inverse);
+            }
+        }
+    }
     let minus_one = arena.intern_int(Int::from_i64(-1));
     let head = arena.builtin_head("power");
     arena.intern_call(head, &[value, minus_one])
@@ -882,4 +898,173 @@ pub(crate) fn nullspace(arena: &mut Arena, expression: ExprId) -> Option<ExprId>
         vectors.push(vector_expression(arena, &values));
     }
     Some(arena.intern_call(list, &vectors))
+}
+
+fn rational_square_root(value: &Rat) -> Option<Rat> {
+    let numerator = value.num().to_i64()?;
+    let denominator = value.den().to_i64()?;
+    let numerator = integer_sqrt_i64(numerator)?;
+    let denominator = integer_sqrt_i64(denominator)?;
+    Rat::from_i64(numerator, denominator).ok()
+}
+
+fn integer_sqrt_i64(value: i64) -> Option<i64> {
+    if value < 0 {
+        return None;
+    }
+    let mut low = 0i64;
+    let mut high = value;
+    while low <= high {
+        let middle = low + (high - low) / 2;
+        let square = (middle as i128) * (middle as i128);
+        if square == value as i128 {
+            return Some(middle);
+        }
+        if square < value as i128 {
+            low = middle + 1;
+        } else {
+            high = middle - 1;
+        }
+    }
+    None
+}
+
+pub(crate) fn eigenvectors(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let matrix = matrix_from_expr(arena, expression)?;
+    if matrix.rows != matrix.columns || matrix.rows == 0 {
+        return None;
+    }
+    let size = matrix.rows;
+    let list = arena.builtin_head("list");
+    let basis = |arena: &mut Arena, index: usize| {
+        let mut values = vec![Rat::zero(); size];
+        values[index] = Rat::one();
+        vector_expression(arena, &values)
+    };
+    if size == 1 {
+        let vector = basis(arena, 0);
+        return Some(arena.intern_call(list, &[vector]));
+    }
+    let triangular = (0..size)
+        .all(|row| (0..size).all(|column| row == column || matrix.get(row, column).is_zero()))
+        || (0..size)
+            .all(|row| (0..size).all(|column| row == column || matrix.get(row, column).is_zero()));
+    if size > 2 {
+        if !triangular {
+            return None;
+        }
+        let mut vectors = Vec::with_capacity(size);
+        for index in 0..size {
+            vectors.push(basis(arena, index));
+        }
+        return Some(arena.intern_call(list, &vectors));
+    }
+    let trace = matrix.get(0, 0).add(&matrix.get(1, 1));
+    let determinant = matrix
+        .get(0, 0)
+        .mul(&matrix.get(1, 1))
+        .sub(&matrix.get(0, 1).mul(&matrix.get(1, 0)));
+    let four = Rat::from_i64(4, 1).ok()?;
+    let discriminant = trace.mul(&trace).sub(&four.mul(&determinant));
+    if discriminant.sign() < 0 {
+        return None;
+    }
+    let root = rational_square_root(&discriminant)?;
+    let two = Rat::from_i64(2, 1).ok()?;
+    let first = trace.sub(&root).div(&two).ok()?;
+    let second = trace.add(&root).div(&two).ok()?;
+    let mut vectors = Vec::with_capacity(2);
+    for eigenvalue in [first, second] {
+        let a = matrix.get(0, 0).sub(&eigenvalue);
+        let b = matrix.get(0, 1);
+        let c = matrix.get(1, 0);
+        let d = matrix.get(1, 1).sub(&eigenvalue);
+        let values = if !b.is_zero() {
+            vec![b, eigenvalue.sub(&matrix.get(0, 0))]
+        } else if !c.is_zero() {
+            vec![eigenvalue.sub(&matrix.get(1, 1)), c.neg()]
+        } else if a.is_zero() {
+            vec![Rat::one(), Rat::zero()]
+        } else if d.is_zero() {
+            vec![Rat::zero(), Rat::one()]
+        } else {
+            vec![Rat::one(), Rat::zero()]
+        };
+        vectors.push(vector_expression(arena, &values));
+    }
+    Some(arena.intern_call(list, &vectors))
+}
+
+fn sqrt_expression_simplified(arena: &mut Arena, expression: ExprId) -> ExprId {
+    let expression = crate::eval::fold_numeric_call(arena, expression).unwrap_or(expression);
+    if let Some(value) = as_rat(arena, expression) {
+        if let Some(root) = rational_square_root(&value) {
+            return rational_expression(arena, &root);
+        }
+    }
+    let head = arena.builtin_head("sqrt");
+    arena.intern_call(head, &[expression])
+}
+
+pub(crate) fn qr(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let matrix = matrix_from_expr(arena, expression)?;
+    if matrix.rows < matrix.columns || matrix.columns == 0 || matrix.columns > 6 {
+        return None;
+    }
+    if matrix.rank() < matrix.columns {
+        return None;
+    }
+    let rows = matrix.rows;
+    let columns = matrix.columns;
+    let mut q_columns: Vec<Vec<ExprId>> = Vec::with_capacity(columns);
+    let mut r = SymbolicMatrix::new(columns, columns);
+    let zero = arena.intern_int(Int::zero());
+    for entry in &mut r.entries {
+        *entry = zero;
+    }
+    for column in 0..columns {
+        let mut values = Vec::with_capacity(rows);
+        for row in 0..rows {
+            values.push(rational_expression(arena, &matrix.get(row, column)));
+        }
+        for previous in 0..column {
+            let mut products = Vec::with_capacity(rows);
+            for row in 0..rows {
+                products.push(expression_multiply(
+                    arena,
+                    q_columns[previous][row],
+                    values[row],
+                ));
+            }
+            let projection = expression_sum(arena, &products);
+            r.set(previous, column, projection);
+            for row in 0..rows {
+                let correction = expression_multiply(arena, projection, q_columns[previous][row]);
+                values[row] = expression_subtract(arena, values[row], correction);
+            }
+        }
+        let mut squares = Vec::with_capacity(rows);
+        for value in &values {
+            squares.push(expression_multiply(arena, *value, *value));
+        }
+        let norm_squared = expression_sum(arena, &squares);
+        let norm = sqrt_expression_simplified(arena, norm_squared);
+        r.set(column, column, norm);
+        let inverse = expression_reciprocal(arena, norm);
+        let mut q_column = Vec::with_capacity(rows);
+        for value in values {
+            q_column.push(expression_multiply(arena, value, inverse));
+        }
+        q_columns.push(q_column);
+    }
+    let mut q = SymbolicMatrix::new(rows, columns);
+    for column in 0..columns {
+        for row in 0..rows {
+            q.set(row, column, q_columns[column][row]);
+        }
+    }
+    let list = arena.builtin_head("list");
+    let q = symbolic_expression(arena, &q);
+    let r = symbolic_expression(arena, &r);
+    Some(arena.intern_call(list, &[q, r]))
 }

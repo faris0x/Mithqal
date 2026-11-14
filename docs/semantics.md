@@ -253,7 +253,9 @@ Matrices are lists of rows and vectors are plain lists. The linear algebra layer
 - `plu` returns permutation, lower, and upper factors for a full-rank square exact matrix.
 - `charpoly` returns characteristic polynomial coefficients in ascending order.
 - `eigenvalues` handles exact and symbolic two by two matrices, plus diagonal and triangular matrices.
-- `nullspace` returns an exact basis for the null space.
+- `eigenvectors` handles exact two by two matrices with rational eigenvalues, plus diagonal and triangular matrices.
+- `nullspace` and its `kernel` alias return an exact basis for the null space.
+- `qr` returns exact thin Q and R factors for full column rank matrices.
 
 Symbolic entries are supported by determinants, transposes, traces, products, and inverses up to three by three. Symbolic determinant expansion is available up to five by five.
 

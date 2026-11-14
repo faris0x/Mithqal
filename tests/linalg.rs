@@ -251,3 +251,27 @@ fn eigenvalues_and_nullspaces() {
     assert_eq!(text("nullspace([[1,0],[0,1]])"), "[]");
     assert_eq!(text("nullspace([[1,2,3],[2,4,6]])"), "[[-2,1,0],[-3,0,1]]");
 }
+
+#[test]
+fn eigenvectors_and_kernel_alias() {
+    assert_eq!(text("eigenvectors([[2,0],[0,3]])"), "[[1,0],[0,1]]");
+    assert_eq!(text("eigenvectors([[1,1],[0,2]])"), "[[1,0],[1,1]]");
+    assert_eq!(text("eigenvectors([[1,2],[2,4]])"), "[[2,-1],[2,4]]");
+    assert_eq!(
+        text("eigenvectors([[1,0,0],[0,2,0],[0,0,3]])"),
+        "[[1,0,0],[0,1,0],[0,0,1]]"
+    );
+    assert_eq!(text("kernel([[1,2],[2,4]])"), "[[-2,1]]");
+    assert_eq!(text("kernel([[1,0],[0,1]])"), "[]");
+}
+
+#[test]
+fn qr_decompositions() {
+    assert_eq!(text("qr([[1,0],[0,1]])"), "[[[1,0],[0,1]],[[1,0],[0,1]]]");
+    assert_eq!(text("qr([[1,1],[0,1]])"), "[[[1,0],[0,1]],[[1,1],[0,1]]]");
+    let generic = text("qr([[1,2],[3,4]])");
+    assert!(generic.starts_with("[[["), "{generic}");
+    assert!(generic.contains("sqrt(10)"), "{generic}");
+    assert!(text("qr([[1,2],[3,4],[5,6]])").starts_with("[[["));
+    assert!(text("qr([[1,2],[2,4]])").contains("qr"));
+}

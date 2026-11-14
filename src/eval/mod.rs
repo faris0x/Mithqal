@@ -216,6 +216,8 @@ enum LinearHead {
     Charpoly,
     Eigenvalues,
     Nullspace,
+    Eigenvectors,
+    Qr,
 }
 impl LinearHead {
     fn from_name(name: &str) -> Option<Self> {
@@ -234,7 +236,9 @@ impl LinearHead {
             "plu" => Self::Plu,
             "charpoly" => Self::Charpoly,
             "eigenvalues" => Self::Eigenvalues,
-            "nullspace" => Self::Nullspace,
+            "nullspace" | "kernel" => Self::Nullspace,
+            "eigenvectors" => Self::Eigenvectors,
+            "qr" => Self::Qr,
             _ => return None,
         })
     }
@@ -437,6 +441,60 @@ pub(crate) fn evaluate_with_definitions(
     evaluator.eval(id)
 }
 
+struct SmallArgs {
+    inline: [ExprId; 6],
+    len: usize,
+    heap: Vec<ExprId>,
+}
+
+impl SmallArgs {
+    fn new() -> Self {
+        SmallArgs {
+            inline: [0; 6],
+            len: 0,
+            heap: Vec::new(),
+        }
+    }
+
+    fn from_slice(args: &[ExprId]) -> Self {
+        if args.len() <= 6 {
+            let mut inline = [0; 6];
+            inline[..args.len()].copy_from_slice(args);
+            SmallArgs {
+                inline,
+                len: args.len(),
+                heap: Vec::new(),
+            }
+        } else {
+            SmallArgs {
+                inline: [0; 6],
+                len: 0,
+                heap: args.to_vec(),
+            }
+        }
+    }
+
+    fn push(&mut self, value: ExprId) {
+        if self.heap.is_empty() && self.len < 6 {
+            self.inline[self.len] = value;
+            self.len += 1;
+        } else {
+            if self.heap.is_empty() {
+                self.heap.extend_from_slice(&self.inline[..self.len]);
+            }
+            self.heap.push(value);
+        }
+    }
+
+    fn as_slice(&self) -> &[ExprId] {
+        if self.heap.is_empty() {
+            &self.inline[..self.len]
+        } else {
+            &self.heap
+        }
+    }
+}
+
 struct Evaluator<'a> {
     arena: &'a mut Arena,
     definitions: &'a mut Definitions,
@@ -497,7 +555,7 @@ impl<'a> Evaluator<'a> {
                 }
                 return Ok(id);
             }
-            Node::Call { head, args } => (*head, args.to_vec()),
+            Node::Call { head, args } => (*head, SmallArgs::from_slice(args)),
         };
         let head = if let Node::Symbol(symbol) = self.arena.node(head) {
             let symbol = *symbol;
@@ -517,7 +575,7 @@ impl<'a> Evaluator<'a> {
             _ => None,
         };
         if let Some(closure) = closure {
-            return self.apply_closure(&closure, &args);
+            return self.apply_closure(&closure, args.as_slice());
         }
         if !matches!(self.arena.node(head), Node::Symbol(_)) {
             return Err(Diagnostic::eval(
@@ -527,7 +585,7 @@ impl<'a> Evaluator<'a> {
         }
 
         if head == self.heads.list
-            && args.iter().all(|arg| {
+            && args.as_slice().iter().all(|arg| {
                 matches!(
                     self.arena.node(*arg),
                     Node::Int(_) | Node::Rat(_) | Node::Real(_)
@@ -537,37 +595,37 @@ impl<'a> Evaluator<'a> {
             return Ok(id);
         }
         if head == self.heads.function {
-            return self.eval_function(&args);
+            return self.eval_function(args.as_slice());
         }
         if head == self.heads.approx {
-            return self.eval_approx(&args);
+            return self.eval_approx(args.as_slice());
         }
         if head == self.heads.interval {
-            return self.eval_interval(&args);
+            return self.eval_interval(args.as_slice());
         }
         if head == self.heads.complex {
-            return self.eval_complex(&args);
+            return self.eval_complex(args.as_slice());
         }
         if head == self.heads.set {
-            return self.eval_definition(&args, false);
+            return self.eval_definition(args.as_slice(), false);
         }
         if head == self.heads.set_delayed {
-            return self.eval_definition(&args, true);
+            return self.eval_definition(args.as_slice(), true);
         }
         if head == self.heads.let_head {
-            return self.eval_let(&args);
+            return self.eval_let(args.as_slice());
         }
         if head == self.heads.if_head {
-            return self.eval_if(&args);
+            return self.eval_if(args.as_slice());
         }
         if head == self.heads.and {
-            return self.eval_and(&args);
+            return self.eval_and(args.as_slice());
         }
         if head == self.heads.or {
-            return self.eval_or(&args);
+            return self.eval_or(args.as_slice());
         }
         if head == self.heads.not {
-            return self.eval_not(&args);
+            return self.eval_not(args.as_slice());
         }
 
         let attrs = self.arena.head_attributes(head);
@@ -578,25 +636,25 @@ impl<'a> Evaluator<'a> {
             return Ok(id);
         }
 
-        let mut evaluated = Vec::with_capacity(args.len());
-        for arg in &args {
+        let mut evaluated = SmallArgs::new();
+        for arg in args.as_slice() {
             evaluated.push(self.eval(*arg)?);
         }
 
         if head == self.heads.plus || head == self.heads.times || head == self.heads.negate {
-            let candidate = self.arena.intern_call(head, &evaluated);
+            let candidate = self.arena.intern_call(head, evaluated.as_slice());
             if let Some((real, imaginary)) = self.gaussian(candidate) {
                 return Ok(self.gaussian_node(&real, &imaginary));
             }
         }
 
         if attrs.has(Attributes::LISTABLE) {
-            if let Some(result) = self.thread_listable(head, &evaluated)? {
+            if let Some(result) = self.thread_listable(head, evaluated.as_slice())? {
                 return self.finish(id, result);
             }
         }
 
-        let result = self.apply(head, &evaluated)?;
+        let result = self.apply(head, evaluated.as_slice())?;
         self.finish(id, result)
     }
 
@@ -1948,6 +2006,8 @@ impl<'a> Evaluator<'a> {
             LinearHead::Charpoly => crate::linalg::charpoly(self.arena, args[0]),
             LinearHead::Eigenvalues => crate::linalg::eigenvalues(self.arena, args[0]),
             LinearHead::Nullspace => crate::linalg::nullspace(self.arena, args[0]),
+            LinearHead::Eigenvectors => crate::linalg::eigenvectors(self.arena, args[0]),
+            LinearHead::Qr => crate::linalg::qr(self.arena, args[0]),
         }
     }
 
@@ -2797,7 +2857,7 @@ fn integer_binomial(n: i64, k: i64) -> Option<Int> {
     Some(result)
 }
 
-fn fold_numeric_call(arena: &mut Arena, id: ExprId) -> Option<ExprId> {
+pub(crate) fn fold_numeric_call(arena: &mut Arena, id: ExprId) -> Option<ExprId> {
     match arena.node(id) {
         Node::Int(_) | Node::Rat(_) | Node::Real(_) => return Some(id),
         Node::Call { head, args } => {

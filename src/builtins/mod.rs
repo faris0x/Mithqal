@@ -32,9 +32,8 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "det" | "rank" | "transpose" | "inverse" | "rref" | "trace" | "matmul" | "identity"
-        | "solveLinear" | "dot" | "cross" | "plu" | "charpoly" | "eigenvalues" | "nullspace" => {
-            A::new().with(A::PROTECTED)
-        }
+        | "solveLinear" | "dot" | "cross" | "plu" | "charpoly" | "eigenvalues" | "nullspace"
+        | "kernel" | "eigenvectors" | "qr" => A::new().with(A::PROTECTED),
         "isPrime" | "nextPrime" | "factorInteger" | "divisors" | "totient" | "sigma" | "isEven"
         | "isOdd" | "divides" | "mod" | "powerMod" => A::new().with(A::PROTECTED),
         "previousPrime" | "divisorCount" | "moebius" | "radical" | "isSquareFree"

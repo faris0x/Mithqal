@@ -21,7 +21,7 @@ Included:
 - Exact symbolic differentiation, basic antiderivatives, and definite integrals.
 - A line based surface language with modules, definitions, literal patterns, guards, lexical bindings, conditionals, match blocks, and print statements.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
-- Exact rational and symbolic matrix linear algebra with determinants, rank, inverses, row reduction, matrix products, PLU factorization, characteristic polynomials, eigenvalues, null spaces, and linear solving.
+- Exact rational and symbolic matrix linear algebra with determinants, rank, inverses, row reduction, matrix products, PLU factorization, characteristic polynomials, eigenvalues, eigenvectors, null spaces, QR factorization, and linear solving.
 - Broader polynomial algebra with degrees, coefficients, polynomial division, discriminants, and sum or difference of cubes factoring.
 - Exact integer number theory with primality, factorization, divisors, totients, sigma, modular arithmetic, and modular powers.
 - Broader number theory with previous primes, prime counting, divisor counts, Moebius values, radicals, square-free tests, Fibonacci numbers, modular inverses, and Jacobi symbols.

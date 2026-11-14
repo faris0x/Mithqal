@@ -61,7 +61,8 @@ Initial kernel work.
 - Added exact `gcd`, `lcm`, `factorial`, `binomial`, `floor`, `ceil`, and `round` functions with approximate rounding at the numeric boundary.
 - Added exact rational matrix and vector linear algebra with determinants, rank, transposes, inverses, reduced row echelon form, traces, matrix products, identities, unique linear solving, dot products, and cross products.
 - Added symbolic matrix entries for determinants, transposes, traces, products, and small inverses, plus PLU factorization and characteristic polynomials.
-- Added exact and symbolic two by two eigenvalues, diagonal and triangular eigenvalues, and exact rational null spaces.
+- Added exact and symbolic two by two eigenvalues, diagonal and triangular eigenvalues, exact rational null spaces, a `kernel` alias for null spaces, exact eigenvectors where supported, and thin QR decompositions.
+- Added small-stack call argument storage to avoid heap allocation for short calls in the evaluator.
 - Added broader polynomial algebra with degree, coefficient, polynomial division, discriminants, and sum or difference of cubes factoring.
 - Added exact integer number theory with primality testing, next prime, Pollard rho factorization, divisors, Euler totient, divisor sums, parity, divisibility, modular remainder, and modular exponentiation.
 - Added broader number theory with previous primes, prime counting, divisor counts, Moebius values, radicals, square-free tests, Fibonacci numbers, perfect square tests, modular inverses, and Jacobi symbols.
@@ -69,4 +70,4 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to more than 490 test functions and more than 1300 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, and logic corpora.
+- Expanded the suite to more than 600 test functions and more than 1300 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.
