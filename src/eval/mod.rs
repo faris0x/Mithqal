@@ -53,6 +53,10 @@ enum NumericHead {
     Floor,
     Ceil,
     Round,
+    Gamma,
+    Lgamma,
+    Erf,
+    Erfc,
 }
 
 impl NumericHead {
@@ -82,6 +86,10 @@ impl NumericHead {
             "floor" => Self::Floor,
             "ceil" => Self::Ceil,
             "round" => Self::Round,
+            "gamma" => Self::Gamma,
+            "lgamma" => Self::Lgamma,
+            "erf" => Self::Erf,
+            "erfc" => Self::Erfc,
             _ => return None,
         })
     }
@@ -107,6 +115,10 @@ impl NumericHead {
                 | Self::Floor
                 | Self::Ceil
                 | Self::Round
+                | Self::Gamma
+                | Self::Lgamma
+                | Self::Erf
+                | Self::Erfc
         )
     }
 }
@@ -1109,6 +1121,10 @@ impl<'a> Evaluator<'a> {
                     NumericHead::Floor => value.floor(),
                     NumericHead::Ceil => value.ceil(),
                     NumericHead::Round => value.round(),
+                    NumericHead::Gamma => value.gamma(),
+                    NumericHead::Lgamma => value.lgamma(),
+                    NumericHead::Erf => value.erf(),
+                    NumericHead::Erfc => value.erfc(),
                     _ => return Ok(None),
                 };
                 if let Ok(real) = result {

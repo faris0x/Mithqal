@@ -53,6 +53,18 @@ fn main() {
     });
 
     let mut cold_arena = Arena::new();
+    measure("cold approx gamma", 3_000, || {
+        let parsed = parse_statement(&mut cold_arena, "approx(gamma(5),30)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold approx erf", 3_000, || {
+        let parsed = parse_statement(&mut cold_arena, "approx(erf(1),30)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
     measure("cold approx complex asin", 2_000, || {
         let parsed = parse_statement(&mut cold_arena, "approx(asin(2),30)").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());

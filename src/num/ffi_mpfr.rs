@@ -91,6 +91,10 @@ unsafe extern "C" {
     pub(crate) fn mpfr_floor(rop: *mut Mpfr, op: *const Mpfr) -> c_int;
     pub(crate) fn mpfr_ceil(rop: *mut Mpfr, op: *const Mpfr) -> c_int;
     pub(crate) fn mpfr_round(rop: *mut Mpfr, op: *const Mpfr) -> c_int;
+    pub(crate) fn mpfr_gamma(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_lngamma(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_erf(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_erfc(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_const_pi(rop: *mut Mpfr, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_cmp(left: *const Mpfr, right: *const Mpfr) -> c_int;
     pub(crate) fn mpfr_cmp_ui(left: *const Mpfr, right: c_ulong) -> c_int;

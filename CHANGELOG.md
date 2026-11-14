@@ -66,5 +66,6 @@ Initial kernel work.
 - Added broader number theory with previous primes, prime counting, divisor counts, Moebius values, radicals, square-free tests, Fibonacci numbers, perfect square tests, modular inverses, and Jacobi symbols.
 - Added exact descriptive statistics with means, medians, extrema, ranges, totals, variances, standard deviations, frequencies, and modes.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
-- Added a fast whitespace-free atom parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
+- Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
+- Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
 - Expanded the suite to more than 490 test functions and more than 1300 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, and logic corpora.

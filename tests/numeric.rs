@@ -347,3 +347,22 @@ fn real_hyperbolic_error_shrinks_precision() {
     assert!(value.precision_digits() < one.precision_digits() + 1.0);
     assert!(value.accuracy_digits() < one.accuracy_digits());
 }
+
+#[test]
+fn special_functions() {
+    let value = |source: &str| real_value(source);
+    assert!((value("approx(gamma(5),30)") - 24.0).abs() < 1e-12);
+    assert!((value("approx(gamma(1/2),30)") - std::f64::consts::PI.sqrt()).abs() < 1e-12);
+    assert!((value("approx(lgamma(5),30)") - 24f64.ln()).abs() < 1e-12);
+    assert!((value("approx(erf(0),30)")).abs() < 1e-15);
+    assert!((value("approx(erf(1),30)") - 0.8427007929497149).abs() < 1e-12);
+    assert!((value("approx(erfc(1),30)") - 0.15729920705028513).abs() < 1e-12);
+}
+
+#[test]
+fn special_function_domains() {
+    let (session, value) = evaluated("approx(gamma(0),30)");
+    assert!(session.format_infix(value).contains("approx"));
+    let (session, value) = evaluated("approx(gamma(-1),30)");
+    assert!(session.format_infix(value).contains("approx"));
+}

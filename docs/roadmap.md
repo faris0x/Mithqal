@@ -16,7 +16,7 @@ Included:
 - Symbolic `Q(i)` normalization.
 - Approximate reals through MPFR with significance tracking and a numeric boundary.
 - Approximate interval arithmetic with directed endpoint rounding and significance widening.
-- Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, and absolute value.
+- Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, absolute value, gamma, log gamma, and error functions.
 - Exact polynomial expansion, factoring, polynomial gcd, resultants, rational function cancellation, and linear or quadratic solving.
 - Exact symbolic differentiation, basic antiderivatives, and definite integrals.
 - A line based surface language with modules, definitions, literal patterns, guards, lexical bindings, conditionals, match blocks, and print statements.

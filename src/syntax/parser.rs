@@ -30,6 +30,9 @@ pub fn parse_source(arena: &mut Arena, source: &str) -> Result<Vec<ExprId>, Diag
 
 /// Parse one statement. A trailing newline is allowed.
 pub fn parse_statement(arena: &mut Arena, source: &str) -> Result<ExprId, Diagnostic> {
+    if let Some(expression) = parse_two_integer_operation(arena, source) {
+        return Ok(expression);
+    }
     if let Some(expression) = parse_simple_expression(arena, source) {
         return Ok(expression);
     }
@@ -640,4 +643,58 @@ impl SimpleParser<'_> {
             _ => None,
         }
     }
+}
+
+fn parse_two_integer_operation(arena: &mut Arena, source: &str) -> Option<ExprId> {
+    if source.len() < 3 || !source.is_ascii() {
+        return None;
+    }
+    let bytes = source.as_bytes();
+    let mut operator = None;
+    for (index, byte) in bytes.iter().copied().enumerate() {
+        if index == 0 || index + 1 == bytes.len() || byte.is_ascii_digit() {
+            continue;
+        }
+        if !matches!(byte, b'+' | b'-' | b'*' | b'/' | b'^') {
+            return None;
+        }
+        if operator.is_some() {
+            return None;
+        }
+        operator = Some((index, byte));
+    }
+    let (index, operator) = operator?;
+    let left_value = Int::from_decimal(&source[..index]).ok()?;
+    let right_value = Int::from_decimal(&source[index + 1..]).ok()?;
+    let left = arena.intern_int(left_value.clone());
+    let right = arena.intern_int(right_value.clone());
+    let result = match operator {
+        b'+' => {
+            let head = arena.builtin_head("plus");
+            arena.intern_call(head, &[left, right])
+        }
+        b'-' => {
+            let negate = arena.builtin_head("negate");
+            let right = arena.intern_call(negate, &[right]);
+            let head = arena.builtin_head("plus");
+            arena.intern_call(head, &[left, right])
+        }
+        b'*' => {
+            let head = arena.builtin_head("times");
+            arena.intern_call(head, &[left, right])
+        }
+        b'/' => {
+            if right_value.is_zero() {
+                return None;
+            }
+            let rational = Rat::from_ints(left_value, right_value).ok()?;
+            arena.intern_rat(rational)
+        }
+        b'^' => {
+            let head = arena.builtin_head("power");
+            arena.intern_call(head, &[left, right])
+        }
+        _ => return None,
+    };
+    Some(result)
 }

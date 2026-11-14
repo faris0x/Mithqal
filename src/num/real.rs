@@ -587,6 +587,55 @@ impl Real {
         Ok(out)
     }
 
+    /// Gamma function.
+    pub fn gamma(&self) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_gamma(&mut out.inner, &self.inner, MPFR_RNDN) };
+        if !out.is_finite() {
+            return Err(NumError::Domain);
+        }
+        let scale = out.to_f64().abs().max(1.0);
+        let derivative = scale * self.to_f64().abs().ln().abs().max(1.0);
+        out.error = derivative * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// Logarithm of the absolute gamma function.
+    pub fn lgamma(&self) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_lngamma(&mut out.inner, &self.inner, MPFR_RNDN) };
+        if !out.is_finite() {
+            return Err(NumError::Domain);
+        }
+        let derivative = self.to_f64().abs().ln().abs().max(1.0);
+        out.error = derivative * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// Error function.
+    pub fn erf(&self) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_erf(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let value = self.to_f64();
+        let derivative = 2.0 / core::f64::consts::PI.sqrt() * (-value * value).exp();
+        out.error = derivative * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// Complementary error function.
+    pub fn erfc(&self) -> Result<Real, NumError> {
+        let mut out = Self::initialized(self.bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_erfc(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let value = self.to_f64();
+        let derivative = 2.0 / core::f64::consts::PI.sqrt() * (-value * value).exp();
+        out.error = derivative * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
     /// True when the stored value is neither infinite nor NaN.
     pub(crate) fn is_finite(&self) -> bool {
         // SAFETY: the value is initialized.
