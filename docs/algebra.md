@@ -45,11 +45,17 @@ discriminant(x^2-4,x)                 -> 16
 
 Univariate square-free decomposition uses polynomial gcds against the derivative. Repeated irreducible factors are separated and emitted with their multiplicities.
 
+Bounded univariate integer polynomials also pass through modular factorization and Hensel lifting. A small prime supplies a coprime split, the split is lifted above the coefficient bound, and factors are accepted only after exact integer division. This finds repeated and irreducible polynomial factors that rational roots miss.
+
 Homogeneous bivariate forms are factored by solving their ratio polynomial over the rationals. This covers degrees above two, including repeated linear factors.
 
 Bivariate quadratics are evaluated as a polynomial in one variable with coefficients in the other. The homogeneous part is factored first, then the constant coefficients of the two linear factors are solved and checked. Square homogeneous parts use a scalar ratio equation, which also handles distinct linear constants.
 
-The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, evaluation and interpolation for monic bivariate polynomials that split into linear factors with polynomial coefficients, and grouping. Reserved stages cover multivariate square-free decomposition and Hensel lifting.
+The evaluation and interpolation stage factors monic bivariate polynomials that split into linear factors with polynomial coefficients. It samples the vertical variable, factors each univariate slice, interpolates each root branch, and verifies the reconstructed product exactly.
+
+The multivariate square-free stage extracts perfect squares of monic bivariate polynomials by taking square roots of sampled univariate slices, interpolating the root coefficients, and verifying the square.
+
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, evaluation and interpolation, square-free extraction for perfect squares, and grouping. Reserved stages cover higher multivariate powers and a broader multivariate Hensel hook.
 
 Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 

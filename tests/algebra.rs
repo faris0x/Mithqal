@@ -359,3 +359,32 @@ fn evaluation_interpolation_factorization() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn hensel_lifting_factorization() {
+    assert_eq!(text("factor(x^4+3*x^2+2)"), "(1+x^2)*(2+x^2)");
+    assert_eq!(
+        text("factor(x^4+3*x^3+5*x^2+4*x+2)"),
+        "(1+x+x^2)*(2+x^2+2*x)"
+    );
+    assert_eq!(text("factor(x^4+5*x^2+6)"), "(2+x^2)*(3+x^2)");
+    assert_eq!(text("factor(x^4+4)"), "(2-2*x+x^2)*(2+x^2+2*x)");
+    assert_eq!(text("factor(x^4+1)"), "1+x^4");
+    for source in [
+        "x^4+3*x^2+2",
+        "x^4+3*x^3+5*x^2+4*x+2",
+        "x^4+5*x^2+6",
+        "x^4+4",
+    ] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn multivariate_square_free_factorization() {
+    assert_eq!(text("factor((x^2+x*y+1)^2)"), "(1+x^2+x*y)^2");
+    assert_eq!(text("factor((x^2+y^2)^2)"), "(x^2+y^2)^2");
+    for source in ["(x^2+x*y+1)^2", "(x^2+y^2)^2"] {
+        assert_factor_matches(source);
+    }
+}

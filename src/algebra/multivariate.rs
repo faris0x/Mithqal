@@ -10,12 +10,13 @@
 //! - Recursive coefficient factorisation for bivariate quadratics.
 //! - Evaluation and interpolation for monic bivariate polynomials that split
 //!   into linear factors with polynomial coefficients.
+//! - Square-free extraction for monic bivariate perfect squares.
 //! - Even-term grouping.
 //!
 //! Reserved stages for the full algorithm:
 //!
-//! - Multivariate square-free decomposition.
-//! - Hensel lifting for factors that are irreducible over the rationals.
+//! - Square-free extraction for higher multivariate powers.
+//! - A multivariate Hensel hook beyond the univariate integer path.
 
 use super::*;
 
@@ -264,8 +265,81 @@ impl<'a> MultivariateFactorizer<'a> {
         Some(factors)
     }
 
-    fn factor_square_free_stage(&mut self, _polynomial: &Poly) -> Option<Vec<ExprId>> {
-        // Reserved for multivariate square-free decomposition.
+    fn factor_square_free_stage(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
+        let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        let degree = x_degree(polynomial, horizontal);
+        if degree < 2 || degree % 2 != 0 || !is_monic_in(polynomial, horizontal) {
+            return None;
+        }
+        let bound = total_degree(polynomial);
+        if bound % 2 != 0 || bound > 24 {
+            return None;
+        }
+        let root_bound = bound / 2;
+        let needed = root_bound as usize + 1;
+        for base in [0i64, 10, -10] {
+            let mut samples: Vec<(Rat, Vec<Rat>)> = Vec::new();
+            for offset in 0..(4 * needed as i64 + 16) {
+                let Some(value) = Rat::from_i64(base + offset, 1).ok() else {
+                    continue;
+                };
+                let (sample_degree, coefficients) =
+                    substitute_vertical(polynomial, horizontal, vertical, &value);
+                if sample_degree != degree {
+                    continue;
+                }
+                let Some(mut root) = dense_square_root(&coefficients) else {
+                    continue;
+                };
+                root.resize(degree / 2 + 1, Rat::zero());
+                samples.push((value, root));
+                if samples.len() == needed {
+                    break;
+                }
+            }
+            if samples.len() < needed {
+                continue;
+            }
+            let mut root_coefficients = Vec::with_capacity(degree / 2 + 1);
+            for coefficient in 0..=degree / 2 {
+                let points: Vec<(Rat, Rat)> = samples
+                    .iter()
+                    .map(|(value, roots)| {
+                        (
+                            value.clone(),
+                            roots.get(coefficient).cloned().unwrap_or_else(Rat::zero),
+                        )
+                    })
+                    .collect();
+                root_coefficients.push(interpolate(&points, root_bound)?);
+            }
+            let mut root = Poly::zero();
+            for (horizontal_power, coefficients) in root_coefficients.iter().enumerate() {
+                for (vertical_power, coefficient) in coefficients.iter().enumerate() {
+                    if coefficient.is_zero() {
+                        continue;
+                    }
+                    let mut powers = Vec::new();
+                    if horizontal_power > 0 {
+                        powers.push((horizontal, horizontal_power as u32));
+                    }
+                    if vertical_power > 0 {
+                        powers.push((vertical, vertical_power as u32));
+                    }
+                    powers.sort_by_key(|(symbol, _)| *symbol);
+                    root.terms.insert(Monomial { powers }, coefficient.clone());
+                }
+            }
+            if root.mul(&root) != *polynomial {
+                continue;
+            }
+            let expression = expression_from_poly(self.arena, &root, &self.context);
+            let exponent = self.arena.intern_int(Int::from_u64(2));
+            return Some(vec![
+                self.arena
+                    .intern_call(self.context.power, &[expression, exponent]),
+            ]);
+        }
         None
     }
 

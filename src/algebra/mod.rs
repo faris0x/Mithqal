@@ -9,6 +9,7 @@
 //! univariate polynomial gcd when both sides depend on one variable and falls
 //! back to monomial content otherwise.
 
+mod hensel;
 mod multivariate;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -611,6 +612,46 @@ fn dense_power(base: &[Rat], exponent: u32) -> Vec<Rat> {
     result
 }
 
+fn dense_square_root(coefficients: &[Rat]) -> Option<Vec<Rat>> {
+    let coefficients = trim(coefficients.to_vec());
+    if coefficients.is_empty() {
+        return None;
+    }
+    let mut shift = 0usize;
+    while coefficients.get(shift).is_some_and(Rat::is_zero) {
+        shift += 1;
+    }
+    if shift >= coefficients.len() || shift % 2 != 0 {
+        return None;
+    }
+    let core = &coefficients[shift..];
+    let constant = rational_sqrt(core.first()?)?;
+    let degree = core.len().checked_sub(1)?;
+    if degree % 2 != 0 {
+        return None;
+    }
+    let degree = degree / 2;
+    let mut root = vec![Rat::zero(); degree + 1];
+    root[0] = constant.clone();
+    let two = Rat::from_i64(2, 1).ok()?;
+    for power in 1..=degree {
+        let mut sum = Rat::zero();
+        for index in 1..power {
+            if index < root.len() && power - index < root.len() {
+                sum = sum.add(&root[index].mul(&root[power - index]));
+            }
+        }
+        let numerator = core.get(power).cloned().unwrap_or_else(Rat::zero).sub(&sum);
+        root[power] = numerator.div(&constant.mul(&two)).ok()?;
+    }
+    if dense_multiply(&root, &root) != core {
+        return None;
+    }
+    let mut result = vec![Rat::zero(); shift / 2];
+    result.extend(root);
+    Some(result)
+}
+
 fn primitive_normalize(coefficients: &[Rat]) -> Vec<Rat> {
     let Some((_, values)) = integerize(coefficients) else {
         return trim(coefficients.to_vec());
@@ -1185,6 +1226,27 @@ pub(crate) fn factor(arena: &mut Arena, expression: ExprId, context: &Context) -
     Some(product(arena, &factors, context))
 }
 
+fn push_dense_factor(
+    arena: &mut Arena,
+    variable: SymbolId,
+    coefficients: &[Rat],
+    multiplicity: u32,
+    context: &Context,
+    factors: &mut Vec<ExprId>,
+) {
+    if coefficients.len() <= 1 {
+        return;
+    }
+    let polynomial = Poly::from_dense(variable, coefficients);
+    let expression = expression_from_poly(arena, &polynomial, context);
+    if multiplicity <= 1 {
+        factors.push(expression);
+    } else {
+        let exponent = arena.intern_int(Int::from_u64(multiplicity as u64));
+        factors.push(arena.intern_call(context.power, &[expression, exponent]));
+    }
+}
+
 fn factor_univariate(
     arena: &mut Arena,
     variable: SymbolId,
@@ -1222,8 +1284,15 @@ fn factor_univariate(
             }
         }
         if remaining.len() > 1 {
-            let polynomial = Poly::from_dense(variable, &remaining);
-            factors.push(expression_from_poly(arena, &polynomial, context));
+            if let Some(parts) = hensel::factor_integer_polynomial(&remaining)
+                && parts.len() > 1
+            {
+                for part in parts {
+                    push_dense_factor(arena, variable, &part, 1, context, &mut factors);
+                }
+            } else {
+                push_dense_factor(arena, variable, &remaining, 1, context, &mut factors);
+            }
         }
         if factors.is_empty() {
             factors.push(expression_from_poly(
@@ -1262,13 +1331,21 @@ fn factor_univariate(
         factors.push(expression_from_rat(arena, &scalar));
     }
     for (component, multiplicity) in components {
-        let polynomial = Poly::from_dense(variable, &component);
-        let expression = expression_from_poly(arena, &polynomial, context);
-        if multiplicity <= 1 {
-            factors.push(expression);
+        if let Some(parts) = hensel::factor_integer_polynomial(&component)
+            && parts.len() > 1
+        {
+            for part in parts {
+                push_dense_factor(arena, variable, &part, multiplicity, context, &mut factors);
+            }
         } else {
-            let exponent = arena.intern_int(Int::from_u64(multiplicity as u64));
-            factors.push(arena.intern_call(context.power, &[expression, exponent]));
+            push_dense_factor(
+                arena,
+                variable,
+                &component,
+                multiplicity,
+                context,
+                &mut factors,
+            );
         }
     }
     if factors.is_empty() {
