@@ -2050,6 +2050,42 @@ impl<'a> Evaluator<'a> {
                 if head == self.heads.cos && value.is_zero() {
                     return Ok(self.arena.intern_int(Int::one()));
                 }
+                if head == self.heads.atan
+                    && value.is_one()
+                    && let Some(angle) = self.pi_fraction(1, 4)
+                {
+                    return Ok(angle);
+                }
+                if head == self.heads.asin {
+                    if value.is_zero() {
+                        return Ok(self.arena.intern_int(Int::zero()));
+                    }
+                    if value.is_one()
+                        && let Some(angle) = self.pi_fraction(1, 2)
+                    {
+                        return Ok(angle);
+                    }
+                    if value.neg().is_one()
+                        && let Some(angle) = self.pi_fraction(-1, 2)
+                    {
+                        return Ok(angle);
+                    }
+                }
+                if head == self.heads.acos {
+                    if value.is_one() {
+                        return Ok(self.arena.intern_int(Int::zero()));
+                    }
+                    if value.is_zero()
+                        && let Some(angle) = self.pi_fraction(1, 2)
+                    {
+                        return Ok(angle);
+                    }
+                    if value.neg().is_one()
+                        && let Some(angle) = self.pi_fraction(1, 1)
+                    {
+                        return Ok(angle);
+                    }
+                }
             }
         }
         let kernel = self
@@ -2254,6 +2290,11 @@ impl<'a> Evaluator<'a> {
         if matches!(function, CalculusHead::Converges) {
             return self.apply_converges(head, args);
         }
+        if matches!(function, CalculusHead::Integrate) && args.len() == 4 {
+            return Ok(self
+                .definite_integral(args[0], args[1], args[2], args[3])
+                .unwrap_or(original));
+        }
         let context = crate::calculus::Context {
             plus: self.heads.plus,
             times: self.heads.times,
@@ -2266,9 +2307,7 @@ impl<'a> Evaluator<'a> {
             CalculusHead::Differentiate => {
                 crate::calculus::differentiate(self.arena, args[0], args[1], &context)
             }
-            CalculusHead::Integrate if args.len() == 4 => crate::calculus::definite_integrate(
-                self.arena, args[0], args[1], args[2], args[3], &context,
-            ),
+            CalculusHead::Integrate if args.len() == 4 => None,
             CalculusHead::Integrate => {
                 crate::calculus::integrate(self.arena, args[0], args[1], &context)
             }
@@ -2290,6 +2329,74 @@ impl<'a> Evaluator<'a> {
             }
         });
         Ok(result.unwrap_or(original))
+    }
+
+    fn definite_integral(
+        &mut self,
+        expression: ExprId,
+        variable: ExprId,
+        lower: ExprId,
+        upper: ExprId,
+    ) -> Option<ExprId> {
+        if self.interval_has_interior_pole(expression, variable, lower, upper) {
+            return None;
+        }
+        let context = self.calculus_context();
+        let antiderivative =
+            crate::calculus::integrate(self.arena, expression, variable, &context)?;
+        let lower_value = self.endpoint_limit(antiderivative, variable, lower, LimitSide::Right)?;
+        let upper_value = self.endpoint_limit(antiderivative, variable, upper, LimitSide::Left)?;
+        let negative_lower = self.negate_limit_value(lower_value);
+        match self.add_limit_values(upper_value, negative_lower)? {
+            LimitValue::Finite(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    fn interval_has_interior_pole(
+        &mut self,
+        expression: ExprId,
+        variable: ExprId,
+        lower: ExprId,
+        upper: ExprId,
+    ) -> bool {
+        let (Some(lower), Some(upper)) = (self.as_rat(lower), self.as_rat(upper)) else {
+            return false;
+        };
+        let (lower, upper) = if lower <= upper {
+            (lower, upper)
+        } else {
+            (upper, lower)
+        };
+        let cancelled = self.cancel_expression(expression);
+        let (_, denominator) = self.split_quotient(cancelled);
+        if is_one_value(self.arena, denominator) {
+            return false;
+        }
+        let context = self.algebra_context();
+        let Some(roots) = crate::algebra::univariate_rational_root_multiplicities(
+            self.arena,
+            denominator,
+            variable,
+            &context,
+        ) else {
+            return false;
+        };
+        roots.iter().any(|(root, _)| *root > lower && *root < upper)
+    }
+
+    fn endpoint_limit(
+        &mut self,
+        antiderivative: ExprId,
+        variable: ExprId,
+        point: ExprId,
+        finite_side: LimitSide,
+    ) -> Option<LimitValue> {
+        let side = match self.limit_target(point) {
+            LimitTarget::Finite(_) => finite_side,
+            _ => LimitSide::Both,
+        };
+        self.limit_value(antiderivative, variable, point, side)
     }
 
     fn apply_limit(&mut self, head: ExprId, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -2477,8 +2584,13 @@ impl<'a> Evaluator<'a> {
         if !self.expression_contains(expression, variable) {
             return Some(LimitValue::Finite(expression));
         }
+        if let Some(value) = self.finite_substitution(expression, variable, point) {
+            return Some(LimitValue::Finite(value));
+        }
         let cancelled = self.cancel_expression(expression);
-        if let Some(value) = self.finite_substitution(cancelled, variable, point) {
+        if cancelled != expression
+            && let Some(value) = self.finite_substitution(cancelled, variable, point)
+        {
             return Some(LimitValue::Finite(value));
         }
         if let Some(value) = self.composed_limit(cancelled, variable, point, side) {
@@ -2550,6 +2662,9 @@ impl<'a> Evaluator<'a> {
         point: ExprId,
         side: LimitSide,
     ) -> Option<Sign> {
+        if self.abs_argument(expression).is_some() {
+            return Some(Sign::Positive);
+        }
         let (order, coefficient) = self.first_nonzero_term(expression, variable, point, 4)?;
         let mut sign = self.definite_sign(coefficient)?;
         if side == LimitSide::Left && order % 2 == 1 {
@@ -3242,10 +3357,14 @@ impl<'a> Evaluator<'a> {
     }
 
     fn half_pi(&mut self) -> Option<ExprId> {
+        self.pi_fraction(1, 2)
+    }
+
+    fn pi_fraction(&mut self, numerator: i64, denominator: i64) -> Option<ExprId> {
         let pi = self.arena.builtin_head("pi");
-        let half = Rat::from_i64(1, 2).ok()?;
-        let half = self.rat_expression(&half);
-        let value = self.arena.intern_call(self.heads.times, &[half, pi]);
+        let factor = Rat::from_i64(numerator, denominator).ok()?;
+        let factor = self.rat_expression(&factor);
+        let value = self.arena.intern_call(self.heads.times, &[factor, pi]);
         self.eval(value).ok()
     }
 

@@ -279,3 +279,19 @@ fn multivariate_grouping_factorization() {
     assert_factor_matches("x*y+x*z+y*w+z*w");
     assert_factor_matches("a*x+a*y+b*x+b*y+c*x+c*y");
 }
+
+#[test]
+fn binary_quadratic_factorization() {
+    assert_eq!(text("factor(x^2+3*x*y+2*y^2)"), "(x+y)*(x+2*y)");
+    assert_eq!(text("factor(2*x^2+3*x*y+y^2)"), "(x+y)*(y+2*x)");
+    assert_eq!(text("factor(4*x^2+4*x*y+y^2)"), "(y+2*x)^2");
+    assert_eq!(text("factor(6*x^2+5*x*y+y^2)"), "(y+2*x)*(y+3*x)");
+    for source in [
+        "x^2+3*x*y+2*y^2",
+        "2*x^2+3*x*y+y^2",
+        "4*x^2+4*x*y+y^2",
+        "6*x^2+5*x*y+y^2",
+    ] {
+        assert_factor_matches(source);
+    }
+}

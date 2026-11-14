@@ -237,7 +237,7 @@ The calculus layer provides `differentiate`, `integrate`, `limit`, `series`, and
 
 `integrate` covers polynomials, powers with constant exponents, linear substitutions, `exp`, `sin`, `cos`, `tan`, `sinh`, `cosh`, `tanh`, `ln`, reciprocal linear terms, `1/(1+x^2)`, and `1/sqrt(1-x^2)`. It also performs integration by parts for polynomial and elementary factor products, and partial fractions for reciprocal polynomials with distinct rational roots. Products of dependent factors are expanded when the algebra layer can expand them. An antiderivative constant is omitted. Unsupported integrals remain unevaluated.
 
-`integrate` also accepts lower and upper bounds as extra arguments. The definite form substitutes the endpoints into the antiderivative and forms the difference. Symbolic bounds are allowed. Simple improper integrals with `inf` or `-inf` endpoints use limit rules for decaying exponentials, negative powers, and arctangents. Divergent improper integrals remain unevaluated.
+`integrate` also accepts lower and upper bounds as extra arguments. The definite form evaluates the antiderivative at the endpoints through one-sided limits and forms the difference. Symbolic bounds are allowed. Finite singular endpoints are handled when the antiderivative has a one-sided limit. Improper integrals with `inf` or `-inf` endpoints use the same limit engine, including rational, exponential, logarithmic, and arctangent growth rules. Rational denominators with roots strictly inside the interval leave the integral unevaluated. Divergent improper integrals remain unevaluated.
 
 Differentiation results are passed through rational cancellation so quotient rule results collapse to a single fraction. Integration does not attach branch conditions or assumptions.
 

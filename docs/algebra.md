@@ -24,6 +24,8 @@ The algebra layer works with exact polynomials over the rationals. Polynomials a
 expand((x+y)^3)                       -> x^3+y^3+3*x*y^2+3*y*x^2
 factor(x^4-1)                         -> (-1+x)*(1+x)*(1+x^2)
 factor(x^3+y^3)                       -> (x+y)*(-x*y+x^2+y^2)
+factor(2*x^2+3*x*y+y^2)               -> (x+y)*(y+2*x)
+factor(4*x^2+4*x*y+y^2)               -> (y+2*x)^2
 cancel((x^2-1)/(x+1))                 -> -1+x
 polynomialGcd(x^2-1,x^2+2*x+1,x)      -> 1+x
 resultant(x^2-1,x-2,x)                -> 3
@@ -36,9 +38,13 @@ discriminant(x^2-4,x)                 -> 16
 
 ## Factoring coverage
 
-`factor` handles numeric content, common monomial content, univariate rational roots, differences of squares, perfect square trinomials, sums of cubes, differences of cubes, and grouping for four to eight even-term multivariate polynomials.
+`factor` handles numeric content, common monomial content, univariate rational roots, differences of squares, perfect square trinomials, sums of cubes, differences of cubes, homogeneous binary quadratic forms with rational roots, and grouping for four to eight even-term multivariate polynomials.
 
-Unsupported factorizations stay unchanged. General multivariate factorization remains future work.
+Homogeneous binary quadratic forms are factored by solving their ratio polynomial over the rationals. Repeated roots become powers, and rational leading coefficients are distributed to keep the linear factors integral when possible.
+
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms and grouping. Reserved stages cover recursive coefficient factorization, square-free decomposition, evaluation and interpolation, and Hensel lifting.
+
+Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 
 ## Limits
 

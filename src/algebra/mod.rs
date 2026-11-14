@@ -9,6 +9,8 @@
 //! univariate polynomial gcd when both sides depend on one variable and falls
 //! back to monomial content otherwise.
 
+mod multivariate;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::expr::{Arena, ExprId, Node, SymbolId};
@@ -1052,9 +1054,8 @@ pub(crate) fn factor(arena: &mut Arena, expression: ExprId, context: &Context) -
         } else if let Some((left, right)) = factor_sum_of_cubes(&remaining) {
             factors.push(expression_from_poly(arena, &left, context));
             factors.push(expression_from_poly(arena, &right, context));
-        } else if let Some((left, right)) = factor_by_grouping(&remaining) {
-            factors.push(expression_from_poly(arena, &left, context));
-            factors.push(expression_from_poly(arena, &right, context));
+        } else if let Some(staged) = multivariate::factor_stage(arena, &remaining, context) {
+            factors.extend(staged);
         } else if let Some(base) = factor_perfect_square(&remaining) {
             let base = expression_from_poly(arena, &base, context);
             let exponent = arena.intern_int(Int::from_i64(2));
@@ -1770,6 +1771,17 @@ pub(crate) fn rational_limit_at_infinity(
         ratio.sign()
     };
     Some(RationalLimit::Infinite(sign))
+}
+
+pub(crate) fn univariate_rational_root_multiplicities(
+    arena: &Arena,
+    expression: ExprId,
+    variable: ExprId,
+    context: &Context,
+) -> Option<Vec<(Rat, u32)>> {
+    let variable = variable_argument(arena, variable)?;
+    let coefficients = poly_from_expr(arena, context, expression)?.dense_in(variable)?;
+    Some(rational_roots(&coefficients).0)
 }
 
 pub(crate) fn univariate_rational_roots(

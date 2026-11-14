@@ -197,3 +197,28 @@ fn improper_integrals() {
     assert!(text("integrate(1/x,x,1,inf)").contains("integrate"));
     assert!(text("integrate(exp(x),x,0,inf)").contains("integrate"));
 }
+
+#[test]
+fn improper_integrals_with_finite_singularities() {
+    assert_eq!(text("integrate(ln(x),x,0,1)"), "-1");
+    assert_eq!(text("integrate(1/sqrt(x),x,0,1)"), "2");
+    assert_eq!(text("integrate(1/sqrt(1-x),x,0,1)"), "2");
+    assert_eq!(text("integrate(x^(-2/3),x,0,1)"), "3");
+    assert_eq!(text("integrate(1/sqrt(1-x^2),x,0,1)"), "(1/2)*pi");
+    assert_eq!(text("integrate(1/(x^2+1),x,0,1)"), "(1/4)*pi");
+}
+
+#[test]
+fn divergent_integrals_with_finite_singularities_stay_unevaluated() {
+    for source in [
+        "integrate(1/x,x,0,1)",
+        "integrate(1/x^2,x,0,1)",
+        "integrate(1/(x-1),x,0,1)",
+        "integrate(1/(x-1),x,0,2)",
+        "integrate(1/x,x,-1,1)",
+        "integrate(1/x^2,x,-1,1)",
+    ] {
+        let result = text(source);
+        assert!(result.contains("integrate"), "{source} => {result}");
+    }
+}
