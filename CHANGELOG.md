@@ -25,5 +25,6 @@ Initial kernel work.
 - Optimized hot paths with binary limb keys for interning, FNV hashed maps, hash based like term and base collection, a head resolution fast path, and a release profile with thin LTO and one codegen unit.
 - Added parse, compiled code, and definition versioned evaluation caches. Definition changes invalidate the result caches, and collection clears every cache.
 - Added constant folding of numeric atoms in the compiler so integer and rational literals avoid an evaluation instruction.
+- Added a machine call frame stack that isolates caller and callee operand stack regions for symbol calls.
 - Added a benchmark harness for cold parsing, cached evaluation, pattern calls, closure calls, compiled execution, and collection.
 - Expanded the suite to more than 230 tests covering normal behavior, boundaries, malformed input, and error propagation.

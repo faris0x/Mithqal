@@ -4,7 +4,7 @@ This document defines the execution model.
 
 ## Implementation status
 
-The compiler and typed instruction machine are active. They execute `Const`, `Eval`, `CallSymbol`, jumps, `Return`, `Safepoint`, and `Budget`. The `if` form compiles to control flow. Calls into the rewrite engine remain the semantic path for symbolic work. Closures are active in the evaluator. Machine call frames, compiled closure bodies, `ApplyRules` as a dedicated instruction, and packed instruction encoding remain future work.
+The compiler and typed instruction machine are active. They execute `Const`, `Eval`, `CallSymbol`, jumps, `Return`, `Safepoint`, and `Budget`. The `if` form compiles to control flow. Calls into the rewrite engine remain the semantic path for symbolic work. Closures are active in the evaluator. Machine call frames are active for symbol calls. Machine locals, compiled closure bodies, `ApplyRules` as a dedicated instruction, and packed instruction encoding remain future work.
 
 ## Role of the virtual machine
 
@@ -75,7 +75,7 @@ Definitions are evaluated by the symbolic engine. Compiled top level statements 
 
 ## Frames and closures
 
-The current machine uses an operand stack and no machine call frames. Closures are evaluated by the symbolic engine into `closure` calls. Applying a closure builds a lexical frame from the captured environment and parameter bindings, evaluates the body in that frame, then restores the caller frame. Machine frames and compiled closure bodies are future work.
+The machine keeps an operand stack and a call frame stack. Each symbol call records the operand stack base for the callee, evaluates the call, restores the caller stack, and pushes the result. Machine locals and compiled closure bodies are future work. Closures are evaluated by the symbolic engine into `closure` calls. Applying a closure builds a lexical frame from the captured environment and parameter bindings, evaluates the body in that frame, then restores the caller frame.
 
 Sequence pattern bindings are produced by the matcher and substituted into right hand sides. A local slot mapping for compiled right hand sides is future work.
 

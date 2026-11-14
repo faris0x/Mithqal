@@ -25,6 +25,7 @@ pub(crate) fn execute(
         arena,
         definitions,
         stack: Vec::new(),
+        frames: Vec::new(),
         steps: 0,
         max_steps,
         max_depth,
@@ -34,10 +35,15 @@ pub(crate) fn execute(
     machine.run(code)
 }
 
+struct Frame {
+    stack_base: usize,
+}
+
 struct Machine<'a> {
     arena: &'a mut Arena,
     definitions: &'a mut SessionDefinitions,
     stack: Vec<ExprId>,
+    frames: Vec<Frame>,
     steps: u64,
     max_steps: u64,
     max_depth: u32,
@@ -85,6 +91,8 @@ impl Machine<'_> {
                     self.stack.push(value);
                 }
                 Instr::CallSymbol(symbol, argc) => {
+                    let base = self.stack.len().saturating_sub(argc as usize);
+                    self.frames.push(Frame { stack_base: base });
                     let args = self.pop_args(argc)?;
                     let head = self.arena.symbol_expr(symbol);
                     let call = self.arena.intern_call(head, &args);
@@ -95,7 +103,10 @@ impl Machine<'_> {
                         self.max_steps,
                         self.max_depth,
                     )?;
+                    self.stack.truncate(base);
                     self.stack.push(value);
+                    let frame = self.frames.pop().expect("call frame exists");
+                    debug_assert!(self.stack.len() > frame.stack_base);
                 }
                 Instr::Jump(target) => {
                     pc = target as usize;
