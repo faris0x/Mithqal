@@ -1,6 +1,6 @@
 //! Exact numbers and GMP bindings.
 //!
-//! Version 0.0.1 uses GMP for integers and rationals. The FFI layer is private
+//! The current version uses GMP for integers and rationals. The FFI layer is private
 //! and all public numeric values enforce GMP initialization and cleanup.
 
 mod ffi;

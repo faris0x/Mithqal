@@ -42,6 +42,18 @@ impl Definitions {
         self.down.get(&symbol).map(Vec::as_slice).unwrap_or(&[])
     }
 
+    pub(crate) fn roots(&self, roots: &mut Vec<ExprId>) {
+        for own in self.own.values() {
+            roots.push(own.value);
+        }
+        for rules in self.down.values() {
+            for rule in rules {
+                roots.push(rule.lhs);
+                roots.push(rule.rhs);
+            }
+        }
+    }
+
     pub(crate) fn define(
         &mut self,
         arena: &Arena,

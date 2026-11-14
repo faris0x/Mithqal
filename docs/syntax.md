@@ -1,6 +1,6 @@
 # Syntax
 
-This document defines the source language for version 0.0.1.
+This document defines the source language for the current version.
 
 ## Source layout
 
@@ -99,7 +99,7 @@ sin(x)
 
 The head is any expression that evaluates to a callable value. A symbol head can refer to a built in function or a user definition.
 
-Square brackets after a completed expression are reserved for indexing. Version 0.0.1 does not implement indexing and produces a diagnostic. Use a function call such as `part(x,1)` when indexing is added.
+Square brackets after a completed expression are reserved for indexing. The current version does not implement indexing and produces a diagnostic. Use a function call such as `part(x,1)` when indexing is added.
 
 ## Operators
 
@@ -164,8 +164,8 @@ The following rules resolve the ambiguous cases:
 - `2x^2` is `2*(x^2)`.
 - `x2` is one identifier. It is not `x*2`.
 - `23` is one number. It is not `2*3`.
-- `[` after a completed expression starts indexing. `2[1,2]` is an indexing form and produces a diagnostic in version 0.0.1. Write `2*[1,2]` for scalar multiplication of a list.
-- `[1,2][3]` is indexing and produces a diagnostic in version 0.0.1.
+- `[` after a completed expression starts indexing. `2[1,2]` is an indexing form and produces a diagnostic in the current version. Write `2*[1,2]` for scalar multiplication of a list.
+- `[1,2][3]` is indexing and produces a diagnostic in the current version.
 - A comma separates arguments or list elements. It never implies multiplication.
 
 Implicit multiplication has the same precedence as explicit `*` and associates to the left.
@@ -291,4 +291,4 @@ error TGN-PARSE-0002: comments must occupy their own lines
 
 ## File fixtures
 
-Test fixtures use the `.expr` extension for version 0.0.1. The project has no file reader in this version. The final source extension will be chosen with the project name.
+Test fixtures use the `.expr` extension for the current version. The project has no file reader in this version. The final source extension will be chosen with the project name.

@@ -24,8 +24,10 @@ struct SymbolInfo {
 
 /// An arena of hash consed expression nodes and a symbol table.
 pub struct Arena {
-    nodes: Vec<Node>,
+    nodes: Vec<Option<Node>>,
     intern: HashMap<Key, ExprId>,
+    free: Vec<ExprId>,
+    live: usize,
     symbols: Vec<SymbolInfo>,
     symbol_names: HashMap<String, SymbolId>,
 }
@@ -36,24 +38,28 @@ impl Arena {
         Arena {
             nodes: Vec::new(),
             intern: HashMap::new(),
+            free: Vec::new(),
+            live: 0,
             symbols: Vec::new(),
             symbol_names: HashMap::new(),
         }
     }
 
-    /// Number of interned expression nodes.
+    /// Number of live interned expression nodes.
     pub fn len(&self) -> usize {
-        self.nodes.len()
+        self.live
     }
 
-    /// True when the arena has no expression nodes.
+    /// True when the arena has no live expression nodes.
     pub fn is_empty(&self) -> bool {
-        self.nodes.is_empty()
+        self.live == 0
     }
 
     /// Read a node by handle.
     pub fn node(&self, id: ExprId) -> &Node {
-        &self.nodes[id as usize]
+        self.nodes[id as usize]
+            .as_ref()
+            .expect("expression handle is not live")
     }
 
     /// Intern an integer.
@@ -183,26 +189,69 @@ impl Arena {
         canonical_cmp(self, left, right)
     }
 
-    fn intern_node(&mut self, node: Node) -> ExprId {
-        let key = match &node {
-            Node::Int(value) => Key::Int(value.to_decimal()),
-            Node::Rat(value) => {
-                if value.den().is_one() {
-                    return self.intern_int(value.num());
-                }
-                Key::Rat(value.to_decimal())
+    /// Reclaim every node that is not reachable from the roots or the symbol
+    /// table. Surviving handles remain valid because collection is non moving.
+    pub fn collect(&mut self, roots: &[ExprId]) {
+        let mut marked = vec![false; self.nodes.len()];
+        let mut stack = Vec::new();
+        stack.extend_from_slice(roots);
+        for symbol in &self.symbols {
+            if let Some(node) = symbol.node {
+                stack.push(node);
             }
-            Node::Symbol(symbol) => Key::Symbol(*symbol),
-            Node::Call { head, args } => Key::Call {
-                head: *head,
-                args: args.clone(),
-            },
-        };
+        }
+
+        while let Some(id) = stack.pop() {
+            let index = id as usize;
+            if index >= marked.len() || marked[index] {
+                continue;
+            }
+            let Some(node) = self.nodes[index].as_ref() else {
+                continue;
+            };
+            marked[index] = true;
+            if let Node::Call { head, args } = node {
+                stack.push(*head);
+                stack.extend(args.iter().copied());
+            }
+        }
+
+        let mut intern = HashMap::new();
+        for (index, slot) in self.nodes.iter_mut().enumerate() {
+            match slot {
+                Some(node) if marked[index] => {
+                    intern.insert(key_for(node), index as ExprId);
+                }
+                Some(_) => {
+                    *slot = None;
+                    self.free.push(index as ExprId);
+                    self.live -= 1;
+                }
+                None => {}
+            }
+        }
+        self.intern = intern;
+    }
+
+    fn intern_node(&mut self, node: Node) -> ExprId {
+        if let Node::Rat(value) = &node {
+            if value.den().is_one() {
+                return self.intern_int(value.num());
+            }
+        }
+        let key = key_for(&node);
         if let Some(&id) = self.intern.get(&key) {
             return id;
         }
-        let id = self.nodes.len() as ExprId;
-        self.nodes.push(node);
+        let id = if let Some(id) = self.free.pop() {
+            self.nodes[id as usize] = Some(node);
+            id
+        } else {
+            let id = self.nodes.len() as ExprId;
+            self.nodes.push(Some(node));
+            id
+        };
+        self.live += 1;
         self.intern.insert(key, id);
         id
     }
@@ -211,5 +260,17 @@ impl Arena {
 impl Default for Arena {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+fn key_for(node: &Node) -> Key {
+    match node {
+        Node::Int(value) => Key::Int(value.to_decimal()),
+        Node::Rat(value) => Key::Rat(value.to_decimal()),
+        Node::Symbol(symbol) => Key::Symbol(*symbol),
+        Node::Call { head, args } => Key::Call {
+            head: *head,
+            args: args.clone(),
+        },
     }
 }

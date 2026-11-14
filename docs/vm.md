@@ -1,6 +1,10 @@
 # Virtual machine
 
-This document defines the execution model for version 0.0.1.
+This document defines the execution model.
+
+## Implementation status
+
+The compiler and typed instruction machine are active. They execute `Const`, `Eval`, `CallSymbol`, jumps, `Return`, `Safepoint`, and `Budget`. The `if` form compiles to control flow. Calls into the rewrite engine remain the semantic path for symbolic work. Closures, call frames, `ApplyRules` as a dedicated instruction, and packed instruction encoding remain future work.
 
 ## Role of the virtual machine
 
@@ -34,27 +38,17 @@ Integers, rationals, symbols, and calls are hash consed. A closure is allocated 
 
 ## Instructions
 
-Version 0.0.1 uses a typed instruction vector. A packed byte stream is a later optimization.
+The current version uses a typed instruction vector. A packed byte stream is a later optimization.
 
 ```rust
 enum Instr {
-    Const(ConstId),
-    LoadLocal(u16),
-    StoreLocal(u16),
-    LoadGlobal(SymbolId),
-
+    Const(u16),
     Eval,
     CallSymbol(SymbolId, u16),
-    CallValue(u16),
-    CallBuiltin(BuiltinId, u16),
-    MakeCall(Value, u16),
-    MakeClosure(CodeId, u16),
-
     Jump(u32),
     JumpIfFalse(u32),
+    JumpIfNotBoolean(u32),
     Return,
-
-    ApplyRules,
     Safepoint,
     Budget(u32),
 }
@@ -62,48 +56,29 @@ enum Instr {
 
 `Eval` evaluates the value on the top of the stack through the symbolic evaluator. It is the bridge for dynamically constructed expressions.
 
-`CallSymbol` dispatches by symbol. The dispatcher checks built in implementations and user down values. `CallBuiltin` is an optional direct path chosen by the compiler for a known built in head.
-
-`CallValue` applies a closure or another callable value.
-
-`ApplyRules` asks the matcher to apply user definitions to a call. The matched right hand side is a code object executed with pattern bindings installed in locals.
+`CallSymbol` builds a call from the symbol head and the values on the stack, then runs the symbolic evaluator. The evaluator checks built in implementations and user down values. Dedicated call and built in instructions are future work.
 
 ## Code objects
 
-A code object contains instructions, a constant pool, local slot count, and source metadata for diagnostics.
+A code object contains instructions, a constant pool, and an optional name.
 
 ```rust
 struct Code {
     instrs: Vec<Instr>,
-    constants: Vec<Value>,
-    locals: u16,
+    constants: Vec<ExprId>,
     name: Option<String>,
 }
 ```
 
-Constants reference expressions in the arena. The garbage collector treats active code constant pools as roots.
+Constants reference expressions in the arena. The compiler emits one constant per literal or fallback expression.
 
-Definitions are compiled when installed. A delayed definition compiles its right hand side once. An immediate definition evaluates its right hand side at installation time. A top level statement is compiled before execution.
+Definitions are evaluated by the symbolic engine. Compiled top level statements are available through the session compiled path. Compiling every definition body once and caching the result is future work.
 
 ## Frames and closures
 
-The virtual machine has an operand stack and a frame stack.
+The current machine uses an operand stack and no call frames. Frame locals, closure capture, and environment objects are future work. Closures are represented as unevaluated `function` expressions by the evaluator at this stage.
 
-```rust
-struct Frame {
-    code: CodeId,
-    pc: usize,
-    locals: Vec<Value>,
-    env: EnvId,
-    base: usize,
-}
-```
-
-The operand stack stores `Value` handles. A frame owns its local slots. A closure stores a code identifier and a captured environment.
-
-An environment is a traced heap object containing captured values. Closures capture lexical bindings by value. Global symbols resolve through the session at application time.
-
-Sequence pattern bindings use a separate binding representation because they hold a sequence of values. The matcher produces bindings, and the compiler maps named bindings to local slots. Sequence bindings occupy a sequence slot that can be read by RHS code.
+Sequence pattern bindings are produced by the matcher and substituted into right hand sides. A local slot mapping for compiled right hand sides is future work.
 
 ## Execution loop
 
@@ -127,37 +102,24 @@ if(cond,then,else)
 
 compiles to a sequence that evaluates `cond`, branches when the result is `false`, evaluates one branch, and returns.
 
-`and` and `or` compile to short circuit jumps. `let` evaluates each binding in order and stores the result in a local slot. `fn` emits `MakeClosure` with the body code and the captured environment.
+`and`, `or`, `let`, and `fn` currently fall back to the symbolic evaluator. They keep their held arguments correct without duplicate control logic in the compiler. Short circuit jump lowering and closure code generation are future work.
 
-Pattern definitions are not control forms at runtime. The matcher handles them inside `ApplyRules`, and the right hand side receives bindings as locals.
+Pattern definitions are handled by the symbolic evaluator. The compiler treats definition forms as fallback expressions.
 
 ## Garbage collection
 
-Version 0.0.1 uses explicit, non moving mark and sweep collection. Explicit collection keeps handle validity predictable for library users.
+The current version uses explicit, non moving mark and sweep collection. Explicit collection keeps handle validity predictable for library users.
 
 Roots:
 
-- The symbol table, including own values and down values.
-- Pattern and rule records.
+- The symbol table node cache.
+- Own values and down value rules.
 - The last result held by the session.
-- The operand stack.
-- Every frame's local slots and environment.
-- Closure environments.
-- Constant pools of active code objects.
 - Extra roots supplied by the caller.
-- Parser temporaries during a parse operation.
 
-Safepoints:
+The collector marks reachable nodes, frees unmarked nodes, and rebuilds the intern table from surviving nodes. Collection does not move surviving nodes, so rooted handles remain valid. Freed slots are reused by later allocations.
 
-- `CallSymbol`, `CallValue`, `CallBuiltin`.
-- `MakeClosure` and `MakeCall`.
-- `Eval`.
-- Backward `Jump`.
-- Explicit `Safepoint`.
-
-The collector marks reachable nodes, frees unmarked nodes, and rebuilds the intern table from surviving nodes. Collection does not move surviving nodes, so rooted handles remain valid.
-
-The caller invokes collection through the public API with extra roots. The session automatically roots definitions and the last result. Any handle not rooted at collection time becomes invalid.
+Collection is explicit. The session automatically roots definitions and the last result. Any handle not rooted at collection time becomes invalid. The machine emits `Safepoint` instructions, and the collector does not run automatically during execution yet.
 
 ## Determinism
 
@@ -170,14 +132,14 @@ Execution is deterministic for a fixed program, session state, configuration, an
 - The budget counts instructions, matcher steps, and rule applications.
 - Garbage collection has no observable effect other than handle lifetime.
 
-The collector can run at every safepoint during differential tests. Test results must match execution with collection disabled.
+Collection tests cover reclamation, explicit roots, definition survival, intern table rebuilding, and repeated collection with bounded live node counts.
 
 ## Reference interpreter
 
-The reference interpreter evaluates the same expressions with a tree walker. It uses the same evaluator, matcher, and built in registry. It does not use the virtual machine.
+The symbolic evaluator is the reference path. The compiled path uses the typed instruction machine and delegates symbolic calls to the evaluator.
 
-Tests generate a corpus of expressions, evaluate with both paths, and compare canonical output. The corpus includes arithmetic, patterns, definitions, closures, listable calls, error values, and budget exhaustion.
+Tests generate a corpus of expressions, evaluate with both paths, and compare canonical output. The corpus includes arithmetic, conditionals, logic, definitions, recursion, patterns, listable calls, error values, and budget exhaustion.
 
 ## Target
 
-Version 0.0.1 targets Linux on x86 64 with a static GMP build. The virtual machine uses portable Rust and has no architecture specific code. Packed instruction encoding, bytecode serialization, and a JIT are later work.
+The current version targets Linux on x86 64 with a static GMP build. The virtual machine uses portable Rust and has no architecture specific code. Packed instruction encoding, bytecode serialization, and a JIT are later work.

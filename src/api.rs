@@ -6,6 +6,7 @@ use crate::eval::{SessionDefinitions, evaluate_with_definitions};
 use crate::expr::{Arena, ExprId, Node};
 use crate::num::{Int, Rat};
 use crate::print;
+use crate::runtime;
 use crate::syntax;
 
 /// A view of an expression.
@@ -103,6 +104,26 @@ impl Session {
         Ok(value)
     }
 
+    /// Evaluate an expression through the compiled instruction path.
+    pub fn eval_compiled(&mut self, expression: ExprId) -> Result<ExprId, Diagnostic> {
+        let code = runtime::compile(&mut self.arena, expression)?;
+        let value = runtime::execute(
+            &mut self.arena,
+            &mut self.definitions,
+            &code,
+            self.config.max_steps,
+            self.config.max_depth,
+        )?;
+        self.last_result = Some(value);
+        Ok(value)
+    }
+
+    /// Parse and evaluate a single statement through the compiled path.
+    pub fn eval_compiled_statement(&mut self, source: &str) -> Result<ExprId, Diagnostic> {
+        let expression = self.parse_statement(source)?;
+        self.eval_compiled(expression)
+    }
+
     /// Render an expression in canonical form.
     pub fn format(&self, expression: ExprId) -> String {
         print::canonical(&self.arena, expression)
@@ -126,8 +147,21 @@ impl Session {
         }
     }
 
-    /// Remove unreachable expressions. Version 0.0.1 has no collector yet.
-    pub fn collect_garbage(&mut self, _roots: &[ExprId]) {}
+    /// Reclaim expressions not reachable from definitions, the last result,
+    /// or the supplied roots.
+    pub fn collect_garbage(&mut self, roots: &[ExprId]) {
+        let mut all = roots.to_vec();
+        if let Some(last) = self.last_result {
+            all.push(last);
+        }
+        self.definitions.roots(&mut all);
+        self.arena.collect(&all);
+    }
+
+    /// Number of live expression nodes in the session arena.
+    pub fn live_expressions(&self) -> usize {
+        self.arena.len()
+    }
 
     /// The value of the most recent evaluation.
     pub fn last_result(&self) -> Option<ExprId> {

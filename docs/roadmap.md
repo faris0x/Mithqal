@@ -1,8 +1,8 @@
 # Roadmap
 
-The project ships small versions. Version 0.0.1 establishes the kernel and the public library surface. There is no target date for a version 1.0.
+The project ships small versions. The current version establishes the kernel and the public library surface. There is no target date for a version 1.0.
 
-## Version 0.0.1 scope
+## Current scope
 
 Included:
 
@@ -11,7 +11,7 @@ Included:
 - Source reader for whitespace free statements with newline separators and whole line comments.
 - Canonical and infix printers.
 - Fixed point evaluator with deterministic budgets.
-- Pattern matcher for the version 0.0.1 pattern set.
+- Pattern matcher for the the current version pattern set.
 - Definitions, lexical `let`, closures, listable arithmetic, comparisons, and logic.
 - Symbolic `Q(i)` normalization.
 - Typed instruction virtual machine and a reference interpreter.
@@ -58,7 +58,7 @@ The test suite covers these areas:
 - Garbage collection with forced collection at every safepoint.
 - Memory stability under repeated evaluation.
 
-Fixtures use the `.expr` extension in version 0.0.1.
+Fixtures use the `.expr` extension in the current version.
 
 ## Later layers
 
@@ -68,7 +68,7 @@ The project remains a library at its core. Front ends are consumers of the publi
 
 ## Constraints
 
-- Target Linux on x86 64 for version 0.0.1.
+- Target Linux on x86 64 for the current version.
 - Link GMP from vendored source.
 - Avoid external Rust crates.
 - Keep `unsafe` inside the FFI layer and arena internals.

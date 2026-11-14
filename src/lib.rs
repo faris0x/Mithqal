@@ -1,6 +1,6 @@
 //! A symbolic math engine.
 //!
-//! Version 0.0.1 defines the expression kernel, source reader, evaluator,
+//! The current version defines the expression kernel, source reader, evaluator,
 //! virtual machine, garbage collector, and public library API.
 //!
 //! The crate name `cas` is a placeholder.

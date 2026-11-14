@@ -1,14 +1,14 @@
 # Public API
 
-This document defines the stable library surface for version 0.0.1.
+This document defines the stable library surface for the current version.
 
 ## Implementation status
 
-The session, parsing, printing, exact arithmetic, comparisons, logic, error values, definitions, pattern matching, and lexical `let` are active. Closures, the virtual machine, and the collector are part of this contract and are still being implemented. The example at the end of this document works with the current definition and pattern implementation.
+The session, parsing, printing, exact arithmetic, comparisons, logic, error values, definitions, pattern matching, lexical `let`, the typed instruction virtual machine, and the explicit collector are active. Closures are still being implemented. The example at the end of this document works with the current definition and pattern implementation.
 
 ## Design rules
 
-Public items use Rust naming conventions. Rust methods use snake_case. Tungsten source identifiers use dromedaryCase.
+Public items use Rust naming conventions. Rust methods use snake_case. Source identifiers use dromedaryCase.
 
 The public surface exposes sessions, expression handles, expression views, diagnostics, and configuration. The arena, hash table, matcher, virtual machine, and garbage collector remain private.
 
@@ -31,12 +31,15 @@ impl Session {
     pub fn eval_statement(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval_source(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval(&mut self, expr: ExprId) -> Result<ExprId, Diagnostic>;
+    pub fn eval_compiled(&mut self, expr: ExprId) -> Result<ExprId, Diagnostic>;
+    pub fn eval_compiled_statement(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
 
     pub fn format(&self, expr: ExprId) -> String;
     pub fn format_infix(&self, expr: ExprId) -> String;
     pub fn view(&self, expr: ExprId) -> ExprView<'_>;
 
     pub fn collect_garbage(&mut self, roots: &[ExprId]);
+    pub fn live_expressions(&self) -> usize;
     pub fn last_result(&self) -> Option<ExprId>;
 }
 ```
@@ -46,6 +49,10 @@ impl Session {
 `format` produces canonical source. The output can be parsed back into an equal expression. `format_infix` produces the human form. It may use operators and implicit multiplication.
 
 `view` borrows the session. The borrow ends before the next mutation.
+
+`eval_compiled` and `eval_compiled_statement` use the typed instruction compiler and machine. They share the arena and definitions with the symbolic path.
+
+`collect_garbage` marks definitions, the last result, symbol nodes, and the supplied roots. `live_expressions` reports the number of live expression nodes.
 
 ## Expression handles
 
@@ -71,7 +78,7 @@ pub enum ExprView<'a> {
 }
 ```
 
-`Closure` is opaque in version 0.0.1. A caller can pass a closure to another call, print it, and inspect its head through canonical output. Closure internals remain private.
+`Closure` is opaque in the current version. A caller can pass a closure to another call, print it, and inspect its head through canonical output. Closure internals remain private.
 
 ## Numbers
 
@@ -163,7 +170,7 @@ The symbols `undefined`, `indeterminate`, and `failed` are ordinary expression v
 
 ## Threading
 
-A `Session` is owned by one thread at a time. It is not `Send` or `Sync` in version 0.0.1. Multiple sessions can run on multiple threads with independent arenas.
+A `Session` is owned by one thread at a time. It is not `Send` or `Sync` in the current version. Multiple sessions can run on multiple threads with independent arenas.
 
 ## Stability
 

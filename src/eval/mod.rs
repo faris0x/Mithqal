@@ -1,6 +1,6 @@
 //! Fixed point evaluator.
 //!
-//! Version 0.0.1 implements exact arithmetic, listable threading, comparisons,
+//! The current version implements exact arithmetic, listable threading, comparisons,
 //! logic, and the boundary for definitions. Definitions and pattern matching
 //! are added in the next layer.
 

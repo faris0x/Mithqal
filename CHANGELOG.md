@@ -17,5 +17,7 @@ Initial kernel work.
 - Added own values, down values, protected symbol checks, definition specificity, and immediate and delayed definitions.
 - Added pattern matching for blanks, named patterns, sequence patterns, repeated variables, and conditions.
 - Added lexical `let` bindings with local shadowing.
-- Added integration tests for numbers, expressions, syntax, printing, evaluation, definitions, patterns, and the session API.
-- Expanded the suite to more than 200 tests covering normal behavior, boundaries, malformed input, and error propagation.
+- Added an explicit non moving mark and sweep collector with root tracking, free slot reuse, and intern table rebuilding.
+- Added a typed instruction compiler and virtual machine with conditional control flow and a compiled session path.
+- Added integration tests for numbers, expressions, syntax, printing, evaluation, definitions, patterns, garbage collection, the compiled path, and the session API.
+- Expanded the suite to more than 220 tests covering normal behavior, boundaries, malformed input, and error propagation.

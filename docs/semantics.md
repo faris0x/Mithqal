@@ -1,6 +1,6 @@
 # Semantics
 
-This document defines the expression model and the evaluation rules for version 0.0.1.
+This document defines the expression model and the evaluation rules for the current version.
 
 ## Terms and values
 
@@ -15,7 +15,7 @@ Runtime values include symbolic terms and closures. A closure is a function valu
 
 ## Exact numbers
 
-Version 0.0.1 supports exact integers and exact rationals.
+The current version supports exact integers and exact rationals.
 
 - Integers use GMP `mpz`.
 - Rationals use GMP `mpq` and remain canonical. The denominator is positive. The greatest common divisor of the numerator and denominator is one. Zero has denominator one.
@@ -39,7 +39,7 @@ A user definition of `i` changes the meaning of the symbol. With `i=3`, the expr
 
 A symbol has a name, attributes, an optional own value, and a list of down values.
 
-Attributes used in version 0.0.1:
+Attributes used in the current version:
 
 - `flat`: nested calls with the same head are spliced into one call.
 - `orderless`: arguments are sorted into canonical order.
@@ -48,7 +48,7 @@ Attributes used in version 0.0.1:
 - `protected`: user definitions of the symbol are rejected.
 - `constant`: reserved for later numeric work.
 
-Protected symbols in version 0.0.1:
+Protected symbols in the current version:
 
 - All kernel heads: `plus`, `times`, `power`, `negate`, `list`, `set`, `setDelayed`, `if`, `and`, `or`, `not`, `map`, `apply`, `fold`, `nest`, `function`, `let`, `pattern`, `blank`, `blankSequence`, `blankNullSequence`, `condition`, `rule`, `ruleDelayed`.
 - Truth values: `true`, `false`.
@@ -217,7 +217,7 @@ times([1,2],[3,4])
 
 evaluates to `[3,8]`.
 
-When several arguments are lists, their lengths must agree. A length mismatch produces a diagnostic. A non list argument is reused for each element. The `list` head is not listable. Comparison heads are not listable in version 0.0.1.
+When several arguments are lists, their lengths must agree. A length mismatch produces a diagnostic. A non list argument is reused for each element. The `list` head is not listable. Comparison heads are not listable in the current version.
 
 ## Definitions
 
@@ -257,7 +257,7 @@ Pattern expressions use these heads:
 
 A named pattern binds the matched value. A repeated name requires equal bindings. A sequence pattern binds a sequence of values. `blankSequence` matches one or more arguments. `blankNullSequence` matches zero or more arguments.
 
-Matching runs against evaluated and canonical arguments. For an `orderless` head, arguments are sorted before matching. Fixed arity patterns use deterministic backtracking over candidate assignments. Sequence patterns on `flat` and `orderless` heads use a contiguous segment in canonical order in version 0.0.1. Full multiset partitioning is deferred.
+Matching runs against evaluated and canonical arguments. For an `orderless` head, arguments are sorted before matching. Fixed arity patterns use deterministic backtracking over candidate assignments. Sequence patterns on `flat` and `orderless` heads use a contiguous segment in canonical order in the current version. Full multiset partitioning is deferred.
 
 ## Comparisons
 

@@ -1,3 +1,11 @@
-//! Virtual machine, compiler, garbage collector, and reference interpreter.
+//! Typed instruction compiler and virtual machine.
 //!
-//! Execution details are described in `docs/vm.md`.
+//! The evaluator owns the rewrite semantics. The virtual machine executes
+//! compiled control flow and delegates symbolic calls to the evaluator.
+
+mod compiler;
+mod instr;
+mod vm;
+
+pub(crate) use compiler::compile;
+pub(crate) use vm::execute;
