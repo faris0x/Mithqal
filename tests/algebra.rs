@@ -340,3 +340,22 @@ fn square_free_univariate_factorization() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn evaluation_interpolation_factorization() {
+    assert_eq!(text("factor((x+y^2)*(x+y^3))"), "(x+y^2)*(x+y^3)");
+    assert_eq!(text("factor((x+y^2+1)*(x+y^3+2))"), "(1+x+y^2)*(2+x+y^3)");
+    assert_eq!(
+        text("factor((x+y)*(x+y^2)*(x+y^3))"),
+        "(x+y)*(x+y^2)*(x+y^3)"
+    );
+    assert_eq!(text("factor((x+y)^2*(x+y^2))"), "(x+y^2)*(x+y)^2");
+    for source in [
+        "(x+y^2)*(x+y^3)",
+        "(x+y^2+1)*(x+y^3+2)",
+        "(x+y)*(x+y^2)*(x+y^3)",
+        "(x+y)^2*(x+y^2)",
+    ] {
+        assert_factor_matches(source);
+    }
+}

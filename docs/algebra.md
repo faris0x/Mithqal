@@ -28,6 +28,7 @@ factor(2*x^2+3*x*y+y^2)               -> (x+y)*(y+2*x)
 factor(4*x^2+4*x*y+y^2)               -> (y+2*x)^2
 factor(x^3+3*x^2*y+3*x*y^2+y^3)       -> (x+y)^3
 factor((x^2+1)^3)                     -> (1+x^2)^3
+factor((x+y^2)*(x+y^3))               -> (x+y^2)*(x+y^3)
 cancel((x^2-1)/(x+1))                 -> -1+x
 polynomialGcd(x^2-1,x^2+2*x+1,x)      -> 1+x
 resultant(x^2-1,x-2,x)                -> 3
@@ -48,7 +49,7 @@ Homogeneous bivariate forms are factored by solving their ratio polynomial over 
 
 Bivariate quadratics are evaluated as a polynomial in one variable with coefficients in the other. The homogeneous part is factored first, then the constant coefficients of the two linear factors are solved and checked. Square homogeneous parts use a scalar ratio equation, which also handles distinct linear constants.
 
-The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, and grouping. Reserved stages cover multivariate square-free decomposition, evaluation and interpolation over several variables, and Hensel lifting.
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, evaluation and interpolation for monic bivariate polynomials that split into linear factors with polynomial coefficients, and grouping. Reserved stages cover multivariate square-free decomposition and Hensel lifting.
 
 Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 

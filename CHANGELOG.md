@@ -75,6 +75,7 @@ Initial kernel work.
 - Moved definite integration onto one-sided endpoint limits, adding finite singular endpoint handling, exact constant simplifications for `atan(1)`, `asin(1)`, and `acos` boundary values, and rational interior pole detection.
 - Added a staged multivariate factorization module with homogeneous binary quadratic form factoring, homogeneous bivariate forms of higher degree, recursive bivariate quadratic factoring, and even-term grouping stages.
 - Added univariate square-free decomposition through polynomial gcds against the derivative, preserving repeated irreducible factors with their multiplicities.
+- Added evaluation and interpolation factorization for monic bivariate polynomials that split into linear factors with polynomial coefficients.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.
 - Added irrational and complex two by two eigenvectors.
@@ -85,4 +86,4 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to more than 630 test functions and more than 1490 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.
+- Expanded the suite to more than 640 test functions and more than 1500 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.
