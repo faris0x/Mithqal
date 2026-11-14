@@ -111,7 +111,6 @@ fn non_matrix_arguments_stay_unevaluated() {
         "det(x)",
         "rank(1)",
         "transpose([1,2,3])",
-        "inverse([[1,2],[3,x]])",
         "trace([[1,2,3],[4,5,6]])",
         "dot([1,2],[1,2,3])",
     ] {
@@ -184,4 +183,55 @@ end
     let mut session = Session::new();
     session.eval_source(source).unwrap();
     assert_eq!(session.output(), &["-2", "[[1,3],[2,4]]", "[[1,2],[3,4]]"]);
+}
+
+#[test]
+fn symbolic_determinants() {
+    assert_eq!(text("det([[a,b],[c,d]])"), "-b*c+a*d");
+    assert_eq!(
+        text("det([[a,b,c],[d,e,f],[g,h,i]])"),
+        "-b*(-f*g+d*i)+a*(-f*h+e*i)+c*(-e*g+d*h)"
+    );
+    assert_eq!(text("det([[a,0],[0,d]])"), "a*d");
+}
+
+#[test]
+fn symbolic_transposes_traces_and_products() {
+    assert_eq!(text("transpose([[a,b],[c,d]])"), "[[a,c],[b,d]]");
+    assert_eq!(text("trace([[a,b],[c,d]])"), "a+d");
+    assert_eq!(
+        text("matmul([[a,b],[c,d]],[[e,f],[g,h]])"),
+        "[[a*e+b*g,a*f+b*h],[c*e+d*g,c*f+d*h]]"
+    );
+}
+
+#[test]
+fn symbolic_inverses() {
+    assert_eq!(text("inverse([[a]])"), "[[a^(-1)]]");
+    assert_eq!(
+        text("inverse([[a,b],[c,d]])"),
+        "[[d*(-b*c+a*d)^(-1),-(b*(-b*c+a*d)^(-1))],[-(c*(-b*c+a*d)^(-1)),a*(-b*c+a*d)^(-1)]]"
+    );
+    assert!(text("inverse([[1,2],[3,x]])").contains("(-6+x)^(-1)"));
+    assert!(text("inverse([[1,2,3],[4,5,6],[7,8,x]])").contains("^(-1)"));
+}
+
+#[test]
+fn plu_decompositions() {
+    assert_eq!(
+        text("plu([[2,1],[4,3]])"),
+        "[[[1,0],[0,1]],[[1,0],[2,1]],[[2,1],[0,1]]]"
+    );
+    assert_eq!(
+        text("plu([[0,1],[1,0]])"),
+        "[[[0,1],[1,0]],[[1,0],[0,1]],[[1,0],[0,1]]]"
+    );
+    assert!(text("plu([[1,2],[2,4]])").contains("plu"));
+}
+
+#[test]
+fn characteristic_polynomials() {
+    assert_eq!(text("charpoly([[1,2],[3,4]])"), "[-2,-5,1]");
+    assert_eq!(text("charpoly([[1,0],[0,2]])"), "[2,-3,1]");
+    assert_eq!(text("charpoly([[1,0,0],[0,2,0],[0,0,3]])"), "[-6,11,-6,1]");
 }

@@ -221,6 +221,7 @@ The algebra boundary provides these heads:
 - `polynomialGcd` returns the monic greatest common divisor of two univariate polynomials.
 - `resultant` computes the Sylvester resultant of two univariate polynomials.
 - `solve` returns a list of exact solutions for linear and quadratic equations.
+- `degree`, `coefficient`, `polynomialDivide`, and `discriminant` provide univariate polynomial inspection and division.
 
 `factor` and `cancel` cover common cases rather than the general multivariate factorization problem. A polynomial that cannot be factored by the supported rules is returned unchanged. A univariate factor that has no rational roots is retained as one factor, so `factor(x^4+1)` returns the original polynomial.
 
@@ -249,6 +250,10 @@ Matrices are lists of rows and vectors are plain lists. The linear algebra layer
 - `inverse` augments with the identity and reduces.
 - `matmul`, `trace`, `transpose`, `identity`, `dot`, and `cross` provide the basic matrix and vector operations.
 - `solveLinear` returns the unique exact solution of a consistent system.
+- `plu` returns permutation, lower, and upper factors for a full-rank square exact matrix.
+- `charpoly` returns characteristic polynomial coefficients in ascending order.
+
+Symbolic entries are supported by determinants, transposes, traces, products, and inverses up to three by three. Symbolic determinant expansion is available up to five by five.
 
 A singular matrix, an inconsistent system, an underdetermined system, a dimension mismatch, or a symbolic entry leaves the call unevaluated. Full parametrized solution sets and decompositions are later work.
 

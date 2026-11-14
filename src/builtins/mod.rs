@@ -23,7 +23,8 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         "map" | "apply" | "fold" | "nest" => A::new().with(A::PROTECTED),
         "function" | "let" | "closure" | "approx" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "interval" | "complex" => A::new().with(A::PROTECTED),
-        "expand" | "factor" | "together" | "cancel" | "polynomialGcd" | "resultant" | "solve" => {
+        "expand" | "factor" | "together" | "cancel" | "polynomialGcd" | "resultant" | "solve"
+        | "degree" | "coefficient" | "polynomialDivide" | "discriminant" => {
             A::new().with(A::PROTECTED)
         }
         "differentiate" | "integrate" => A::new().with(A::PROTECTED),
@@ -31,7 +32,7 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "det" | "rank" | "transpose" | "inverse" | "rref" | "trace" | "matmul" | "identity"
-        | "solveLinear" | "dot" | "cross" => A::new().with(A::PROTECTED),
+        | "solveLinear" | "dot" | "cross" | "plu" | "charpoly" => A::new().with(A::PROTECTED),
         "isPrime" | "nextPrime" | "factorInteger" | "divisors" | "totient" | "sigma" | "isEven"
         | "isOdd" | "divides" | "mod" | "powerMod" => A::new().with(A::PROTECTED),
         "previousPrime" | "divisorCount" | "moebius" | "radical" | "isSquareFree"

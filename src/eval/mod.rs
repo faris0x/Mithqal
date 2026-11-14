@@ -120,6 +120,10 @@ enum AlgebraHead {
     PolynomialGcd,
     Resultant,
     Solve,
+    Degree,
+    Coefficient,
+    PolynomialDivide,
+    Discriminant,
 }
 
 impl AlgebraHead {
@@ -132,6 +136,10 @@ impl AlgebraHead {
             "polynomialGcd" => Self::PolynomialGcd,
             "resultant" => Self::Resultant,
             "solve" => Self::Solve,
+            "degree" => Self::Degree,
+            "coefficient" => Self::Coefficient,
+            "polynomialDivide" => Self::PolynomialDivide,
+            "discriminant" => Self::Discriminant,
             _ => return None,
         })
     }
@@ -192,6 +200,8 @@ enum LinearHead {
     SolveLinear,
     Dot,
     Cross,
+    Plu,
+    Charpoly,
 }
 impl LinearHead {
     fn from_name(name: &str) -> Option<Self> {
@@ -207,6 +217,8 @@ impl LinearHead {
             "solveLinear" => Self::SolveLinear,
             "dot" => Self::Dot,
             "cross" => Self::Cross,
+            "plu" => Self::Plu,
+            "charpoly" => Self::Charpoly,
             _ => return None,
         })
     }
@@ -336,6 +348,41 @@ impl StatisticsHead {
             "mode" => Self::Mode,
             _ => return None,
         })
+    }
+}
+
+#[derive(Copy, Clone)]
+enum KernelFunction {
+    Algebra(AlgebraHead),
+    Calculus(CalculusHead),
+    Numeric(ExactNumericHead),
+    Linear(LinearHead),
+    NumberTheory(NumberTheoryHead),
+    Logic(LogicHead),
+    Statistics(StatisticsHead),
+}
+
+impl KernelFunction {
+    fn from_name(name: &str) -> Option<Self> {
+        if let Some(function) = AlgebraHead::from_name(name) {
+            return Some(Self::Algebra(function));
+        }
+        if let Some(function) = CalculusHead::from_name(name) {
+            return Some(Self::Calculus(function));
+        }
+        if let Some(function) = ExactNumericHead::from_name(name) {
+            return Some(Self::Numeric(function));
+        }
+        if let Some(function) = LinearHead::from_name(name) {
+            return Some(Self::Linear(function));
+        }
+        if let Some(function) = NumberTheoryHead::from_name(name) {
+            return Some(Self::NumberTheory(function));
+        }
+        if let Some(function) = LogicHead::from_name(name) {
+            return Some(Self::Logic(function));
+        }
+        StatisticsHead::from_name(name).map(Self::Statistics)
     }
 }
 
@@ -1484,205 +1531,231 @@ impl<'a> Evaluator<'a> {
         if head == self.heads.greater_equal {
             return self.ordering(args, Ordering::Greater, self.heads.greater_equal);
         }
-        let algebra_head = self
+        let kernel = self
             .arena
             .symbol_id(head)
-            .and_then(|symbol| AlgebraHead::from_name(self.arena.symbol_name(symbol)));
-        if let Some(algebra_head) = algebra_head {
-            let algebra = crate::algebra::Context {
-                plus: self.heads.plus,
-                times: self.heads.times,
-                power: self.heads.power,
-                negate: self.heads.negate,
-                list: self.heads.list,
-                equal: self.heads.equal,
-            };
-            match algebra_head {
-                AlgebraHead::Expand => {
-                    return self.algebra_unary(args, head, algebra, crate::algebra::expand);
-                }
-                AlgebraHead::Factor => {
-                    return self.algebra_unary(args, head, algebra, crate::algebra::factor);
-                }
-                AlgebraHead::Together => {
-                    return self.algebra_unary(args, head, algebra, crate::algebra::together);
-                }
-                AlgebraHead::Cancel => {
-                    return self.algebra_unary(args, head, algebra, crate::algebra::cancel);
-                }
-                AlgebraHead::PolynomialGcd => {
-                    if args.len() != 3 {
-                        return Err(Diagnostic::eval(
-                            ErrorCode::EvalArity,
-                            "polynomialGcd expects two polynomials and a variable",
-                        ));
-                    }
-                    let original = self.arena.intern_call(head, args);
-                    return Ok(crate::algebra::polynomial_gcd(
-                        self.arena, args[0], args[1], args[2], &algebra,
-                    )
-                    .unwrap_or(original));
-                }
-                AlgebraHead::Resultant => {
-                    if args.len() != 3 {
-                        return Err(Diagnostic::eval(
-                            ErrorCode::EvalArity,
-                            "resultant expects two polynomials and a variable",
-                        ));
-                    }
-                    let original = self.arena.intern_call(head, args);
-                    return Ok(crate::algebra::resultant(
-                        self.arena, args[0], args[1], args[2], &algebra,
-                    )
-                    .unwrap_or(original));
-                }
-                AlgebraHead::Solve => {
-                    if args.len() != 2 {
-                        return Err(Diagnostic::eval(
-                            ErrorCode::EvalArity,
-                            "solve expects an equation and a variable",
-                        ));
-                    }
-                    let original = self.arena.intern_call(head, args);
-                    return Ok(
-                        crate::algebra::solve(self.arena, args[0], args[1], &algebra)
-                            .unwrap_or(original),
-                    );
-                }
-            }
-        }
-        let numeric_function = self
-            .arena
-            .symbol_id(head)
-            .and_then(|symbol| ExactNumericHead::from_name(self.arena.symbol_name(symbol)));
-        if let Some(function) = numeric_function {
-            let original = self.arena.intern_call(head, args);
-            return Ok(self
-                .apply_exact_numeric(function, args)?
-                .unwrap_or(original));
-        }
-        let linear_function = self
-            .arena
-            .symbol_id(head)
-            .and_then(|symbol| LinearHead::from_name(self.arena.symbol_name(symbol)));
-        if let Some(function) = linear_function {
-            if args.len() != function.arity() {
-                return Err(Diagnostic::eval(
-                    ErrorCode::EvalArity,
-                    "linear algebra function received the wrong number of arguments",
-                ));
-            }
-            let original = self.arena.intern_call(head, args);
-            return Ok(self.apply_linear(function, args).unwrap_or(original));
-        }
-        let number_theory = self
-            .arena
-            .symbol_id(head)
-            .and_then(|symbol| NumberTheoryHead::from_name(self.arena.symbol_name(symbol)));
-        if let Some(function) = number_theory {
-            if args.len() != function.arity() {
-                return Err(Diagnostic::eval(
-                    ErrorCode::EvalArity,
-                    "number theory function received the wrong number of arguments",
-                ));
-            }
-            let original = self.arena.intern_call(head, args);
-            return Ok(self.apply_number_theory(function, args).unwrap_or(original));
-        }
-        let logic_function = self
-            .arena
-            .symbol_id(head)
-            .and_then(|symbol| LogicHead::from_name(self.arena.symbol_name(symbol)));
-        if let Some(function) = logic_function {
-            let arity = match function {
-                LogicHead::Xor | LogicHead::Implies => 2,
-                LogicHead::All | LogicHead::Any => 1,
-            };
-            if args.len() != arity {
-                return Err(Diagnostic::eval(
-                    ErrorCode::EvalArity,
-                    "logic function received the wrong number of arguments",
-                ));
-            }
-            let original = self.arena.intern_call(head, args);
-            return Ok(self.apply_logic(function, args).unwrap_or(original));
-        }
-        let statistics_function = self
-            .arena
-            .symbol_id(head)
-            .and_then(|symbol| StatisticsHead::from_name(self.arena.symbol_name(symbol)));
-        if let Some(function) = statistics_function {
-            if args.len() != 1 {
-                return Err(Diagnostic::eval(
-                    ErrorCode::EvalArity,
-                    "statistics function expects one list",
-                ));
-            }
-            let original = self.arena.intern_call(head, args);
-            return Ok(self.apply_statistics(function, args[0]).unwrap_or(original));
+            .and_then(|symbol| KernelFunction::from_name(self.arena.symbol_name(symbol)));
+        if let Some(kernel) = kernel {
+            return self.apply_kernel(kernel, head, args);
         }
         if let Some(symbol) = self.arena.symbol_id(head) {
             if let Some(result) = self.apply_user(symbol, head, args)? {
                 return Ok(result);
             }
         }
-        let calculus_head = self
-            .arena
-            .symbol_id(head)
-            .and_then(|symbol| CalculusHead::from_name(self.arena.symbol_name(symbol)));
-        if let Some(calculus_head) = calculus_head {
-            if !matches!(
-                (calculus_head, args.len()),
-                (CalculusHead::Differentiate, 2)
-                    | (CalculusHead::Integrate, 2)
-                    | (CalculusHead::Integrate, 4)
-            ) {
-                return Err(Diagnostic::eval(
-                    ErrorCode::EvalArity,
-                    "differentiate expects two arguments and integrate expects two or four",
-                ));
-            }
-            let original = self.arena.intern_call(head, args);
-            if self.arena.symbol_id(args[1]).is_none() {
-                return Ok(original);
-            }
-            let context = crate::calculus::Context {
-                plus: self.heads.plus,
-                times: self.heads.times,
-                power: self.heads.power,
-                negate: self.heads.negate,
-                list: self.heads.list,
-                equal: self.heads.equal,
-            };
-            let result = match calculus_head {
-                CalculusHead::Differentiate => {
-                    crate::calculus::differentiate(self.arena, args[0], args[1], &context)
-                }
-                CalculusHead::Integrate if args.len() == 4 => crate::calculus::definite_integrate(
-                    self.arena, args[0], args[1], args[2], args[3], &context,
-                ),
-                CalculusHead::Integrate => {
-                    crate::calculus::integrate(self.arena, args[0], args[1], &context)
-                }
-            };
-            let result = result.map(|value| {
-                if matches!(calculus_head, CalculusHead::Differentiate) {
-                    let algebra = crate::algebra::Context {
-                        plus: self.heads.plus,
-                        times: self.heads.times,
-                        power: self.heads.power,
-                        negate: self.heads.negate,
-                        list: self.heads.list,
-                        equal: self.heads.equal,
-                    };
-                    crate::algebra::cancel(self.arena, value, &algebra).unwrap_or(value)
-                } else {
-                    value
-                }
-            });
-            return Ok(result.unwrap_or(original));
-        }
         Ok(self.arena.intern_call(head, args))
+    }
+
+    fn apply_kernel(
+        &mut self,
+        function: KernelFunction,
+        head: ExprId,
+        args: &[ExprId],
+    ) -> Result<ExprId, Diagnostic> {
+        match function {
+            KernelFunction::Algebra(function) => self.apply_algebra(function, head, args),
+            KernelFunction::Calculus(function) => self.apply_calculus(function, head, args),
+            KernelFunction::Numeric(function) => {
+                let original = self.arena.intern_call(head, args);
+                Ok(self
+                    .apply_exact_numeric(function, args)?
+                    .unwrap_or(original))
+            }
+            KernelFunction::Linear(function) => {
+                if args.len() != function.arity() {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalArity,
+                        "linear algebra function received the wrong number of arguments",
+                    ));
+                }
+                let original = self.arena.intern_call(head, args);
+                Ok(self.apply_linear(function, args).unwrap_or(original))
+            }
+            KernelFunction::NumberTheory(function) => {
+                if args.len() != function.arity() {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalArity,
+                        "number theory function received the wrong number of arguments",
+                    ));
+                }
+                let original = self.arena.intern_call(head, args);
+                Ok(self.apply_number_theory(function, args).unwrap_or(original))
+            }
+            KernelFunction::Logic(function) => {
+                let arity = match function {
+                    LogicHead::Xor | LogicHead::Implies => 2,
+                    LogicHead::All | LogicHead::Any => 1,
+                };
+                if args.len() != arity {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalArity,
+                        "logic function received the wrong number of arguments",
+                    ));
+                }
+                let original = self.arena.intern_call(head, args);
+                Ok(self.apply_logic(function, args).unwrap_or(original))
+            }
+            KernelFunction::Statistics(function) => {
+                if args.len() != 1 {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalArity,
+                        "statistics function expects one list",
+                    ));
+                }
+                let original = self.arena.intern_call(head, args);
+                Ok(self.apply_statistics(function, args[0]).unwrap_or(original))
+            }
+        }
+    }
+
+    fn apply_algebra(
+        &mut self,
+        function: AlgebraHead,
+        head: ExprId,
+        args: &[ExprId],
+    ) -> Result<ExprId, Diagnostic> {
+        let context = crate::algebra::Context {
+            plus: self.heads.plus,
+            times: self.heads.times,
+            power: self.heads.power,
+            negate: self.heads.negate,
+            list: self.heads.list,
+            equal: self.heads.equal,
+        };
+        match function {
+            AlgebraHead::Expand => self.algebra_unary(args, head, context, crate::algebra::expand),
+            AlgebraHead::Factor => self.algebra_unary(args, head, context, crate::algebra::factor),
+            AlgebraHead::Together => {
+                self.algebra_unary(args, head, context, crate::algebra::together)
+            }
+            AlgebraHead::Cancel => self.algebra_unary(args, head, context, crate::algebra::cancel),
+            AlgebraHead::PolynomialGcd => {
+                require_arity(
+                    args,
+                    3,
+                    "polynomialGcd expects two polynomials and a variable",
+                )?;
+                let original = self.arena.intern_call(head, args);
+                Ok(
+                    crate::algebra::polynomial_gcd(self.arena, args[0], args[1], args[2], &context)
+                        .unwrap_or(original),
+                )
+            }
+            AlgebraHead::Resultant => {
+                require_arity(args, 3, "resultant expects two polynomials and a variable")?;
+                let original = self.arena.intern_call(head, args);
+                Ok(
+                    crate::algebra::resultant(self.arena, args[0], args[1], args[2], &context)
+                        .unwrap_or(original),
+                )
+            }
+            AlgebraHead::Solve => {
+                require_arity(args, 2, "solve expects an equation and a variable")?;
+                let original = self.arena.intern_call(head, args);
+                Ok(
+                    crate::algebra::solve(self.arena, args[0], args[1], &context)
+                        .unwrap_or(original),
+                )
+            }
+            AlgebraHead::Degree => {
+                require_arity(args, 2, "degree expects a polynomial and a variable")?;
+                let original = self.arena.intern_call(head, args);
+                Ok(
+                    crate::algebra::degree(self.arena, args[0], args[1], &context)
+                        .unwrap_or(original),
+                )
+            }
+            AlgebraHead::Coefficient => {
+                require_arity(
+                    args,
+                    3,
+                    "coefficient expects a polynomial, a variable, and an index",
+                )?;
+                let original = self.arena.intern_call(head, args);
+                Ok(
+                    crate::algebra::coefficient(self.arena, args[0], args[1], args[2], &context)
+                        .unwrap_or(original),
+                )
+            }
+            AlgebraHead::PolynomialDivide => {
+                require_arity(
+                    args,
+                    3,
+                    "polynomialDivide expects a dividend, a divisor, and a variable",
+                )?;
+                let original = self.arena.intern_call(head, args);
+                Ok(crate::algebra::polynomial_divide(
+                    self.arena, args[0], args[1], args[2], &context,
+                )
+                .unwrap_or(original))
+            }
+            AlgebraHead::Discriminant => {
+                require_arity(args, 2, "discriminant expects a polynomial and a variable")?;
+                let original = self.arena.intern_call(head, args);
+                Ok(
+                    crate::algebra::discriminant(self.arena, args[0], args[1], &context)
+                        .unwrap_or(original),
+                )
+            }
+        }
+    }
+
+    fn apply_calculus(
+        &mut self,
+        function: CalculusHead,
+        head: ExprId,
+        args: &[ExprId],
+    ) -> Result<ExprId, Diagnostic> {
+        let valid = match (function, args.len()) {
+            (CalculusHead::Differentiate, 2) => true,
+            (CalculusHead::Integrate, 2 | 4) => true,
+            _ => false,
+        };
+        if !valid {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "differentiate expects two arguments and integrate expects two or four",
+            ));
+        }
+        let original = self.arena.intern_call(head, args);
+        if self.arena.symbol_id(args[1]).is_none() {
+            return Ok(original);
+        }
+        let context = crate::calculus::Context {
+            plus: self.heads.plus,
+            times: self.heads.times,
+            power: self.heads.power,
+            negate: self.heads.negate,
+            list: self.heads.list,
+            equal: self.heads.equal,
+        };
+        let result = match function {
+            CalculusHead::Differentiate => {
+                crate::calculus::differentiate(self.arena, args[0], args[1], &context)
+            }
+            CalculusHead::Integrate if args.len() == 4 => crate::calculus::definite_integrate(
+                self.arena, args[0], args[1], args[2], args[3], &context,
+            ),
+            CalculusHead::Integrate => {
+                crate::calculus::integrate(self.arena, args[0], args[1], &context)
+            }
+        };
+        let result = result.map(|value| {
+            if matches!(function, CalculusHead::Differentiate) {
+                let algebra = crate::algebra::Context {
+                    plus: self.heads.plus,
+                    times: self.heads.times,
+                    power: self.heads.power,
+                    negate: self.heads.negate,
+                    list: self.heads.list,
+                    equal: self.heads.equal,
+                };
+                crate::algebra::cancel(self.arena, value, &algebra).unwrap_or(value)
+            } else {
+                value
+            }
+        });
+        Ok(result.unwrap_or(original))
     }
 
     fn algebra_unary(
@@ -1830,17 +1903,24 @@ impl<'a> Evaluator<'a> {
 
     fn apply_linear(&mut self, function: LinearHead, args: &[ExprId]) -> Option<ExprId> {
         match function {
-            LinearHead::Determinant => crate::linalg::determinant(self.arena, args[0]),
+            LinearHead::Determinant => crate::linalg::determinant(self.arena, args[0])
+                .or_else(|| crate::linalg::determinant_symbolic(self.arena, args[0])),
             LinearHead::Rank => crate::linalg::rank(self.arena, args[0]),
-            LinearHead::Transpose => crate::linalg::transpose(self.arena, args[0]),
-            LinearHead::Inverse => crate::linalg::inverse(self.arena, args[0]),
+            LinearHead::Transpose => crate::linalg::transpose(self.arena, args[0])
+                .or_else(|| crate::linalg::transpose_symbolic(self.arena, args[0])),
+            LinearHead::Inverse => crate::linalg::inverse(self.arena, args[0])
+                .or_else(|| crate::linalg::inverse_symbolic(self.arena, args[0])),
             LinearHead::Rref => crate::linalg::rref(self.arena, args[0]),
-            LinearHead::Trace => crate::linalg::trace(self.arena, args[0]),
-            LinearHead::Matmul => crate::linalg::matmul(self.arena, args[0], args[1]),
+            LinearHead::Trace => crate::linalg::trace(self.arena, args[0])
+                .or_else(|| crate::linalg::trace_symbolic(self.arena, args[0])),
+            LinearHead::Matmul => crate::linalg::matmul(self.arena, args[0], args[1])
+                .or_else(|| crate::linalg::matmul_symbolic(self.arena, args[0], args[1])),
             LinearHead::Identity => crate::linalg::identity(self.arena, args[0]),
             LinearHead::SolveLinear => crate::linalg::solve_linear(self.arena, args[0], args[1]),
             LinearHead::Dot => crate::linalg::dot(self.arena, args[0], args[1]),
             LinearHead::Cross => crate::linalg::cross(self.arena, args[0], args[1]),
+            LinearHead::Plu => crate::linalg::plu(self.arena, args[0]),
+            LinearHead::Charpoly => crate::linalg::charpoly(self.arena, args[0]),
         }
     }
 
@@ -2620,6 +2700,14 @@ impl<'a> Evaluator<'a> {
             return Some(self.heads.failed);
         }
         None
+    }
+}
+
+fn require_arity(args: &[ExprId], arity: usize, message: &str) -> Result<(), Diagnostic> {
+    if args.len() == arity {
+        Ok(())
+    } else {
+        Err(Diagnostic::eval(ErrorCode::EvalArity, message))
     }
 }
 

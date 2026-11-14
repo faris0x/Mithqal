@@ -29,6 +29,8 @@ Symbolic entries and approximate entries are not accepted by this layer yet. An 
 | `solveLinear(a,b)` | Unique solution of `a*x=b`. |
 | `dot(a,b)` | Vector dot product. |
 | `cross(a,b)` | Three dimensional vector cross product. |
+| `plu(a)` | Permutation, lower, and upper factors. |
+| `charpoly(a)` | Characteristic polynomial coefficients. |
 
 ## Examples
 
@@ -44,11 +46,17 @@ identity(2)                         -> [[1,0],[0,1]]
 solveLinear([[2,1],[1,3]],[5,7])    -> [8/5,9/5]
 dot([1,2,3],[4,5,6])                -> 32
 cross([1,0,0],[0,1,0])              -> [0,0,1]
+det([[a,b],[c,d]])                  -> -b*c+a*d
+matmul([[a,b],[c,d]],[[e,f],[g,h]]) -> [[a*e+b*g,a*f+b*h],[c*e+d*g,c*f+d*h]]
+plu([[2,1],[4,3]])                  -> [[[1,0],[0,1]],[[1,0],[2,1]],[[2,1],[0,1]]]
+charpoly([[1,2],[3,4]])             -> [-2,-5,1]
 ```
 
 ## Exactness
 
 All elimination is performed over exact rationals. Entries remain integers or rationals, and no approximate conversion happens inside this layer.
+
+Symbolic entries are supported by `det`, `transpose`, `trace`, `matmul`, and `inverse`. Symbolic determinants use cofactor expansion up to five by five. Symbolic inverses use cofactors and the determinant up to three by three. Symbolic results are returned in canonical expression form and simplified by the evaluator.
 
 `inverse` and `solveLinear` return unevaluated calls when the matrix is singular, the system is inconsistent, or the system has more than one solution. Full parametrized solution sets are future work.
 
@@ -57,6 +65,8 @@ Dimension mismatches and non-square inputs also leave the call unevaluated. Wron
 ## Limits
 
 - Dense storage only.
-- Exact rational entries only.
+- `rank`, `rref`, and `solveLinear` accept exact rational entries.
+- `plu` requires a square full-rank exact matrix.
+- `charpoly` accepts exact rational matrices up to eight by eight and returns coefficients in ascending order.
 - `identity` accepts sizes from zero to 256.
-- Eigenvalues, decompositions, sparse matrices, and symbolic entries arrive in later work.
+- Eigenvalues and sparse matrices arrive in later work.

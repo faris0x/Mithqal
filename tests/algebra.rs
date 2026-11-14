@@ -229,3 +229,43 @@ fn factor_extracts_global_negative_sign() {
     assert_factor_matches("-x-y");
     assert_eq!(text("factor(-2*x-2*y)"), "-(2*(x+y))");
 }
+
+#[test]
+fn polynomial_degrees_and_coefficients() {
+    assert_eq!(text("degree(x^3+2*x+1,x)"), "3");
+    assert_eq!(text("degree(7,x)"), "0");
+    assert_eq!(text("coefficient(x^3+2*x+1,x,0)"), "1");
+    assert_eq!(text("coefficient(x^3+2*x+1,x,1)"), "2");
+    assert_eq!(text("coefficient(x^3+2*x+1,x,2)"), "0");
+    assert_eq!(text("coefficient(x^3+2*x+1,x,3)"), "1");
+    assert_eq!(text("coefficient(2*x^2+3*x+4,x,2)"), "2");
+    assert!(text("degree(0,x)").contains("degree"));
+}
+
+#[test]
+fn polynomial_division() {
+    assert_eq!(text("polynomialDivide(x^3-1,x-1,x)"), "[1+x+x^2,0]");
+    assert_eq!(text("polynomialDivide(x^3+1,x-1,x)"), "[1+x+x^2,2]");
+    assert_eq!(text("polynomialDivide(x^2+3*x+2,x+1,x)"), "[2+x,0]");
+    assert_eq!(text("polynomialDivide(x^2,x,x)"), "[x,0]");
+    assert!(text("polynomialDivide(x,0,x)").contains("polynomialDivide"));
+}
+
+#[test]
+fn discriminants() {
+    assert_eq!(text("discriminant(x^2-4,x)"), "16");
+    assert_eq!(text("discriminant(x^2+1,x)"), "-4");
+    assert_eq!(text("discriminant(x^2-2*x+1,x)"), "0");
+    assert_eq!(text("discriminant(x^3-3*x+2,x)"), "0");
+    assert_eq!(text("discriminant(x^3-x+1,x)"), "-23");
+    assert!(text("discriminant(x^4+1,x)").contains("discriminant"));
+}
+
+#[test]
+fn sum_and_difference_of_cubes() {
+    assert_factor_matches("x^3-y^3");
+    assert_factor_matches("x^3+y^3");
+    assert_factor_matches("8*x^3+27*y^3");
+    assert_factor_matches("27*x^3-64*y^3");
+    assert_eq!(text("factor(x^3+y^3)"), "(x+y)*(-x*y+x^2+y^2)");
+}

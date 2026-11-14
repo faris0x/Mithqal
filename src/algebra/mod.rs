@@ -663,6 +663,112 @@ fn factor_difference_of_squares(poly: &Poly) -> Option<(Poly, Poly)> {
     Some((left.sub(&right), left.add(&right)))
 }
 
+fn integer_cbrt(value: i64) -> Option<i64> {
+    if value < 0 {
+        return None;
+    }
+    let mut low = 0i64;
+    let mut high = value;
+    while low <= high {
+        let middle = low + (high - low) / 2;
+        let cube = (middle as i128) * (middle as i128) * (middle as i128);
+        if cube == value as i128 {
+            return Some(middle);
+        }
+        if cube < value as i128 {
+            low = middle + 1;
+        } else {
+            high = middle - 1;
+        }
+    }
+    None
+}
+
+fn rational_cbrt(value: &Rat) -> Option<Rat> {
+    let numerator = value.num().to_i64()?;
+    let denominator = value.den().to_i64()?;
+    let numerator = integer_cbrt(numerator)?;
+    let denominator = integer_cbrt(denominator)?;
+    Rat::from_i64(numerator, denominator).ok()
+}
+
+fn cube_root_term(poly: &Poly) -> Option<Poly> {
+    if poly.terms.len() != 1 {
+        return None;
+    }
+    let (monomial, coefficient) = poly.terms.iter().next()?;
+    if coefficient.sign() < 0 {
+        return None;
+    }
+    let coefficient = rational_cbrt(coefficient)?;
+    let mut powers = Vec::with_capacity(monomial.powers.len());
+    for (symbol, exponent) in &monomial.powers {
+        if exponent % 3 != 0 {
+            return None;
+        }
+        powers.push((*symbol, exponent / 3));
+    }
+    let mut terms = BTreeMap::new();
+    terms.insert(Monomial { powers }, coefficient);
+    Some(Poly { terms })
+}
+
+fn factor_sum_or_difference_of_cubes(poly: &Poly) -> Option<(Poly, Poly)> {
+    if poly.terms.len() != 2 {
+        return None;
+    }
+    let mut positive = Poly::zero();
+    let mut negative = Poly::zero();
+    for (monomial, coefficient) in &poly.terms {
+        let term = Poly {
+            terms: BTreeMap::from([(monomial.clone(), coefficient.clone())]),
+        };
+        if coefficient.sign() > 0 {
+            positive = positive.add(&term);
+        } else {
+            negative = negative.add(&term.neg());
+        }
+    }
+    if positive.is_zero() {
+        return None;
+    }
+    let left = cube_root_term(&positive)?;
+    if negative.is_zero() {
+        return None;
+    }
+    let right = cube_root_term(&negative)?;
+    let left_squared = left.mul(&left);
+    let right_squared = right.mul(&right);
+    let cross = left.mul(&right);
+    let first = left.sub(&right);
+    let second = left_squared.add(&cross).add(&right_squared);
+    Some((first, second))
+}
+
+fn factor_sum_of_cubes(poly: &Poly) -> Option<(Poly, Poly)> {
+    if poly.terms.len() != 2 {
+        return None;
+    }
+    let mut terms = poly.terms.iter();
+    let (left_monomial, left_coefficient) = terms.next()?;
+    let (right_monomial, right_coefficient) = terms.next()?;
+    if left_coefficient.sign() <= 0 || right_coefficient.sign() <= 0 {
+        return None;
+    }
+    let left = cube_root_term(&Poly {
+        terms: BTreeMap::from([(left_monomial.clone(), left_coefficient.clone())]),
+    })?;
+    let right = cube_root_term(&Poly {
+        terms: BTreeMap::from([(right_monomial.clone(), right_coefficient.clone())]),
+    })?;
+    let left_squared = left.mul(&left);
+    let right_squared = right.mul(&right);
+    let cross = left.mul(&right);
+    let first = left.add(&right);
+    let second = left_squared.sub(&cross).add(&right_squared);
+    Some((first, second))
+}
+
 fn factor_perfect_square(poly: &Poly) -> Option<Poly> {
     if poly.terms.len() != 3 {
         return None;
@@ -883,6 +989,12 @@ pub(crate) fn factor(arena: &mut Arena, expression: ExprId, context: &Context) -
         if let Some((variable, coefficients)) = remaining.univariate() {
             factors.extend(factor_univariate(arena, variable, &coefficients, context));
         } else if let Some((left, right)) = factor_difference_of_squares(&remaining) {
+            factors.push(expression_from_poly(arena, &left, context));
+            factors.push(expression_from_poly(arena, &right, context));
+        } else if let Some((left, right)) = factor_sum_or_difference_of_cubes(&remaining) {
+            factors.push(expression_from_poly(arena, &left, context));
+            factors.push(expression_from_poly(arena, &right, context));
+        } else if let Some((left, right)) = factor_sum_of_cubes(&remaining) {
             factors.push(expression_from_poly(arena, &left, context));
             factors.push(expression_from_poly(arena, &right, context));
         } else if let Some(base) = factor_perfect_square(&remaining) {
@@ -1442,4 +1554,102 @@ fn sqrt_expression(arena: &mut Arena, value: &Rat) -> ExprId {
     let symbol = arena.symbol_or_intern("sqrt");
     let head = arena.symbol_expr(symbol);
     arena.intern_call(head, &[value])
+}
+
+pub(crate) fn degree(
+    arena: &mut Arena,
+    expression: ExprId,
+    variable: ExprId,
+    context: &Context,
+) -> Option<ExprId> {
+    let variable = variable_argument(arena, variable)?;
+    let poly = poly_from_expr(arena, context, expression)?;
+    if poly.is_zero() {
+        return None;
+    }
+    let coefficients = poly.dense_in(variable)?;
+    Some(arena.intern_int(Int::from_i64(coefficients.len() as i64 - 1)))
+}
+
+pub(crate) fn coefficient(
+    arena: &mut Arena,
+    expression: ExprId,
+    variable: ExprId,
+    index: ExprId,
+    context: &Context,
+) -> Option<ExprId> {
+    let variable = variable_argument(arena, variable)?;
+    let index = integer_value(arena, index)?;
+    if index < 0 {
+        return None;
+    }
+    let coefficients = poly_from_expr(arena, context, expression)?.dense_in(variable)?;
+    let value = coefficients
+        .get(index as usize)
+        .cloned()
+        .unwrap_or_else(Rat::zero);
+    Some(expression_from_rat(arena, &value))
+}
+
+pub(crate) fn polynomial_divide(
+    arena: &mut Arena,
+    dividend: ExprId,
+    divisor: ExprId,
+    variable: ExprId,
+    context: &Context,
+) -> Option<ExprId> {
+    let variable = variable_argument(arena, variable)?;
+    let dividend = poly_from_expr(arena, context, dividend)?.dense_in(variable)?;
+    let divisor = poly_from_expr(arena, context, divisor)?.dense_in(variable)?;
+    if divisor.is_empty() {
+        return None;
+    }
+    let (quotient, remainder) = dense_div_rem(&dividend, &divisor)?;
+    let quotient = expression_from_poly(arena, &Poly::from_dense(variable, &quotient), context);
+    let remainder = expression_from_poly(arena, &Poly::from_dense(variable, &remainder), context);
+    let list = arena.builtin_head("list");
+    Some(arena.intern_call(list, &[quotient, remainder]))
+}
+
+pub(crate) fn discriminant(
+    arena: &mut Arena,
+    expression: ExprId,
+    variable: ExprId,
+    context: &Context,
+) -> Option<ExprId> {
+    let variable = variable_argument(arena, variable)?;
+    let coefficients = poly_from_expr(arena, context, expression)?.dense_in(variable)?;
+    let degree = coefficients.len().saturating_sub(1);
+    let value = match degree {
+        0 | 1 => Rat::one(),
+        2 => coefficients[1].mul(&coefficients[1]).sub(
+            &Rat::from_i64(4, 1)
+                .ok()?
+                .mul(&coefficients[2])
+                .mul(&coefficients[0]),
+        ),
+        3 => {
+            let a = &coefficients[3];
+            let b = &coefficients[2];
+            let c = &coefficients[1];
+            let d = &coefficients[0];
+            let b2 = b.mul(b);
+            let c2 = c.mul(c);
+            let a2 = a.mul(a);
+            let d2 = d.mul(d);
+            let b3 = b2.mul(b);
+            let c3 = c2.mul(c);
+            let b2c2 = b2.mul(&c2);
+            let ac3 = a.mul(&c3);
+            let b3d = b3.mul(d);
+            let a2d2 = a2.mul(&d2);
+            let abcd = a.mul(b).mul(c).mul(d);
+            b2c2.sub(&Rat::from_i64(4, 1).ok()?.mul(&ac3))
+                .sub(&Rat::from_i64(4, 1).ok()?.mul(&b3d))
+                .sub(&Rat::from_i64(27, 1).ok()?.mul(&a2d2))
+                .add(&Rat::from_i64(18, 1).ok()?.mul(&abcd))
+        }
+        _ => return None,
+    };
+    Some(expression_from_rat(arena, &value))
 }
