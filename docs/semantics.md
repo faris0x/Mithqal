@@ -240,6 +240,18 @@ The calculus layer provides `differentiate` and `integrate`. Both take an expres
 
 Differentiation results are passed through rational cancellation so quotient rule results collapse to a single fraction. Integration does not attach branch conditions or assumptions.
 
+## Linear algebra
+
+Matrices are lists of rows and vectors are plain lists. The linear algebra layer accepts exact rational entries only.
+
+- `det` computes a determinant through exact elimination.
+- `rank` and `rref` use exact Gauss-Jordan elimination.
+- `inverse` augments with the identity and reduces.
+- `matmul`, `trace`, `transpose`, `identity`, `dot`, and `cross` provide the basic matrix and vector operations.
+- `solveLinear` returns the unique exact solution of a consistent system.
+
+A singular matrix, an inconsistent system, an underdetermined system, a dimension mismatch, or a symbolic entry leaves the call unevaluated. Full parametrized solution sets and decompositions are later work.
+
 ## Exact complex normalization
 
 Expressions built from exact rationals and the unshadowed symbol `i` using `plus`, `times`, `negate`, integer `power`, and division are Gaussian rationals. They normalize automatically to the form `a+b*i`, where `a` and `b` are exact rationals.

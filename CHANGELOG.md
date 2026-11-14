@@ -59,5 +59,6 @@ Initial kernel work.
 - Added a line-based surface language with lowercase keywords, required modules, single-line definitions, eager bindings, conditionals, print statements, comments, and strict expression whitespace diagnostics.
 - Added lexical block scoping, literal parameter patterns, guarded definitions, recursive definitions, and `match`/`case` blocks with literal and binding cases.
 - Added exact `gcd`, `lcm`, `factorial`, `binomial`, `floor`, `ceil`, and `round` functions with approximate rounding at the numeric boundary.
+- Added exact rational matrix and vector linear algebra with determinants, rank, transposes, inverses, reduced row echelon form, traces, matrix products, identities, unique linear solving, dot products, and cross products.
 - Added arena-cached kernel head handles and session output collection.
-- Expanded the suite to more than 400 test functions and more than 1000 assertion sites, plus generated arithmetic, parser, numeric, and language corpora.
+- Expanded the suite to more than 400 test functions and more than 1000 assertion sites, plus generated arithmetic, parser, numeric, language, and linear algebra corpora.

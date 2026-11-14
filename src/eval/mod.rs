@@ -179,6 +179,47 @@ impl ExactNumericHead {
     }
 }
 
+#[derive(Copy, Clone)]
+enum LinearHead {
+    Determinant,
+    Rank,
+    Transpose,
+    Inverse,
+    Rref,
+    Trace,
+    Matmul,
+    Identity,
+    SolveLinear,
+    Dot,
+    Cross,
+}
+
+impl LinearHead {
+    fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "det" => Self::Determinant,
+            "rank" => Self::Rank,
+            "transpose" => Self::Transpose,
+            "inverse" => Self::Inverse,
+            "rref" => Self::Rref,
+            "trace" => Self::Trace,
+            "matmul" => Self::Matmul,
+            "identity" => Self::Identity,
+            "solveLinear" => Self::SolveLinear,
+            "dot" => Self::Dot,
+            "cross" => Self::Cross,
+            _ => return None,
+        })
+    }
+
+    fn arity(self) -> usize {
+        match self {
+            Self::Matmul | Self::SolveLinear | Self::Dot | Self::Cross => 2,
+            _ => 1,
+        }
+    }
+}
+
 /// Evaluate an expression to a normal form.
 pub fn evaluate(arena: &mut Arena, id: ExprId) -> Result<ExprId, Diagnostic> {
     let mut definitions = Definitions::new();
@@ -1391,6 +1432,20 @@ impl<'a> Evaluator<'a> {
                 .apply_exact_numeric(function, args)?
                 .unwrap_or(original));
         }
+        let linear_function = self
+            .arena
+            .symbol_id(head)
+            .and_then(|symbol| LinearHead::from_name(self.arena.symbol_name(symbol)));
+        if let Some(function) = linear_function {
+            if args.len() != function.arity() {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalArity,
+                    "linear algebra function received the wrong number of arguments",
+                ));
+            }
+            let original = self.arena.intern_call(head, args);
+            return Ok(self.apply_linear(function, args).unwrap_or(original));
+        }
         if let Some(symbol) = self.arena.symbol_id(head) {
             if let Some(result) = self.apply_user(symbol, head, args)? {
                 return Ok(result);
@@ -1470,6 +1525,22 @@ impl<'a> Evaluator<'a> {
         }
         let original = self.arena.intern_call(head, args);
         Ok(operation(self.arena, args[0], &context).unwrap_or(original))
+    }
+
+    fn apply_linear(&mut self, function: LinearHead, args: &[ExprId]) -> Option<ExprId> {
+        match function {
+            LinearHead::Determinant => crate::linalg::determinant(self.arena, args[0]),
+            LinearHead::Rank => crate::linalg::rank(self.arena, args[0]),
+            LinearHead::Transpose => crate::linalg::transpose(self.arena, args[0]),
+            LinearHead::Inverse => crate::linalg::inverse(self.arena, args[0]),
+            LinearHead::Rref => crate::linalg::rref(self.arena, args[0]),
+            LinearHead::Trace => crate::linalg::trace(self.arena, args[0]),
+            LinearHead::Matmul => crate::linalg::matmul(self.arena, args[0], args[1]),
+            LinearHead::Identity => crate::linalg::identity(self.arena, args[0]),
+            LinearHead::SolveLinear => crate::linalg::solve_linear(self.arena, args[0], args[1]),
+            LinearHead::Dot => crate::linalg::dot(self.arena, args[0], args[1]),
+            LinearHead::Cross => crate::linalg::cross(self.arena, args[0], args[1]),
+        }
     }
 
     fn apply_exact_numeric(

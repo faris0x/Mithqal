@@ -169,3 +169,42 @@ fn explicit_numeric_assertions() {
     assert_eq!(Int::from_i64(13).pow_u32(3).to_decimal(), "2197");
     assert_eq!(Int::from_i64(13).pow_u32(4).to_decimal(), "28561");
 }
+
+#[test]
+fn determinant_execution_corpus() {
+    let mut session = Session::new();
+    for a in -2i64..=2 {
+        for b in -2i64..=2 {
+            for c in -2i64..=2 {
+                for d in -2i64..=2 {
+                    let source = format!("det([[{a},{b}],[{c},{d}]])");
+                    let value = integer_value(&mut session, &source);
+                    assert_eq!(value, a * d - b * c, "{source}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn identity_multiplication_corpus() {
+    let mut session = Session::new();
+    for size in 1i64..=5 {
+        let source = format!("matmul(identity({size}),identity({size}))");
+        let value = session.eval_statement(&source).unwrap();
+        let expected = session
+            .eval_statement(&format!("identity({size})"))
+            .unwrap();
+        assert_eq!(value, expected, "{source}");
+    }
+}
+
+#[test]
+fn trace_execution_corpus() {
+    let mut session = Session::new();
+    for size in 1i64..=6 {
+        let source = format!("trace(identity({size}))");
+        let value = integer_value(&mut session, &source);
+        assert_eq!(value, size, "{source}");
+    }
+}

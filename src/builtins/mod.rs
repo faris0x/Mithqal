@@ -30,6 +30,8 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         "gcd" | "lcm" | "factorial" | "binomial" | "floor" | "ceil" | "round" => {
             A::new().with(A::PROTECTED)
         }
+        "det" | "rank" | "transpose" | "inverse" | "rref" | "trace" | "matmul" | "identity"
+        | "solveLinear" | "dot" | "cross" => A::new().with(A::PROTECTED),
         "pattern" | "blank" | "blankSequence" | "blankNullSequence" | "condition" => {
             A::new().with(A::PROTECTED)
         }

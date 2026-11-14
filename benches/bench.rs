@@ -107,6 +107,18 @@ fn main() {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 
+    let mut cold_arena = Arena::new();
+    measure("cold determinant 3x3", 5_000, || {
+        let parsed = parse_statement(&mut cold_arena, "det([[1,2,3],[4,5,6],[7,8,10]])").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold inverse 2x2", 5_000, || {
+        let parsed = parse_statement(&mut cold_arena, "inverse([[1,2],[3,4]])").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut session = Session::new();
     measure("cached parse and evaluate 1+2", 20_000, || {
         black_box(session.eval_statement("1+2").unwrap());

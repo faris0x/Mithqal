@@ -19,6 +19,7 @@ pub mod expr;
 mod hash;
 pub mod ir;
 mod kernel;
+mod linalg;
 pub mod num;
 pub mod print;
 pub mod runtime;
