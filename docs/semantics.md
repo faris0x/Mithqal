@@ -258,6 +258,10 @@ Number theory functions accept exact integers. Primality, next prime, factorizat
 
 `isPrime` uses deterministic Miller-Rabin bases for machine sized values. `factorInteger` uses Pollard rho and returns ordered prime and exponent pairs. `divisors` returns positive divisors of the absolute value. `mod` normalizes into the nonnegative range of the modulus.
 
+Broader number theory adds previous primes, prime counting through a sieve, divisor counts, Moebius values, radicals, square-free tests, Fibonacci numbers, perfect square tests, modular inverses, and Jacobi symbols.
+
+Descriptive statistics operate on nonempty numeric lists. `mean`, `median`, `minimum`, `maximum`, `range`, `total`, `count`, `variance`, `sampleVariance`, `standardDeviation`, `sampleStandardDeviation`, `frequency`, and `mode` keep exact rational results. Standard deviations simplify exact rational squares and otherwise remain exact square root expressions.
+
 Logic provides `xor`, `implies`, `all`, and `any` alongside the existing `and`, `or`, and `not`. Predicates compose directly with these forms. Symbolic operands leave a connective unevaluated when the result is undetermined.
 
 ## Exact complex normalization

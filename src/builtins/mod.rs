@@ -34,7 +34,24 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         | "solveLinear" | "dot" | "cross" => A::new().with(A::PROTECTED),
         "isPrime" | "nextPrime" | "factorInteger" | "divisors" | "totient" | "sigma" | "isEven"
         | "isOdd" | "divides" | "mod" | "powerMod" => A::new().with(A::PROTECTED),
+        "previousPrime" | "divisorCount" | "moebius" | "radical" | "isSquareFree"
+        | "primeCount" | "fibonacci" | "isPerfectSquare" | "modInverse" | "jacobi" => {
+            A::new().with(A::PROTECTED)
+        }
         "xor" | "implies" | "all" | "any" => A::new().with(A::PROTECTED),
+        "mean"
+        | "median"
+        | "minimum"
+        | "maximum"
+        | "range"
+        | "total"
+        | "count"
+        | "variance"
+        | "sampleVariance"
+        | "standardDeviation"
+        | "sampleStandardDeviation"
+        | "frequency"
+        | "mode" => A::new().with(A::PROTECTED),
         "pattern" | "blank" | "blankSequence" | "blankNullSequence" | "condition" => {
             A::new().with(A::PROTECTED)
         }

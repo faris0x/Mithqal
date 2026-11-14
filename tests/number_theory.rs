@@ -197,3 +197,75 @@ end
         &["true", "[1,2,3,4,6,9,12,18,36]", "12", "1"]
     );
 }
+
+#[test]
+fn previous_primes() {
+    assert_eq!(integer("previousPrime(3)"), 2);
+    assert_eq!(integer("previousPrime(10)"), 7);
+    assert_eq!(integer("previousPrime(100)"), 97);
+    assert!(text("previousPrime(2)").contains("previousPrime"));
+}
+
+#[test]
+fn divisor_counts() {
+    assert_eq!(text("divisorCount(1)"), "1");
+    assert_eq!(text("divisorCount(12)"), "6");
+    assert_eq!(text("divisorCount(36)"), "9");
+    assert_eq!(text("divisorCount(97)"), "2");
+    assert_eq!(text("divisorCount(360)"), "24");
+}
+
+#[test]
+fn moebius_and_radicals() {
+    assert_eq!(text("moebius(1)"), "1");
+    assert_eq!(text("moebius(2)"), "-1");
+    assert_eq!(text("moebius(6)"), "1");
+    assert_eq!(text("moebius(12)"), "0");
+    assert_eq!(text("moebius(30)"), "-1");
+    assert_eq!(text("radical(1)"), "1");
+    assert_eq!(text("radical(12)"), "6");
+    assert_eq!(text("radical(360)"), "30");
+    assert_eq!(text("isSquareFree(30)"), "true");
+    assert_eq!(text("isSquareFree(12)"), "false");
+}
+
+#[test]
+fn prime_counts() {
+    assert_eq!(text("primeCount(0)"), "0");
+    assert_eq!(text("primeCount(1)"), "0");
+    assert_eq!(text("primeCount(2)"), "1");
+    assert_eq!(text("primeCount(10)"), "4");
+    assert_eq!(text("primeCount(100)"), "25");
+    assert_eq!(text("primeCount(1000)"), "168");
+}
+
+#[test]
+fn fibonacci_numbers() {
+    assert_eq!(text("fibonacci(0)"), "0");
+    assert_eq!(text("fibonacci(1)"), "1");
+    assert_eq!(text("fibonacci(2)"), "1");
+    assert_eq!(text("fibonacci(10)"), "55");
+    assert_eq!(text("fibonacci(20)"), "6765");
+    assert_eq!(text("fibonacci(30)"), "832040");
+}
+
+#[test]
+fn perfect_squares() {
+    assert_eq!(text("isPerfectSquare(0)"), "true");
+    assert_eq!(text("isPerfectSquare(1)"), "true");
+    assert_eq!(text("isPerfectSquare(144)"), "true");
+    assert_eq!(text("isPerfectSquare(145)"), "false");
+    assert_eq!(text("isPerfectSquare(-4)"), "false");
+}
+
+#[test]
+fn modular_inverses_and_jacobi_symbols() {
+    assert_eq!(text("modInverse(3,11)"), "4");
+    assert_eq!(text("modInverse(2,5)"), "3");
+    assert_eq!(text("modInverse(10,17)"), "12");
+    assert!(text("modInverse(2,4)").contains("modInverse"));
+    assert_eq!(text("jacobi(1,3)"), "1");
+    assert_eq!(text("jacobi(2,15)"), "1");
+    assert_eq!(text("jacobi(3,15)"), "0");
+    assert!(text("jacobi(2,4)").contains("jacobi"));
+}

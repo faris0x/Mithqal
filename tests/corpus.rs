@@ -272,3 +272,67 @@ fn logic_truth_table_corpus() {
         }
     }
 }
+
+#[test]
+fn mean_execution_corpus() {
+    let mut session = Session::new();
+    for size in 1i64..=50 {
+        let values = (1..=size)
+            .map(|value| value.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        let source = format!("mean([{values}])");
+        let value = session.eval_statement(&source).unwrap();
+        let expected = if size % 2 == 0 {
+            format!("{}/2", size + 1)
+        } else {
+            ((size + 1) / 2).to_string()
+        };
+        assert_eq!(session.format_infix(value), expected, "{size}");
+    }
+}
+
+#[test]
+fn prime_count_execution_corpus() {
+    let mut session = Session::new();
+    for value in 0i64..=200 {
+        let expected = (0..=value).filter(|number| is_prime_i64(*number)).count();
+        let result = session
+            .eval_statement(&format!("primeCount({value})"))
+            .unwrap();
+        match session.view(result) {
+            ExprView::Integer(result) => {
+                assert_eq!(result.to_i64().unwrap(), expected as i64, "{value}")
+            }
+            _ => panic!("expected an integer"),
+        }
+    }
+}
+
+#[test]
+fn fibonacci_execution_corpus() {
+    let mut previous = 0i64;
+    let mut current = 1i64;
+    for index in 0..=40 {
+        if index == 0 {
+            assert_eq!(previous, 0);
+        } else if index == 1 {
+            assert_eq!(current, 1);
+        } else {
+            let next = previous + current;
+            previous = current;
+            current = next;
+        }
+        let mut session = Session::new();
+        let result = session
+            .eval_statement(&format!("fibonacci({index})"))
+            .unwrap();
+        match session.view(result) {
+            ExprView::Integer(value) => {
+                let expected = if index == 0 { 0 } else { current };
+                assert_eq!(value.to_i64().unwrap(), expected, "{index}");
+            }
+            _ => panic!("expected an integer"),
+        }
+    }
+}

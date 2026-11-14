@@ -24,6 +24,7 @@ pub mod num;
 mod numbertheory;
 pub mod print;
 pub mod runtime;
+mod statistics;
 pub mod syntax;
 
 pub use api::{ExprView, Session};

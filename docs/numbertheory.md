@@ -17,6 +17,16 @@ The number theory layer works on exact integers. Factorization and primality ope
 | `divides(a,b)` | True when `a` divides `b`. |
 | `mod(a,m)` | Nonnegative remainder. |
 | `powerMod(a,e,m)` | Modular exponentiation. |
+| `previousPrime(n)` | Largest prime less than `n`. |
+| `divisorCount(n)` | Number of positive divisors. |
+| `moebius(n)` | Moebius function. |
+| `radical(n)` | Product of distinct prime factors. |
+| `isSquareFree(n)` | Square-free predicate. |
+| `primeCount(n)` | Number of primes up to `n`. |
+| `fibonacci(n)` | Fibonacci number. |
+| `isPerfectSquare(n)` | Perfect square predicate. |
+| `modInverse(a,m)` | Modular inverse. |
+| `jacobi(a,n)` | Jacobi symbol. |
 
 ## Examples
 
@@ -33,6 +43,16 @@ isOdd(-3)                   -> true
 divides(3,12)               -> true
 mod(-7,3)                   -> 2
 powerMod(2,10,1000)         -> 24
+previousPrime(10)           -> 7
+divisorCount(36)            -> 9
+moebius(30)                 -> -1
+radical(360)                -> 30
+isSquareFree(30)            -> true
+primeCount(100)             -> 25
+fibonacci(20)               -> 6765
+isPerfectSquare(144)        -> true
+modInverse(3,11)            -> 4
+jacobi(2,15)                -> 1
 ```
 
 `factorInteger(1)` is the empty list. `factorInteger(0)` remains unevaluated. Negative values include `[-1,1]` as the first factor.
@@ -41,7 +61,9 @@ powerMod(2,10,1000)         -> 24
 
 ## Limits
 
-- Primality and factorization accept signed 64 bit inputs.
-- Factorization uses Pollard rho with deterministic primality testing.
+- Primality, factorization, prime counting, and Fibonacci accept signed 64 bit inputs within their documented ranges.
+- `primeCount` accepts values up to five million.
+- `fibonacci` accepts values up to 10000.
 - Modular remainder and modular exponentiation accept arbitrary precision integers.
+- Modular inverses and Jacobi symbols use signed 64 bit inputs.
 - Symbolic arguments leave the call unevaluated.

@@ -23,6 +23,8 @@ Included:
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
 - Exact rational matrix and vector linear algebra with determinants, rank, inverses, row reduction, matrix products, and linear solving.
 - Exact integer number theory with primality, factorization, divisors, totients, sigma, modular arithmetic, and modular powers.
+- Broader number theory with previous primes, prime counting, divisor counts, Moebius values, radicals, square-free tests, Fibonacci numbers, modular inverses, and Jacobi symbols.
+- Exact descriptive statistics with means, medians, extrema, ranges, totals, variances, deviations, frequencies, and modes.
 - Boolean logic with exclusive or, implication, list quantification, and predicate composition.
 - A versioned structured IR scaffold for a future language frontend.
 - Typed instruction virtual machine and a reference interpreter.

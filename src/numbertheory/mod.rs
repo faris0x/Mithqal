@@ -67,7 +67,10 @@ fn is_prime_u64(value: u64) -> bool {
     if value < 2 {
         return false;
     }
-    for prime in [2u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37] {
+    for prime in [
+        2u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83,
+        89, 97,
+    ] {
         if value == prime {
             return true;
         }
@@ -81,7 +84,26 @@ fn is_prime_u64(value: u64) -> bool {
         exponent >>= 1;
         shifts += 1;
     }
-    'witness: for base in [2u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37] {
+    if value < 3_215_031_751 {
+        return miller_rabin(value, exponent, shifts, &[2, 3, 5, 7]);
+    }
+    if value < 3_474_749_660_383 {
+        return miller_rabin(value, exponent, shifts, &[2, 3, 5, 7, 11, 13]);
+    }
+    miller_rabin(
+        value,
+        exponent,
+        shifts,
+        &[2, 325, 9_375, 28_178, 450_775, 9_780_504, 1_795_265_022],
+    )
+}
+
+fn miller_rabin(value: u64, exponent: u64, shifts: u32, bases: &[u64]) -> bool {
+    'witness: for base in bases {
+        let base = base % value;
+        if base == 0 {
+            continue;
+        }
         let mut power = pow_mod(base, exponent, value);
         if power == 1 || power == value - 1 {
             continue;
@@ -326,4 +348,191 @@ fn modulo_int(value: &Int, modulus: &Int) -> Option<Int> {
         remainder = remainder.add(modulus);
     }
     Some(remainder)
+}
+
+pub(crate) fn previous_prime(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let value = as_i64(arena, expression)?;
+    if value <= 2 {
+        return None;
+    }
+    let mut candidate = value - 1;
+    while candidate >= 2 {
+        if is_prime_u64(candidate as u64) {
+            return Some(integer(arena, Int::from_i64(candidate)));
+        }
+        candidate -= 1;
+    }
+    None
+}
+
+pub(crate) fn divisor_count(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let value = as_i64(arena, expression)?;
+    if value == 0 {
+        return None;
+    }
+    let mut count = 1u64;
+    for (_, exponent) in factor_u64(value.unsigned_abs()) {
+        count = count.saturating_mul(exponent as u64 + 1);
+    }
+    Some(integer(arena, Int::from_i64(count as i64)))
+}
+
+pub(crate) fn moebius(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let value = as_i64(arena, expression)?;
+    if value <= 0 {
+        return None;
+    }
+    let factors = factor_u64(value as u64);
+    if factors.iter().any(|(_, exponent)| *exponent > 1) {
+        return Some(integer(arena, Int::zero()));
+    }
+    let sign = if factors.len() % 2 == 0 { 1 } else { -1 };
+    Some(integer(arena, Int::from_i64(sign)))
+}
+
+pub(crate) fn radical(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let value = as_i64(arena, expression)?;
+    if value == 0 {
+        return None;
+    }
+    let mut result = Int::one();
+    for (prime, _) in factor_u64(value.unsigned_abs()) {
+        result = result.mul(&Int::from_i64(prime as i64));
+    }
+    Some(integer(arena, result))
+}
+
+pub(crate) fn is_square_free(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let value = as_i64(arena, expression)?;
+    if value <= 0 {
+        return None;
+    }
+    let factors = factor_u64(value as u64);
+    Some(boolean(
+        arena,
+        factors.iter().all(|(_, exponent)| *exponent == 1),
+    ))
+}
+
+pub(crate) fn prime_count(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let value = as_i64(arena, expression)?;
+    if value < 2 {
+        return Some(integer(arena, Int::zero()));
+    }
+    if value > 5_000_000 {
+        return None;
+    }
+    let limit = value as usize;
+    let mut sieve = vec![true; limit + 1];
+    sieve[0] = false;
+    sieve[1] = false;
+    let mut divisor = 2usize;
+    while divisor * divisor <= limit {
+        if sieve[divisor] {
+            let mut multiple = divisor * divisor;
+            while multiple <= limit {
+                sieve[multiple] = false;
+                multiple += divisor;
+            }
+        }
+        divisor += 1;
+    }
+    let count = sieve.into_iter().filter(|prime| *prime).count();
+    Some(integer(arena, Int::from_i64(count as i64)))
+}
+
+pub(crate) fn fibonacci(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let value = as_i64(arena, expression)?;
+    if !(0..=10_000).contains(&value) {
+        return None;
+    }
+    let mut previous = Int::zero();
+    let mut current = Int::one();
+    for _ in 0..value {
+        let next = previous.add(&current);
+        previous = current;
+        current = next;
+    }
+    Some(integer(arena, previous))
+}
+
+pub(crate) fn is_perfect_square(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
+    let value = as_i64(arena, expression)?;
+    if value < 0 {
+        return Some(boolean(arena, false));
+    }
+    Some(boolean(arena, integer_sqrt_u64(value as u64).is_some()))
+}
+
+fn integer_sqrt_u64(value: u64) -> Option<u64> {
+    let mut low = 0u64;
+    let mut high = value;
+    while low <= high {
+        let middle = low + (high - low) / 2;
+        let square = (middle as u128) * (middle as u128);
+        if square == value as u128 {
+            return Some(middle);
+        }
+        if square < value as u128 {
+            low = middle + 1;
+        } else {
+            high = middle - 1;
+        }
+    }
+    None
+}
+
+pub(crate) fn mod_inverse(arena: &mut Arena, value: ExprId, modulus: ExprId) -> Option<ExprId> {
+    let value = as_i64(arena, value)?;
+    let modulus = as_i64(arena, modulus)?.abs();
+    if modulus <= 1 {
+        return None;
+    }
+    let mut old_r = value.rem_euclid(modulus);
+    let mut r = modulus;
+    let mut old_s = 1i64;
+    let mut s = 0i64;
+    while r != 0 {
+        let quotient = old_r / r;
+        let next_r = old_r - quotient * r;
+        old_r = r;
+        r = next_r;
+        let next_s = old_s - quotient * s;
+        old_s = s;
+        s = next_s;
+    }
+    if old_r != 1 {
+        return None;
+    }
+    Some(integer(arena, Int::from_i64(old_s.rem_euclid(modulus))))
+}
+
+pub(crate) fn jacobi(arena: &mut Arena, value: ExprId, modulus: ExprId) -> Option<ExprId> {
+    let mut value = as_i64(arena, value)?;
+    let modulus = as_i64(arena, modulus)?;
+    if modulus <= 0 || modulus % 2 == 0 {
+        return None;
+    }
+    value = value.rem_euclid(modulus);
+    let mut modulus = modulus;
+    let mut result = 1i64;
+    while value != 0 {
+        while value % 2 == 0 {
+            value /= 2;
+            let remainder = modulus % 8;
+            if remainder == 3 || remainder == 5 {
+                result = -result;
+            }
+        }
+        core::mem::swap(&mut value, &mut modulus);
+        if value % 4 == 3 && modulus % 4 == 3 {
+            result = -result;
+        }
+        value %= modulus;
+    }
+    if modulus == 1 {
+        Some(integer(arena, Int::from_i64(result)))
+    } else {
+        Some(integer(arena, Int::zero()))
+    }
 }

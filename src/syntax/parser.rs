@@ -30,6 +30,9 @@ pub fn parse_source(arena: &mut Arena, source: &str) -> Result<Vec<ExprId>, Diag
 
 /// Parse one statement. A trailing newline is allowed.
 pub fn parse_statement(arena: &mut Arena, source: &str) -> Result<ExprId, Diagnostic> {
+    if let Some(expression) = parse_simple_expression(arena, source) {
+        return Ok(expression);
+    }
     let statements = parse_source(arena, source)?;
     match statements.len() {
         1 => Ok(statements[0]),
@@ -509,4 +512,132 @@ fn is_comparison(kind: Option<&TokenKind>) -> bool {
             | Some(TokenKind::Greater)
             | Some(TokenKind::GreaterEqual)
     )
+}
+
+/// Fast path for whitespace free atom calls, lists, and integer literals.
+fn parse_simple_expression(arena: &mut Arena, source: &str) -> Option<ExprId> {
+    if source.is_empty()
+        || source.bytes().any(|byte| byte.is_ascii_whitespace())
+        || !source.is_ascii()
+        || source.bytes().any(|byte| {
+            matches!(
+                byte,
+                b'+' | b'-' | b'*' | b'/' | b'^' | b'<' | b'>' | b'=' | b'!' | b'&' | b'|'
+            )
+        })
+    {
+        return None;
+    }
+    let mut parser = SimpleParser {
+        arena,
+        bytes: source.as_bytes(),
+        position: 0,
+    };
+    let expression = parser.value(0)?;
+    if parser.position != parser.bytes.len() {
+        return None;
+    }
+    Some(expression)
+}
+
+struct SimpleParser<'a> {
+    arena: &'a mut Arena,
+    bytes: &'a [u8],
+    position: usize,
+}
+
+impl SimpleParser<'_> {
+    fn value(&mut self, depth: usize) -> Option<ExprId> {
+        if depth > 32 {
+            return None;
+        }
+        match self.bytes.get(self.position).copied()? {
+            b'-' => {
+                self.position += 1;
+                let start = self.position;
+                while self
+                    .bytes
+                    .get(self.position)
+                    .is_some_and(u8::is_ascii_digit)
+                {
+                    self.position += 1;
+                }
+                if self.position == start {
+                    return None;
+                }
+                let text = core::str::from_utf8(&self.bytes[start - 1..self.position]).ok()?;
+                let value = Int::from_decimal(text).ok()?;
+                Some(self.arena.intern_int(value))
+            }
+            byte if byte.is_ascii_digit() => {
+                let start = self.position;
+                while self
+                    .bytes
+                    .get(self.position)
+                    .is_some_and(u8::is_ascii_digit)
+                {
+                    self.position += 1;
+                }
+                let text = core::str::from_utf8(&self.bytes[start..self.position]).ok()?;
+                let value = Int::from_decimal(text).ok()?;
+                Some(self.arena.intern_int(value))
+            }
+            b'[' => {
+                self.position += 1;
+                let mut values = Vec::new();
+                if self.bytes.get(self.position) == Some(&b']') {
+                    self.position += 1;
+                    let head = self.arena.builtin_head("list");
+                    return Some(self.arena.intern_call(head, &values));
+                }
+                loop {
+                    values.push(self.value(depth + 1)?);
+                    match self.bytes.get(self.position).copied()? {
+                        b',' => self.position += 1,
+                        b']' => {
+                            self.position += 1;
+                            let head = self.arena.builtin_head("list");
+                            return Some(self.arena.intern_call(head, &values));
+                        }
+                        _ => return None,
+                    }
+                }
+            }
+            byte if byte.is_ascii_alphabetic() => {
+                let start = self.position;
+                self.position += 1;
+                while self
+                    .bytes
+                    .get(self.position)
+                    .is_some_and(|byte| byte.is_ascii_alphanumeric())
+                {
+                    self.position += 1;
+                }
+                let name = core::str::from_utf8(&self.bytes[start..self.position]).ok()?;
+                let symbol = self.arena.symbol_or_intern(name);
+                let head = self.arena.symbol_expr(symbol);
+                if self.bytes.get(self.position) != Some(&b'(') {
+                    return Some(head);
+                }
+                self.position += 1;
+                let mut arguments = Vec::new();
+                if self.bytes.get(self.position) == Some(&b')') {
+                    self.position += 1;
+                    return Some(self.arena.intern_call(head, &arguments));
+                }
+                loop {
+                    arguments.push(self.value(depth + 1)?);
+                    match self.bytes.get(self.position).copied()? {
+                        b',' => self.position += 1,
+                        b')' => {
+                            self.position += 1;
+                            return Some(self.arena.intern_call(head, &arguments));
+                        }
+                        _ => return None,
+                    }
+                }
+            }
+            _ => None,
+        }
+    }
 }

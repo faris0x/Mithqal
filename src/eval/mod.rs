@@ -232,6 +232,16 @@ enum NumberTheoryHead {
     Divides,
     Modulo,
     PowerMod,
+    PreviousPrime,
+    DivisorCount,
+    Moebius,
+    Radical,
+    IsSquareFree,
+    PrimeCount,
+    Fibonacci,
+    IsPerfectSquare,
+    ModInverse,
+    Jacobi,
 }
 
 impl NumberTheoryHead {
@@ -248,13 +258,23 @@ impl NumberTheoryHead {
             "divides" => Self::Divides,
             "mod" => Self::Modulo,
             "powerMod" => Self::PowerMod,
+            "previousPrime" => Self::PreviousPrime,
+            "divisorCount" => Self::DivisorCount,
+            "moebius" => Self::Moebius,
+            "radical" => Self::Radical,
+            "isSquareFree" => Self::IsSquareFree,
+            "primeCount" => Self::PrimeCount,
+            "fibonacci" => Self::Fibonacci,
+            "isPerfectSquare" => Self::IsPerfectSquare,
+            "modInverse" => Self::ModInverse,
+            "jacobi" => Self::Jacobi,
             _ => return None,
         })
     }
 
     fn arity(self) -> usize {
         match self {
-            Self::Divides | Self::Modulo => 2,
+            Self::Divides | Self::Modulo | Self::ModInverse | Self::Jacobi => 2,
             Self::PowerMod => 3,
             _ => 1,
         }
@@ -276,6 +296,44 @@ impl LogicHead {
             "implies" => Self::Implies,
             "all" => Self::All,
             "any" => Self::Any,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Copy, Clone)]
+enum StatisticsHead {
+    Mean,
+    Median,
+    Minimum,
+    Maximum,
+    Range,
+    Total,
+    Count,
+    Variance,
+    SampleVariance,
+    StandardDeviation,
+    SampleStandardDeviation,
+    Frequency,
+    Mode,
+}
+
+impl StatisticsHead {
+    fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "mean" => Self::Mean,
+            "median" => Self::Median,
+            "minimum" => Self::Minimum,
+            "maximum" => Self::Maximum,
+            "range" => Self::Range,
+            "total" => Self::Total,
+            "count" => Self::Count,
+            "variance" => Self::Variance,
+            "sampleVariance" => Self::SampleVariance,
+            "standardDeviation" => Self::StandardDeviation,
+            "sampleStandardDeviation" => Self::SampleStandardDeviation,
+            "frequency" => Self::Frequency,
+            "mode" => Self::Mode,
             _ => return None,
         })
     }
@@ -400,6 +458,16 @@ impl<'a> Evaluator<'a> {
             ));
         }
 
+        if head == self.heads.list
+            && args.iter().all(|arg| {
+                matches!(
+                    self.arena.node(*arg),
+                    Node::Int(_) | Node::Rat(_) | Node::Real(_)
+                )
+            })
+        {
+            return Ok(id);
+        }
         if head == self.heads.function {
             return self.eval_function(&args);
         }
@@ -1539,6 +1607,20 @@ impl<'a> Evaluator<'a> {
             let original = self.arena.intern_call(head, args);
             return Ok(self.apply_logic(function, args).unwrap_or(original));
         }
+        let statistics_function = self
+            .arena
+            .symbol_id(head)
+            .and_then(|symbol| StatisticsHead::from_name(self.arena.symbol_name(symbol)));
+        if let Some(function) = statistics_function {
+            if args.len() != 1 {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalArity,
+                    "statistics function expects one list",
+                ));
+            }
+            let original = self.arena.intern_call(head, args);
+            return Ok(self.apply_statistics(function, args[0]).unwrap_or(original));
+        }
         if let Some(symbol) = self.arena.symbol_id(head) {
             if let Some(result) = self.apply_user(symbol, head, args)? {
                 return Ok(result);
@@ -1620,6 +1702,30 @@ impl<'a> Evaluator<'a> {
         Ok(operation(self.arena, args[0], &context).unwrap_or(original))
     }
 
+    fn apply_statistics(&mut self, function: StatisticsHead, expression: ExprId) -> Option<ExprId> {
+        match function {
+            StatisticsHead::Mean => crate::statistics::mean_stat(self.arena, expression),
+            StatisticsHead::Median => crate::statistics::median(self.arena, expression),
+            StatisticsHead::Minimum => crate::statistics::minimum(self.arena, expression),
+            StatisticsHead::Maximum => crate::statistics::maximum(self.arena, expression),
+            StatisticsHead::Range => crate::statistics::range(self.arena, expression),
+            StatisticsHead::Total => crate::statistics::total(self.arena, expression),
+            StatisticsHead::Count => crate::statistics::count(self.arena, expression),
+            StatisticsHead::Variance => crate::statistics::variance_stat(self.arena, expression),
+            StatisticsHead::SampleVariance => {
+                crate::statistics::sample_variance(self.arena, expression)
+            }
+            StatisticsHead::StandardDeviation => {
+                crate::statistics::standard_deviation(self.arena, expression)
+            }
+            StatisticsHead::SampleStandardDeviation => {
+                crate::statistics::sample_standard_deviation(self.arena, expression)
+            }
+            StatisticsHead::Frequency => crate::statistics::frequency(self.arena, expression),
+            StatisticsHead::Mode => crate::statistics::mode(self.arena, expression),
+        }
+    }
+
     fn apply_logic(&mut self, function: LogicHead, args: &[ExprId]) -> Option<ExprId> {
         let boolean = |value| {
             if value {
@@ -1699,6 +1805,26 @@ impl<'a> Evaluator<'a> {
             NumberTheoryHead::PowerMod => {
                 crate::numbertheory::power_mod(self.arena, args[0], args[1], args[2])
             }
+            NumberTheoryHead::PreviousPrime => {
+                crate::numbertheory::previous_prime(self.arena, args[0])
+            }
+            NumberTheoryHead::DivisorCount => {
+                crate::numbertheory::divisor_count(self.arena, args[0])
+            }
+            NumberTheoryHead::Moebius => crate::numbertheory::moebius(self.arena, args[0]),
+            NumberTheoryHead::Radical => crate::numbertheory::radical(self.arena, args[0]),
+            NumberTheoryHead::IsSquareFree => {
+                crate::numbertheory::is_square_free(self.arena, args[0])
+            }
+            NumberTheoryHead::PrimeCount => crate::numbertheory::prime_count(self.arena, args[0]),
+            NumberTheoryHead::Fibonacci => crate::numbertheory::fibonacci(self.arena, args[0]),
+            NumberTheoryHead::IsPerfectSquare => {
+                crate::numbertheory::is_perfect_square(self.arena, args[0])
+            }
+            NumberTheoryHead::ModInverse => {
+                crate::numbertheory::mod_inverse(self.arena, args[0], args[1])
+            }
+            NumberTheoryHead::Jacobi => crate::numbertheory::jacobi(self.arena, args[0], args[1]),
         }
     }
 

@@ -131,6 +131,30 @@ fn main() {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 
+    let mut cold_arena = Arena::new();
+    measure("cold mean list", 5_000, || {
+        let parsed = parse_statement(&mut cold_arena, "mean([1,2,3,4])").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold variance list", 3_000, || {
+        let parsed = parse_statement(&mut cold_arena, "variance([1,2,3,4])").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold primeCount 1000", 2_000, || {
+        let parsed = parse_statement(&mut cold_arena, "primeCount(1000)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold fibonacci 20", 5_000, || {
+        let parsed = parse_statement(&mut cold_arena, "fibonacci(20)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut session = Session::new();
     measure("cached parse and evaluate 1+2", 20_000, || {
         black_box(session.eval_statement("1+2").unwrap());
