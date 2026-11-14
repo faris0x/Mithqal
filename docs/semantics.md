@@ -252,6 +252,14 @@ Matrices are lists of rows and vectors are plain lists. The linear algebra layer
 
 A singular matrix, an inconsistent system, an underdetermined system, a dimension mismatch, or a symbolic entry leaves the call unevaluated. Full parametrized solution sets and decompositions are later work.
 
+## Number theory and logic
+
+Number theory functions accept exact integers. Primality, next prime, factorization, divisors, totient, and sigma accept signed 64 bit inputs. Modular remainder and modular exponentiation accept arbitrary precision integers.
+
+`isPrime` uses deterministic Miller-Rabin bases for machine sized values. `factorInteger` uses Pollard rho and returns ordered prime and exponent pairs. `divisors` returns positive divisors of the absolute value. `mod` normalizes into the nonnegative range of the modulus.
+
+Logic provides `xor`, `implies`, `all`, and `any` alongside the existing `and`, `or`, and `not`. Predicates compose directly with these forms. Symbolic operands leave a connective unevaluated when the result is undetermined.
+
 ## Exact complex normalization
 
 Expressions built from exact rationals and the unshadowed symbol `i` using `plus`, `times`, `negate`, integer `power`, and division are Gaussian rationals. They normalize automatically to the form `a+b*i`, where `a` and `b` are exact rationals.

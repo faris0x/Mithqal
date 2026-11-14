@@ -119,6 +119,18 @@ fn main() {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 
+    let mut cold_arena = Arena::new();
+    measure("cold isPrime 1000000007", 5_000, || {
+        let parsed = parse_statement(&mut cold_arena, "isPrime(1000000007)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold factorInteger 360", 2_000, || {
+        let parsed = parse_statement(&mut cold_arena, "factorInteger(360)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut session = Session::new();
     measure("cached parse and evaluate 1+2", 20_000, || {
         black_box(session.eval_statement("1+2").unwrap());

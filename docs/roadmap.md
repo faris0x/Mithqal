@@ -22,6 +22,8 @@ Included:
 - A line based surface language with modules, definitions, literal patterns, guards, lexical bindings, conditionals, match blocks, and print statements.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
 - Exact rational matrix and vector linear algebra with determinants, rank, inverses, row reduction, matrix products, and linear solving.
+- Exact integer number theory with primality, factorization, divisors, totients, sigma, modular arithmetic, and modular powers.
+- Boolean logic with exclusive or, implication, list quantification, and predicate composition.
 - A versioned structured IR scaffold for a future language frontend.
 - Typed instruction virtual machine and a reference interpreter.
 - Explicit mark and sweep garbage collection.

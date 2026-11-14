@@ -21,6 +21,7 @@ pub mod ir;
 mod kernel;
 mod linalg;
 pub mod num;
+mod numbertheory;
 pub mod print;
 pub mod runtime;
 pub mod syntax;

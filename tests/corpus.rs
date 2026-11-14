@@ -208,3 +208,67 @@ fn trace_execution_corpus() {
         assert_eq!(value, size, "{source}");
     }
 }
+
+#[test]
+fn primality_execution_corpus() {
+    let mut session = Session::new();
+    for value in 0i64..=200 {
+        let expected = is_prime_i64(value);
+        let text = session
+            .eval_statement(&format!("isPrime({value})"))
+            .unwrap();
+        let expected_text = if expected { "true" } else { "false" };
+        assert_eq!(session.format_infix(text), expected_text, "{value}");
+    }
+}
+
+fn is_prime_i64(value: i64) -> bool {
+    if value < 2 {
+        return false;
+    }
+    let mut divisor = 2i64;
+    while divisor * divisor <= value {
+        if value % divisor == 0 {
+            return false;
+        }
+        divisor += 1;
+    }
+    true
+}
+
+#[test]
+fn divisor_count_execution_corpus() {
+    for value in 1i64..=100 {
+        let mut count = 0;
+        for divisor in 1..=value {
+            if value % divisor == 0 {
+                count += 1;
+            }
+        }
+        let mut session = Session::new();
+        let divisors = session
+            .eval_statement(&format!("divisors({value})"))
+            .unwrap();
+        match session.view(divisors) {
+            ExprView::Call { args, .. } => assert_eq!(args.len() as i64, count, "{value}"),
+            _ => panic!("expected a list for {value}"),
+        }
+    }
+}
+
+#[test]
+fn logic_truth_table_corpus() {
+    let mut session = Session::new();
+    for left in [false, true] {
+        for right in [false, true] {
+            let source = format!("xor({left},{right})");
+            let value = session.eval_statement(&source).unwrap();
+            let expected = if left ^ right { "true" } else { "false" };
+            assert_eq!(session.format_infix(value), expected, "{source}");
+            let source = format!("implies({left},{right})");
+            let value = session.eval_statement(&source).unwrap();
+            let expected = if !left || right { "true" } else { "false" };
+            assert_eq!(session.format_infix(value), expected, "{source}");
+        }
+    }
+}

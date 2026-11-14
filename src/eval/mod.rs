@@ -193,7 +193,6 @@ enum LinearHead {
     Dot,
     Cross,
 }
-
 impl LinearHead {
     fn from_name(name: &str) -> Option<Self> {
         Some(match name {
@@ -217,6 +216,68 @@ impl LinearHead {
             Self::Matmul | Self::SolveLinear | Self::Dot | Self::Cross => 2,
             _ => 1,
         }
+    }
+}
+
+#[derive(Copy, Clone)]
+enum NumberTheoryHead {
+    IsPrime,
+    NextPrime,
+    FactorInteger,
+    Divisors,
+    Totient,
+    Sigma,
+    IsEven,
+    IsOdd,
+    Divides,
+    Modulo,
+    PowerMod,
+}
+
+impl NumberTheoryHead {
+    fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "isPrime" => Self::IsPrime,
+            "nextPrime" => Self::NextPrime,
+            "factorInteger" => Self::FactorInteger,
+            "divisors" => Self::Divisors,
+            "totient" => Self::Totient,
+            "sigma" => Self::Sigma,
+            "isEven" => Self::IsEven,
+            "isOdd" => Self::IsOdd,
+            "divides" => Self::Divides,
+            "mod" => Self::Modulo,
+            "powerMod" => Self::PowerMod,
+            _ => return None,
+        })
+    }
+
+    fn arity(self) -> usize {
+        match self {
+            Self::Divides | Self::Modulo => 2,
+            Self::PowerMod => 3,
+            _ => 1,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+enum LogicHead {
+    Xor,
+    Implies,
+    All,
+    Any,
+}
+
+impl LogicHead {
+    fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "xor" => Self::Xor,
+            "implies" => Self::Implies,
+            "all" => Self::All,
+            "any" => Self::Any,
+            _ => return None,
+        })
     }
 }
 
@@ -1446,6 +1507,38 @@ impl<'a> Evaluator<'a> {
             let original = self.arena.intern_call(head, args);
             return Ok(self.apply_linear(function, args).unwrap_or(original));
         }
+        let number_theory = self
+            .arena
+            .symbol_id(head)
+            .and_then(|symbol| NumberTheoryHead::from_name(self.arena.symbol_name(symbol)));
+        if let Some(function) = number_theory {
+            if args.len() != function.arity() {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalArity,
+                    "number theory function received the wrong number of arguments",
+                ));
+            }
+            let original = self.arena.intern_call(head, args);
+            return Ok(self.apply_number_theory(function, args).unwrap_or(original));
+        }
+        let logic_function = self
+            .arena
+            .symbol_id(head)
+            .and_then(|symbol| LogicHead::from_name(self.arena.symbol_name(symbol)));
+        if let Some(function) = logic_function {
+            let arity = match function {
+                LogicHead::Xor | LogicHead::Implies => 2,
+                LogicHead::All | LogicHead::Any => 1,
+            };
+            if args.len() != arity {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalArity,
+                    "logic function received the wrong number of arguments",
+                ));
+            }
+            let original = self.arena.intern_call(head, args);
+            return Ok(self.apply_logic(function, args).unwrap_or(original));
+        }
         if let Some(symbol) = self.arena.symbol_id(head) {
             if let Some(result) = self.apply_user(symbol, head, args)? {
                 return Ok(result);
@@ -1525,6 +1618,88 @@ impl<'a> Evaluator<'a> {
         }
         let original = self.arena.intern_call(head, args);
         Ok(operation(self.arena, args[0], &context).unwrap_or(original))
+    }
+
+    fn apply_logic(&mut self, function: LogicHead, args: &[ExprId]) -> Option<ExprId> {
+        let boolean = |value| {
+            if value {
+                self.heads.true_value
+            } else {
+                self.heads.false_value
+            }
+        };
+        match function {
+            LogicHead::Xor => {
+                let left = self.boolean_value(args[0])?;
+                let right = self.boolean_value(args[1])?;
+                Some(boolean(left ^ right))
+            }
+            LogicHead::Implies => {
+                let left = self.boolean_value(args[0])?;
+                let right = self.boolean_value(args[1])?;
+                Some(boolean(!left || right))
+            }
+            LogicHead::All | LogicHead::Any => {
+                let Node::Call { head, args: values } = self.arena.node(args[0]) else {
+                    return None;
+                };
+                let head = *head;
+                if self
+                    .arena
+                    .symbol_id(head)
+                    .map(|symbol| self.arena.symbol_name(symbol))
+                    != Some("list")
+                {
+                    return None;
+                }
+                let values = values.to_vec();
+                let mut result = matches!(function, LogicHead::All);
+                for value in values {
+                    let value = self.boolean_value(value)?;
+                    if matches!(function, LogicHead::All) {
+                        result &= value;
+                    } else {
+                        result |= value;
+                    }
+                }
+                Some(boolean(result))
+            }
+        }
+    }
+
+    fn boolean_value(&self, value: ExprId) -> Option<bool> {
+        if let Node::Symbol(symbol) = self.arena.node(value) {
+            match self.arena.symbol_name(*symbol) {
+                "true" => return Some(true),
+                "false" => return Some(false),
+                _ => {}
+            }
+        }
+        None
+    }
+
+    fn apply_number_theory(
+        &mut self,
+        function: NumberTheoryHead,
+        args: &[ExprId],
+    ) -> Option<ExprId> {
+        match function {
+            NumberTheoryHead::IsPrime => crate::numbertheory::is_prime(self.arena, args[0]),
+            NumberTheoryHead::NextPrime => crate::numbertheory::next_prime(self.arena, args[0]),
+            NumberTheoryHead::FactorInteger => {
+                crate::numbertheory::factor_integer(self.arena, args[0])
+            }
+            NumberTheoryHead::Divisors => crate::numbertheory::divisors(self.arena, args[0]),
+            NumberTheoryHead::Totient => crate::numbertheory::totient(self.arena, args[0]),
+            NumberTheoryHead::Sigma => crate::numbertheory::sigma(self.arena, args[0]),
+            NumberTheoryHead::IsEven => crate::numbertheory::is_even(self.arena, args[0]),
+            NumberTheoryHead::IsOdd => crate::numbertheory::is_odd(self.arena, args[0]),
+            NumberTheoryHead::Divides => crate::numbertheory::divides(self.arena, args[0], args[1]),
+            NumberTheoryHead::Modulo => crate::numbertheory::modulo(self.arena, args[0], args[1]),
+            NumberTheoryHead::PowerMod => {
+                crate::numbertheory::power_mod(self.arena, args[0], args[1], args[2])
+            }
+        }
     }
 
     fn apply_linear(&mut self, function: LinearHead, args: &[ExprId]) -> Option<ExprId> {
