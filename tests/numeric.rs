@@ -244,6 +244,23 @@ fn approximate_arithmetic_values() {
 }
 
 #[test]
+fn approximate_general_powers() {
+    assert!((real_value("approx(9^(1/2),30)") - 3.0).abs() < 1e-9);
+    assert!((real_value("approx(27^(1/3),30)") - 3.0).abs() < 1e-9);
+    assert!((real_value("approx(2^pi,30)") - 2f64.powf(std::f64::consts::PI)).abs() < 1e-9);
+    assert!((real_value("approx(2^(1/2),30)") - 2f64.sqrt()).abs() < 1e-14);
+}
+
+#[test]
+fn real_general_power_method() {
+    let two = Real::from_i64(2, 30).unwrap();
+    let half = Real::from_rat(&Rat::from_i64(1, 2).unwrap(), 30).unwrap();
+    assert!((two.pow(&half).unwrap().to_f64() - 2f64.sqrt()).abs() < 1e-14);
+    let pi = Real::pi(30).unwrap();
+    assert!((two.pow(&pi).unwrap().to_f64() - 2f64.powf(std::f64::consts::PI)).abs() < 1e-12);
+}
+
+#[test]
 fn approximate_default_digits() {
     let (session, value) = evaluated("approx(pi)");
     match session.view(value) {
@@ -259,9 +276,14 @@ fn approximate_symbolic_sums_stay_unevaluated() {
 }
 
 #[test]
-fn approximate_rational_power_stays_unevaluated() {
+fn approximate_rational_powers_are_numeric() {
     let (session, value) = evaluated("approx(2^(1/2),30)");
-    assert!(session.format_infix(value).contains("approx"));
+    match session.view(value) {
+        ExprView::Real(value) => {
+            assert!((value.to_f64() - 2f64.sqrt()).abs() < 1e-14);
+        }
+        _ => panic!("expected a real"),
+    }
 }
 
 #[test]

@@ -163,6 +163,24 @@ fn interval_with_real_endpoints() {
 }
 
 #[test]
+fn approximate_point_intervals_widen_for_error() {
+    let (session, value) = evaluate("interval(approx(1/3,30),approx(1/3,30))+0");
+    let args = match session.view(value) {
+        ExprView::Call { args, .. } => args,
+        _ => panic!("expected an interval"),
+    };
+    let low = match session.view(args[0]) {
+        ExprView::Real(value) => value,
+        _ => panic!("expected a real endpoint"),
+    };
+    let high = match session.view(args[1]) {
+        ExprView::Real(value) => value,
+        _ => panic!("expected a real endpoint"),
+    };
+    assert!(high.cmp(low) == core::cmp::Ordering::Greater);
+}
+
+#[test]
 fn interval_arity_errors() {
     let mut session = Session::new();
     for source in ["interval()", "interval(1)", "interval(1,2,3)"] {

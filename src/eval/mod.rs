@@ -14,7 +14,7 @@ use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
 use crate::hash::FnvBuildHasher;
-use crate::num::{Int, Rat, Real};
+use crate::num::{ComplexMpc, Int, Rat, Real};
 
 use definitions::{Definitions, Rule};
 use pattern::{Bindings, match_pattern, substitute};
@@ -362,7 +362,9 @@ impl<'a> Evaluator<'a> {
 
     fn interval_bounds(&self, id: ExprId) -> Option<(Real, Real)> {
         let (low, high) = self.interval_parts(id)?;
-        Some((self.real_endpoint(low)?, self.real_endpoint(high)?))
+        let low = self.real_endpoint(low)?.lower_bound().ok()?;
+        let high = self.real_endpoint(high)?.upper_bound().ok()?;
+        Some((low, high))
     }
 
     fn interval_node(&mut self, low: Real, high: Real) -> ExprId {
@@ -642,13 +644,48 @@ impl<'a> Evaluator<'a> {
                             Node::Rat(value) if value.den().is_one() => value.num().to_i64(),
                             _ => None,
                         };
-                        let Some(exponent) = exponent else {
-                            return Ok(None);
-                        };
                         let Some(base) = self.approximate(args[0], digits)? else {
                             return Ok(None);
                         };
-                        Ok(numeric_pow(&base, exponent, digits))
+                        if let Some(exponent) = exponent {
+                            return Ok(numeric_pow(&base, exponent, digits));
+                        }
+                        let Some(exponent) = self.approximate(args[1], digits)? else {
+                            return Ok(None);
+                        };
+                        match (base, exponent) {
+                            (Numeric::Real(base), Numeric::Real(exponent)) => {
+                                Ok(base.pow(&exponent).ok().map(Numeric::Real))
+                            }
+                            (
+                                Numeric::Complex(real, imaginary),
+                                Numeric::Complex(exponent_real, exponent_imaginary),
+                            ) => Ok(numeric_complex_pow(
+                                &(real, imaginary),
+                                &(exponent_real, exponent_imaginary),
+                            )),
+                            (
+                                Numeric::Real(real),
+                                Numeric::Complex(exponent_real, exponent_imaginary),
+                            ) => {
+                                let Some(zero) = Real::zero(digits).ok() else {
+                                    return Ok(None);
+                                };
+                                Ok(numeric_complex_pow(
+                                    &(real, zero),
+                                    &(exponent_real, exponent_imaginary),
+                                ))
+                            }
+                            (Numeric::Complex(real, imaginary), Numeric::Real(exponent)) => {
+                                let Some(zero) = Real::zero(digits).ok() else {
+                                    return Ok(None);
+                                };
+                                Ok(numeric_complex_pow(&(real, imaginary), &(exponent, zero)))
+                            }
+                            (Numeric::Error(value), _) | (_, Numeric::Error(value)) => {
+                                Ok(Some(Numeric::Error(value)))
+                            }
+                        }
                     }
                     Some("complex") if args.len() == 2 => {
                         let Some(real) = self.approximate(args[0], digits)? else {
@@ -668,31 +705,31 @@ impl<'a> Evaluator<'a> {
                         }
                     }
                     Some("sqrt") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.sqrt())
+                        self.approximate_named_unary(args[0], digits, "sqrt")
                     }
                     Some("exp") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.exp())
+                        self.approximate_named_unary(args[0], digits, "exp")
                     }
                     Some("ln") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.ln())
+                        self.approximate_named_unary(args[0], digits, "ln")
                     }
                     Some("sin") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.sin())
+                        self.approximate_named_unary(args[0], digits, "sin")
                     }
                     Some("cos") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.cos())
+                        self.approximate_named_unary(args[0], digits, "cos")
                     }
                     Some("tan") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.tan())
+                        self.approximate_named_unary(args[0], digits, "tan")
                     }
                     Some("asin") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.asin())
+                        self.approximate_named_unary(args[0], digits, "asin")
                     }
                     Some("acos") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.acos())
+                        self.approximate_named_unary(args[0], digits, "acos")
                     }
                     Some("atan") if args.len() == 1 => {
-                        self.approximate_unary(args[0], digits, |value| value.atan())
+                        self.approximate_named_unary(args[0], digits, "atan")
                     }
                     Some("abs") if args.len() == 1 => {
                         let Some(argument) = self.approximate(args[0], digits)? else {
@@ -706,19 +743,65 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    fn approximate_unary(
+    fn approximate_named_unary(
         &mut self,
         argument: ExprId,
         digits: u32,
-        operation: impl Fn(&Real) -> Result<Real, crate::num::NumError>,
+        name: &str,
     ) -> Result<Option<Numeric>, Diagnostic> {
         let Some(argument) = self.approximate(argument, digits)? else {
             return Ok(None);
         };
         match argument {
-            Numeric::Real(argument) => Ok(operation(&argument).ok().map(Numeric::Real)),
+            Numeric::Real(value) => {
+                if name == "sqrt" && value.sign() < 0 {
+                    let Some(root) = value.abs().ok().and_then(|value| value.sqrt().ok()) else {
+                        return Ok(None);
+                    };
+                    let Some(zero) = Real::zero(digits).ok() else {
+                        return Ok(None);
+                    };
+                    return Ok(Some(Numeric::Complex(zero, root)));
+                }
+                if name == "ln" && value.sign() < 0 {
+                    let Some(real) = value.abs().ok().and_then(|value| value.ln().ok()) else {
+                        return Ok(None);
+                    };
+                    let Some(imaginary) = Real::pi(digits).ok() else {
+                        return Ok(None);
+                    };
+                    return Ok(Some(Numeric::Complex(real, imaginary)));
+                }
+                let result = match name {
+                    "sqrt" => value.sqrt(),
+                    "exp" => value.exp(),
+                    "ln" => value.ln(),
+                    "sin" => value.sin(),
+                    "cos" => value.cos(),
+                    "tan" => value.tan(),
+                    "asin" => value.asin(),
+                    "acos" => value.acos(),
+                    "atan" => value.atan(),
+                    _ => return Ok(None),
+                };
+                Ok(result.ok().map(Numeric::Real))
+            }
             Numeric::Error(value) => Ok(Some(Numeric::Error(value))),
-            Numeric::Complex(_, _) => Ok(None),
+            Numeric::Complex(real, imaginary) => {
+                let Some(complex) = ComplexMpc::from_parts(&real, &imaginary) else {
+                    return Ok(None);
+                };
+                let result = match name {
+                    "exp" => complex.exp(),
+                    "ln" => complex.log(),
+                    "sin" => complex.sin(),
+                    "cos" => complex.cos(),
+                    "tan" => complex.tan(),
+                    "sqrt" => complex.sqrt(),
+                    _ => return Ok(None),
+                };
+                Ok(result.map(|(real, imaginary)| Numeric::Complex(real, imaginary)))
+            }
         }
     }
 
@@ -1874,6 +1957,54 @@ fn numeric_abs(value: &Numeric) -> Option<Numeric> {
     }
 }
 
+fn numeric_complex_pow(base: &(Real, Real), exponent: &(Real, Real)) -> Option<Numeric> {
+    let base = ComplexMpc::from_parts(&base.0, &base.1)?;
+    let exponent = ComplexMpc::from_parts(&exponent.0, &exponent.1)?;
+    let (real, imaginary) = base.pow(&exponent)?;
+    Some(Numeric::Complex(real, imaginary))
+}
+
+fn numeric_complex_div(
+    numerator: &(Real, Real),
+    denominator: &(Real, Real),
+    digits: u32,
+) -> Option<Numeric> {
+    let (a, b) = numerator;
+    let (c, d) = denominator;
+    let c_abs = c.abs().ok()?;
+    let d_abs = d.abs().ok()?;
+    if c.is_zero() && d.is_zero() {
+        return None;
+    }
+    let (real, imaginary) = if c_abs.cmp(&d_abs) != Ordering::Less {
+        let ratio = d.div(c).ok()?;
+        let real_denominator = c.add(&d.mul(&ratio).ok()?).ok()?;
+        if real_denominator.is_zero() {
+            return None;
+        }
+        let real_numerator = a.add(&b.mul(&ratio).ok()?).ok()?;
+        let imaginary_numerator = b.sub(&a.mul(&ratio).ok()?).ok()?;
+        (
+            real_numerator.div(&real_denominator).ok()?,
+            imaginary_numerator.div(&real_denominator).ok()?,
+        )
+    } else {
+        let ratio = c.div(d).ok()?;
+        let real_denominator = c.mul(&ratio).ok()?.add(d).ok()?;
+        if real_denominator.is_zero() {
+            return None;
+        }
+        let real_numerator = a.mul(&ratio).ok()?.add(b).ok()?;
+        let imaginary_numerator = b.mul(&ratio).ok()?.sub(a).ok()?;
+        (
+            real_numerator.div(&real_denominator).ok()?,
+            imaginary_numerator.div(&real_denominator).ok()?,
+        )
+    };
+    let _ = digits;
+    Some(Numeric::Complex(real, imaginary))
+}
+
 fn numeric_pow(value: &Numeric, exponent: i64, digits: u32) -> Option<Numeric> {
     if exponent == 0 {
         return Some(Numeric::Real(Real::one(digits).ok()?));
@@ -1891,19 +2022,8 @@ fn numeric_pow(value: &Numeric, exponent: i64, digits: u32) -> Option<Numeric> {
             let inverted = exponent < 0;
             let mut base = Numeric::Complex(real.clone(), imaginary.clone());
             if inverted {
-                let norm = real
-                    .mul(real)
-                    .ok()?
-                    .add(&imaginary.mul(imaginary).ok()?)
-                    .ok()?;
-                if norm.is_zero() {
-                    return None;
-                }
-                let inverse = Real::one(digits).ok()?.div(&norm).ok()?;
-                base = Numeric::Complex(
-                    real.mul(&inverse).ok()?,
-                    imaginary.neg().ok()?.mul(&inverse).ok()?,
-                );
+                let one = (Real::one(digits).ok()?, Real::zero(digits).ok()?);
+                base = numeric_complex_div(&one, &(real.clone(), imaginary.clone()), digits)?;
             }
             let mut result = Numeric::Complex(Real::one(digits).ok()?, Real::zero(digits).ok()?);
             while power > 0 {

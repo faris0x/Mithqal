@@ -4,14 +4,18 @@
 //! and all public numeric values enforce GMP initialization and cleanup.
 
 mod ffi;
+mod ffi_mpc;
 mod ffi_mpfr;
 mod int;
+mod mpc;
 mod rat;
 mod real;
 
 pub use int::Int;
 pub use rat::Rat;
 pub use real::Real;
+
+pub(crate) use mpc::Complex as ComplexMpc;
 
 use core::fmt;
 

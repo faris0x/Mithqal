@@ -43,6 +43,14 @@ impl Real {
         Ok(out)
     }
 
+    pub(crate) fn from_mpfr_ref(source: &Mpfr, bits: u32, error: f64) -> Self {
+        let mut out = Self::initialized(bits);
+        // SAFETY: both values are initialized.
+        unsafe { ffi_mpfr::mpfr_set(&mut out.inner, source, MPFR_RNDN) };
+        out.error = error;
+        out
+    }
+
     /// Convert an `i64` to a real with a requested decimal digit count.
     pub fn from_i64(value: i64, digits: u32) -> Result<Self, NumError> {
         let bits = bits_for_digits(digits);
@@ -53,6 +61,34 @@ impl Real {
         }
         out.error = rounding_error(&out);
         Ok(out)
+    }
+
+    /// Convert an `f64` to a real with a requested decimal digit count.
+    pub fn from_f64(value: f64, digits: u32) -> Result<Self, NumError> {
+        let bits = bits_for_digits(digits);
+        let mut out = Self::initialized(bits);
+        // SAFETY: the value is initialized.
+        unsafe { ffi_mpfr::mpfr_set_d(&mut out.inner, value, MPFR_RNDN) };
+        out.error = rounding_error(&out);
+        Ok(out)
+    }
+
+    /// A conservative lower endpoint from the stored error estimate.
+    pub(crate) fn lower_bound(&self) -> Result<Real, NumError> {
+        if !self.error.is_finite() || self.error == 0.0 {
+            return Ok(self.clone());
+        }
+        let error = Self::from_f64(-self.error, 64)?;
+        self.add(&error)
+    }
+
+    /// A conservative upper endpoint from the stored error estimate.
+    pub(crate) fn upper_bound(&self) -> Result<Real, NumError> {
+        if !self.error.is_finite() || self.error == 0.0 {
+            return Ok(self.clone());
+        }
+        let error = Self::from_f64(self.error, 64)?;
+        self.add(&error)
     }
 
     /// The approximate zero at a requested decimal digit count.
@@ -256,6 +292,34 @@ impl Real {
         Ok(out)
     }
 
+    /// Raise to a real power.
+    pub fn pow(&self, exponent: &Real) -> Result<Real, NumError> {
+        if self.sign() < 0 {
+            return Err(NumError::Domain);
+        }
+        if self.is_zero() && exponent.sign() <= 0 {
+            return Err(NumError::Domain);
+        }
+        let bits = self.bits.max(exponent.bits);
+        let mut out = Self::initialized(bits);
+        // SAFETY: all values are initialized.
+        unsafe {
+            ffi_mpfr::mpfr_pow(&mut out.inner, &self.inner, &exponent.inner, MPFR_RNDN);
+        }
+        let base = self.to_f64();
+        let exponent_value = exponent.to_f64();
+        let derivative_base = if base == 0.0 {
+            0.0
+        } else {
+            exponent_value.abs() * base.abs().powf(exponent_value - 1.0)
+        };
+        let derivative_exponent = out.absolute_value() * base.abs().ln().abs();
+        out.error = derivative_base * self.error
+            + derivative_exponent * exponent.error
+            + rounding_error(&out);
+        Ok(out)
+    }
+
     /// Raise to an integer power.
     pub fn pow_si(&self, exponent: i64) -> Result<Real, NumError> {
         let mut out = Self::initialized(self.bits);
@@ -271,7 +335,7 @@ impl Real {
         let derivative = if exponent == 0 {
             0.0
         } else {
-            (exponent as f64) * self.to_f64().abs().powi((exponent - 1) as i32)
+            (exponent as f64).abs() * self.to_f64().abs().powf((exponent - 1) as f64)
         };
         out.error = derivative * self.error + rounding_error(&out);
         Ok(out)
@@ -320,7 +384,7 @@ impl Real {
         let mut out = Self::initialized(self.bits);
         // SAFETY: both values are initialized.
         unsafe { ffi_mpfr::mpfr_sin(&mut out.inner, &self.inner, MPFR_RNDN) };
-        out.error = self.absolute_value().max(1.0) * self.error + rounding_error(&out);
+        out.error = self.to_f64().cos().abs() * self.error + rounding_error(&out);
         Ok(out)
     }
 
@@ -329,7 +393,7 @@ impl Real {
         let mut out = Self::initialized(self.bits);
         // SAFETY: both values are initialized.
         unsafe { ffi_mpfr::mpfr_cos(&mut out.inner, &self.inner, MPFR_RNDN) };
-        out.error = self.absolute_value().max(1.0) * self.error + rounding_error(&out);
+        out.error = self.to_f64().sin().abs() * self.error + rounding_error(&out);
         Ok(out)
     }
 

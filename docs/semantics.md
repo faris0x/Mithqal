@@ -29,7 +29,7 @@ Approximate values are `Real` atoms backed by MPFR. Each value carries an absolu
 
 `approx(expression,digits)` is the numeric boundary. It evaluates its argument exactly first, then converts numeric subexpressions to `Real` values. The digit count defaults to 16 when omitted.
 
-The numeric boundary handles exact integers and rationals, `pi`, `e`, `plus`, `times`, `negate`, integer `power`, `sqrt`, `exp`, `ln`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, and `abs`. A symbolic argument that cannot be converted leaves the `approx` call unevaluated.
+The numeric boundary handles exact integers and rationals, `pi`, `e`, `plus`, `times`, `negate`, integer and real `power`, `sqrt`, `exp`, `ln`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, and `abs`. Negative real square roots and logarithms produce complex values. A symbolic argument that cannot be converted leaves the `approx` call unevaluated.
 
 Significance propagation uses first order error estimates:
 
@@ -55,7 +55,7 @@ Interval endpoints are converted to `Real` with a default precision for the oper
 
 An approximate complex value is a call with the protected `complex(real,imaginary)` head. The `approx` boundary recognizes the symbol `i`, converts real and imaginary parts to `Real` values, and returns a `complex` expression when the imaginary part is nonzero. A zero imaginary part normalizes to the real value.
 
-The numeric boundary supports complex addition, subtraction, multiplication, division through reciprocal powers, integer powers, and absolute value. Complex transcendental functions remain unevaluated. MPC is vendored for a later complex elementary function layer.
+The numeric boundary supports complex addition, subtraction, multiplication, division through reciprocal powers, integer powers, real and complex powers, absolute value, exponential, logarithm, square root, sine, cosine, and tangent. MPC supplies the complex elementary functions. Inverse trigonometric functions remain real only.
 
 ## Symbolic constants
 

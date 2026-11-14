@@ -23,6 +23,9 @@ Initial kernel work.
 - Added approximate complex arithmetic with a `complex(real,imaginary)` value, `i` recognition in `approx`, addition, multiplication, division, integer powers, reciprocals, absolute value, collection support, compiled path support, and tests.
 - Added fast small integer construction for real endpoints and reused real zero and real one values in interval and approximation paths.
 - Added all numeric real folding in `plus` and `times`, interval zero power normalization, correct negative interval powers, and shorter precision aware real interning keys.
+- Added general real powers through MPFR, complex non-integer powers through MPC, and complex exponential, logarithm, square root, sine, cosine, and tangent functions.
+- Added stable scaled complex division, complex power handling, negative real square root and logarithm promotion to complex values, and conservative interval endpoint widening from significance error.
+- Added real derivative corrections for sine, cosine, and integer powers.
 - Expanded numeric, interval, and complex tests to cover normal values, boundaries, malformed input, errors, precision changes, collection, and the compiled path.
 - Added own values, down values, protected symbol checks, definition specificity, and immediate and delayed definitions.
 - Added pattern matching for blanks, named patterns, sequence patterns, repeated variables, and conditions.
@@ -37,4 +40,4 @@ Initial kernel work.
 - Added constant folding of numeric atoms in the compiler so integer and rational literals avoid an evaluation instruction.
 - Added a machine call frame stack that isolates caller and callee operand stack regions for symbol calls.
 - Added a benchmark harness for cold parsing, cached evaluation, pattern calls, closure calls, compiled execution, and collection.
-- Expanded the suite to more than 290 tests covering normal behavior, boundaries, malformed input, numeric significance, intervals, complex arithmetic, and error propagation.
+- Expanded the suite to more than 300 tests covering normal behavior, boundaries, malformed input, numeric significance, intervals, complex arithmetic, and error propagation.

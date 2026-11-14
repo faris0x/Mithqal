@@ -151,12 +151,53 @@ fn approximate_complex_error_and_symbolic_paths() {
         "{}",
         session.format_infix(value)
     );
-    let (session, value) = evaluate("approx(sin(i),30)");
+    let (session, value) = evaluate("approx(asin(i),30)");
     assert!(
         session.format_infix(value).contains("approx"),
         "{}",
         session.format_infix(value)
     );
+}
+
+#[test]
+fn approximate_complex_exponential_and_logarithm() {
+    check("approx(exp(i*pi),30)", -1.0, 0.0);
+    check("approx(ln(i),30)", 0.0, std::f64::consts::FRAC_PI_2);
+    check("approx(ln(-1),30)", 0.0, std::f64::consts::PI);
+}
+
+#[test]
+fn approximate_complex_trigonometric_functions() {
+    let sinh_one = 1f64.sinh();
+    check("approx(sin(i),30)", 0.0, sinh_one);
+    let cosh_one = 1f64.cosh();
+    check("approx(cos(i),30)", cosh_one, 0.0);
+    check("approx(tan(i),30)", 0.0, 1f64.tanh());
+}
+
+#[test]
+fn approximate_complex_square_root() {
+    check("approx(sqrt(3+4*i),30)", 2.0, 1.0);
+    check("approx(sqrt(1+i),30)", 1.09868411346781, 0.455089860562227);
+    check("approx(sqrt(-1),30)", 0.0, 1.0);
+    check("approx(sqrt(-4),30)", 0.0, 2.0);
+}
+
+#[test]
+fn approximate_complex_non_integer_powers() {
+    let expected = (-std::f64::consts::FRAC_PI_2).exp();
+    check("approx(i^i,30)", expected, 0.0);
+    let ln2 = 2f64.ln();
+    check("approx(2^i,30)", ln2.cos(), ln2.sin());
+    let root = std::f64::consts::FRAC_1_SQRT_2;
+    check("approx(i^(1/2),30)", root, root);
+    check("approx((-1)^i,30)", (-std::f64::consts::PI).exp(), 0.0);
+}
+
+#[test]
+fn approximate_complex_logarithm_of_negative_reals() {
+    check("approx(ln(-1),30)", 0.0, std::f64::consts::PI);
+    check("approx(ln(-e),30)", 1.0, std::f64::consts::PI);
 }
 
 #[test]

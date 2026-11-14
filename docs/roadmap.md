@@ -24,7 +24,7 @@ Included:
 
 Excluded:
 
-- Rigorous outward rounded intervals and complex transcendental functions.
+- Fully rigorous outward rounded intervals with directed MPFR operations.
 - Calculus, algebra, linear algebra, and assumptions.
 - Strings, files, and sets beyond `emptyset`.
 - A command line interface.

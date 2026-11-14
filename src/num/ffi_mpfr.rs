@@ -22,6 +22,7 @@ unsafe extern "C" {
     pub(crate) fn mpfr_set(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_set_ui(rop: *mut Mpfr, op: c_ulong, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_set_si(rop: *mut Mpfr, op: c_long, rnd: c_int) -> c_int;
+    pub(crate) fn mpfr_set_d(rop: *mut Mpfr, op: f64, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_set_q(rop: *mut Mpfr, op: *const Mpq, rnd: c_int) -> c_int;
     pub(crate) fn mpfr_get_d(op: *const Mpfr, rnd: c_int) -> f64;
     pub(crate) fn mpfr_get_str(
@@ -63,6 +64,12 @@ unsafe extern "C" {
         rop: *mut Mpfr,
         base: *const Mpfr,
         exponent: c_long,
+        rnd: c_int,
+    ) -> c_int;
+    pub(crate) fn mpfr_pow(
+        rop: *mut Mpfr,
+        base: *const Mpfr,
+        exponent: *const Mpfr,
         rnd: c_int,
     ) -> c_int;
     pub(crate) fn mpfr_exp(rop: *mut Mpfr, op: *const Mpfr, rnd: c_int) -> c_int;
