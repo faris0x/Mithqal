@@ -91,9 +91,10 @@ Initial kernel work.
 - Tightened interpolation root-degree bounds to reduce sample grids in two and three variable stages.
 - Added a bivariate specialization root-lift stage that interpolates a polynomial root, verifies it exactly, divides it out, and recursively factors the quotient.
 - Added bivariate Hensel lifting for coprime non-linear factor pairs using specialization factors, Bezout corrections, and exact product verification.
-- Extended univariate Hensel coefficient handling to signed 128 bit values.
-- Added a fast small-coefficient path for 128 bit Hensel conversion and removed a coefficient-bound allocation.
-- Added four-variable evaluation and interpolation over rational grids.
+- Moved univariate Hensel coefficient handling and moduli onto GMP integers.
+- Added a fast 128 bit Hensel path with GMP fallback for larger coefficients.
+- Removed a coefficient-bound allocation in the Hensel path.
+- Replaced the separate three-variable and four-variable interpolation stages with one generic grid driver.
 - Removed per-term polynomial allocation from polynomial-leading coefficient extraction.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.
@@ -105,4 +106,4 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to more than 640 test functions and more than 1530 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.
+- Expanded the suite to more than 650 test functions and more than 1540 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.

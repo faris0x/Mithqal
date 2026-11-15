@@ -45,7 +45,7 @@ discriminant(x^2-4,x)                 -> 16
 
 Univariate square-free decomposition uses polynomial gcds against the derivative. Repeated irreducible factors are separated and emitted with their multiplicities.
 
-Bounded univariate integer polynomials also pass through modular factorization and Hensel lifting. A small prime supplies a coprime split, the split is lifted above the coefficient bound, and factors are accepted only after exact integer division. Coefficients are handled as signed 128 bit values, which extends the range beyond machine-sized integers. This finds repeated and irreducible polynomial factors that rational roots miss.
+Bounded univariate integer polynomials also pass through modular factorization and Hensel lifting. A small prime supplies a coprime split, the split is lifted above the coefficient bound, and factors are accepted only after exact integer division. Small coefficients use a fast 128 bit path. Larger coefficients and moduli use GMP integers, so the range is not limited by machine word size. This finds repeated and irreducible polynomial factors that rational roots miss.
 
 Homogeneous bivariate forms are factored by solving their ratio polynomial over the rationals. This covers degrees above two, including repeated linear factors.
 
@@ -57,7 +57,7 @@ The multivariate power stage extracts powers from two through twelve of bivariat
 
 A polynomial-leading quadratic stage handles bivariate quadratics with a general polynomial leading coefficient in one variable. It factors the discriminant when it is a perfect square, builds the two linear factors, distributes factors of the leading polynomial by exact coefficient division, normalises the result, and verifies the product. The stage also retries with the two variable orientations.
 
-Three-variable and four-variable interpolation stages factor polynomials that split into linear factors in one variable with polynomial coefficients in the remaining variables. They sample rational grids, factor each univariate slice, interpolate each root as a multivariate polynomial, rebuild the factors, and verify the product.
+A generic multivariate interpolation stage factors polynomials in three or four variables that split into linear factors in one variable with polynomial coefficients in the remaining variables. It samples rational grids, factors each univariate slice, builds each root with a tensor Lagrange basis, rebuilds the factors, and verifies the product.
 
 A bivariate coefficient-content stage extracts a common polynomial factor across all coefficients of one variable. It computes the gcd of the coefficient polynomials and divides every coefficient by it.
 
@@ -65,7 +65,7 @@ A bivariate specialization root-lift stage samples univariate slices, interpolat
 
 A bivariate Hensel stage lifts a coprime factor pair from a univariate specialization through coefficient orders in the second variable. It solves each correction with a Bezout identity, rebuilds the two bivariate factors, verifies the product, and recurses. This handles non-linear factors such as quadratic and cubic factors.
 
-The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, bivariate coefficient content, specialization root lifting, bivariate Hensel lifting, evaluation and interpolation in two, three, and four variables, power extraction through twelve, and grouping. Reserved stages cover interpolation over more than four variables and fully arbitrary precision Hensel lifting.
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, bivariate coefficient content, specialization root lifting, bivariate Hensel lifting, bivariate evaluation and interpolation, generic interpolation in three or four variables, power extraction through twelve, and grouping. Reserved stages cover interpolation over more than four variables and general multivariate factorisation beyond the staged bounds.
 
 Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 

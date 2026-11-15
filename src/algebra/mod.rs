@@ -10,6 +10,7 @@
 //! back to monomial content otherwise.
 
 mod hensel;
+mod hensel_fast;
 mod multivariate;
 
 use std::collections::{BTreeMap, BTreeSet};
