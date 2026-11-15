@@ -1,5 +1,7 @@
 # Logic
 
+> Status: Stable. See [Maturity](maturity.md).
+
 The logic layer provides boolean values and the usual connectives. Predicates from the number theory layer return `true` or `false` and compose with these forms.
 
 ## Connectives

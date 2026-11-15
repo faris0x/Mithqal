@@ -1,5 +1,7 @@
 # Mithqal Language
 
+> Status: Experimental. See [Maturity](maturity.md).
+
 The Mithqal language is a line based surface language with lowercase keywords. It is not Mathematica compatible.
 
 The first version provides modules, single-line definitions, bindings, conditionals, print statements, comments, and a strict whitespace rule for expressions.

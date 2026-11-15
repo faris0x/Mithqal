@@ -1,5 +1,7 @@
 # Structured IR
 
+> Status: Experimental. See [Maturity](maturity.md).
+
 The structured IR is a versioned, validated representation of a whole Mithqal program. It lives in `src/ir` and is separate from the expression arena and from the flat virtual machine instructions.
 
 ## Purpose

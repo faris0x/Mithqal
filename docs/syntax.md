@@ -1,5 +1,7 @@
 # Syntax
 
+> Status: Experimental. See [Maturity](maturity.md).
+
 This document defines the source language for the current version.
 
 ## Source layout

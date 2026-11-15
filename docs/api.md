@@ -1,5 +1,7 @@
 # Public API
 
+> Status: Stable. See [Maturity](maturity.md).
+
 This document defines the stable library surface for the current version.
 
 ## Implementation status
@@ -10,7 +12,7 @@ The session, parsing, printing, exact arithmetic, comparisons, logic, error valu
 
 Public items use Rust naming conventions. Rust methods use snake_case. Source identifiers use dromedaryCase.
 
-The public surface exposes sessions, expression handles, expression views, diagnostics, and configuration. The arena, hash table, matcher, virtual machine, and garbage collector remain private.
+The stable surface exposes sessions, expression handles, expression views, diagnostics, and configuration. Internal modules such as `expr` are hidden from public documentation and are not part of the stable contract.
 
 Handles are valid until an explicit garbage collection removes them. The session roots its definitions and its last result. Callers pass additional roots when they collect.
 

@@ -4,10 +4,10 @@
 //! coefficients. Monomials are sorted vectors of symbol and exponent pairs, so
 //! equality and ordering need no expression hashing.
 //!
-//! Factoring covers numeric content, common monomial content, univariate
-//! rational roots, and a difference of squares pattern. Cancellation uses a
-//! univariate polynomial gcd when both sides depend on one variable and falls
-//! back to monomial content otherwise.
+//! Factoring combines numeric and monomial content extraction, univariate
+//! rational roots and square-free decomposition, Hensel lifting, staged
+//! multivariate interpolation, and grouping. Cancellation uses polynomial
+//! gcds and monomial content.
 
 mod dense;
 mod hensel;

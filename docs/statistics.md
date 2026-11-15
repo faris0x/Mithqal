@@ -1,5 +1,7 @@
 # Statistics
 
+> Status: Partial. See [Maturity](maturity.md).
+
 The statistics layer operates on nonempty lists of exact integers and rationals. Results stay exact.
 
 ## Functions

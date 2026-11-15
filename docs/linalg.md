@@ -1,5 +1,7 @@
 # Linear Algebra
 
+> Status: Partial. See [Maturity](maturity.md).
+
 The linear algebra layer operates on dense matrices and vectors with exact rational entries. Matrices are written as lists of rows.
 
 ```text

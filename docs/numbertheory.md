@@ -1,5 +1,7 @@
 # Number Theory
 
+> Status: Partial. See [Maturity](maturity.md).
+
 The number theory layer works on exact integers. Factorization and primality operate on values that fit a signed 64 bit integer. Modular arithmetic uses arbitrary precision integers.
 
 ## Functions

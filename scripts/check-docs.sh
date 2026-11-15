@@ -35,6 +35,18 @@ check_absent \
     'README multivariable factorisation boundary' \
     'Full multivariate factorization' \
     README.md
+check_absent \
+    'stale evaluator module description' \
+    'are added in the next layer' \
+    src
+check_absent \
+    'stale algebra module description' \
+    'univariate rational roots, and a difference of squares pattern' \
+    src
+check_absent \
+    'stale private arena wording' \
+    'The arena, hash table, matcher, virtual machine, and garbage collector remain private' \
+    docs/api.md
 
 if ! grep -q 'initial_arena_capacity' docs/api.md; then
     printf 'stale documentation: Config lacks initial_arena_capacity\n' >&2
@@ -52,5 +64,14 @@ if ! grep -q 'Process gates' docs/maturity.md; then
     printf 'stale documentation: maturity document lacks process gates\n' >&2
     status=1
 fi
+for document in docs/*.md; do
+    case "$document" in
+        docs/maturity.md|docs/roadmap.md) continue ;;
+    esac
+    if ! grep -q '^> Status:' "$document"; then
+        printf 'stale documentation: %s lacks a status banner\n' "$document" >&2
+        status=1
+    fi
+done
 
 exit "$status"

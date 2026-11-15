@@ -1,5 +1,7 @@
 # Limits and series
 
+> Status: Partial. See [Maturity](maturity.md).
+
 The calculus layer provides `limit`, `series`, and `converges`. All three work on exact expressions.
 
 ## Limits

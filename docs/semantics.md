@@ -1,5 +1,7 @@
 # Semantics
 
+> Status: Stable. See [Maturity](maturity.md).
+
 This document defines the expression model and the evaluation rules for the current version.
 
 ## Terms and values

@@ -155,3 +155,7 @@ Initial kernel work.
 - Added 64 bit fast paths for small Fibonacci and factorial loops.
 - Rooted language scope values and deferred automatic collection during language evaluation, fixing stale handles in `let`, `if`, and `match` programs with low collection thresholds.
 - Added threshold-one language regression tests for stored bindings, literal match scrutinees, and nested scopes.
+- Added maturity status banners to every reference document and enforced them in the documentation check.
+- Reconciled the public API description of hidden internal modules.
+- Updated the evaluator and algebra module documentation to match the current implementation.
+- Extended the documentation check to reject the prior stale module descriptions.

@@ -1,5 +1,7 @@
 # Virtual machine
 
+> Status: Experimental. See [Maturity](maturity.md).
+
 This document defines the execution model.
 
 ## Implementation status

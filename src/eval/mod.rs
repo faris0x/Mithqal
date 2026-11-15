@@ -1,8 +1,8 @@
 //! Fixed point evaluator.
 //!
-//! The current version implements exact arithmetic, listable threading, comparisons,
-//! logic, and the boundary for definitions. Definitions and pattern matching
-//! are added in the next layer.
+//! Evaluates canonical expressions through exact arithmetic, listable
+//! threading, comparisons, logic, definitions, closures, control flow,
+//! numeric boundaries, and limit and series dispatch.
 
 mod arithmetic;
 mod control;

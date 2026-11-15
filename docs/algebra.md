@@ -1,5 +1,7 @@
 # Algebra
 
+> Status: Partial. See [Maturity](maturity.md).
+
 The algebra layer works with exact polynomials over the rationals. Polynomials are sparse maps from canonical monomials to rational coefficients.
 
 ## Functions

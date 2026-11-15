@@ -1,5 +1,7 @@
 # Assumptions
 
+> Status: Partial. See [Maturity](maturity.md).
+
 `assume` and its alias `assuming` apply a local domain fact while evaluating an expression.
 
 ```text
