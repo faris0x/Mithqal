@@ -252,6 +252,24 @@ fn main() {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
 
+    let values = (0..64)
+        .map(|value| value.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let mean_source = format!("mean([{values}])");
+    let variance_source = format!("variance([{values}])");
+    let mut cold_arena = Arena::new();
+    measure("cold mean list 64", 2_000, || {
+        let parsed = parse_statement(&mut cold_arena, &mean_source).unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold variance list 64", 1_000, || {
+        let parsed = parse_statement(&mut cold_arena, &variance_source).unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
     let mut cold_arena = Arena::new();
     measure("cold primeCount 1000", 2_000, || {
         let parsed = parse_statement(&mut cold_arena, "primeCount(1000)").unwrap();

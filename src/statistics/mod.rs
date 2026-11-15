@@ -40,6 +40,9 @@ fn all_integers(arena: &Arena, values: &[ExprId]) -> bool {
 }
 
 fn integer_sum(arena: &Arena, values: &[ExprId]) -> Option<Int> {
+    if let Some(total) = integer_sum_fast(arena, values) {
+        return Some(total);
+    }
     let mut total = Int::zero();
     for value in values {
         let Node::Int(value) = arena.node(*value) else {
@@ -48,6 +51,44 @@ fn integer_sum(arena: &Arena, values: &[ExprId]) -> Option<Int> {
         total = total.add(value);
     }
     Some(total)
+}
+
+fn integer_sum_fast(arena: &Arena, values: &[ExprId]) -> Option<Int> {
+    let mut total = 0i128;
+    for value in values {
+        let Node::Int(value) = arena.node(*value) else {
+            return None;
+        };
+        total = total.checked_add(value.to_i128()?)?;
+    }
+    i64::try_from(total).ok().map(Int::from_i64)
+}
+
+fn integer_variance_fast(arena: &Arena, values: &[ExprId], sample: bool) -> Option<Rat> {
+    let mut sum = 0i128;
+    let mut squares = 0i128;
+    for value in values {
+        let Node::Int(value) = arena.node(*value) else {
+            return None;
+        };
+        let value = value.to_i128()?;
+        sum = sum.checked_add(value)?;
+        squares = squares.checked_add(value.checked_mul(value)?)?;
+    }
+    let count = values.len() as i128;
+    let numerator = count
+        .checked_mul(squares)?
+        .checked_sub(sum.checked_mul(sum)?)?;
+    let denominator = if sample {
+        count.checked_mul(count.checked_sub(1)?)?
+    } else {
+        count.checked_mul(count)?
+    };
+    Rat::from_i64(
+        i64::try_from(numerator).ok()?,
+        i64::try_from(denominator).ok()?,
+    )
+    .ok()
 }
 
 fn rational_expression(arena: &mut Arena, value: &Rat) -> ExprId {
@@ -225,6 +266,9 @@ fn direct_variance(arena: &Arena, expression: ExprId, sample: bool) -> Option<Ra
         return None;
     }
     if all_integers(arena, values) {
+        if let Some(variance) = integer_variance_fast(arena, values, sample) {
+            return Some(variance);
+        }
         let mut sum = Int::zero();
         let mut squares = Int::zero();
         for value in values {
