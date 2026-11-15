@@ -518,3 +518,32 @@ fn bivariate_hensel_non_linear_factors() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn four_variable_interpolation_factorization() {
+    assert_eq!(
+        text("factor((x+a+b+c)*(x+a^2+b^2+c^2))"),
+        "(a+b+c+x)*(x+a^2+b^2+c^2)"
+    );
+    assert_eq!(
+        text("factor((x+a*b+c)*(x+a^2+b+c^2))"),
+        "(c+x+a*b)*(b+x+a^2+c^2)"
+    );
+    assert_eq!(text("factor((x+a+b+c)^2)"), "(a+b+c+x)^2");
+    for source in [
+        "(x+a+b+c)*(x+a^2+b^2+c^2)",
+        "(x+a*b+c)*(x+a^2+b+c^2)",
+        "(x+a+b+c)^2",
+    ] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn wide_hensel_coefficients() {
+    assert_eq!(
+        text("factor(x^4+3000000000000000*x^2+2000000000000000000000000000000)"),
+        "(1000000000000000+x^2)*(2000000000000000+x^2)"
+    );
+    assert_factor_matches("x^4+3000000000000000*x^2+2000000000000000000000000000000");
+}

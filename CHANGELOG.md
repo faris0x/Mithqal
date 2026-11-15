@@ -91,6 +91,9 @@ Initial kernel work.
 - Tightened interpolation root-degree bounds to reduce sample grids in two and three variable stages.
 - Added a bivariate specialization root-lift stage that interpolates a polynomial root, verifies it exactly, divides it out, and recursively factors the quotient.
 - Added bivariate Hensel lifting for coprime non-linear factor pairs using specialization factors, Bezout corrections, and exact product verification.
+- Extended univariate Hensel coefficient handling to signed 128 bit values.
+- Added a fast small-coefficient path for 128 bit Hensel conversion and removed a coefficient-bound allocation.
+- Added four-variable evaluation and interpolation over rational grids.
 - Removed per-term polynomial allocation from polynomial-leading coefficient extraction.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.

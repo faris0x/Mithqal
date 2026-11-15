@@ -1,4 +1,4 @@
-//! Hensel lifting for bounded univariate integer polynomials.
+//! Hensel lifting for univariate integer polynomials.
 //!
 //! The stage reduces a primitive integer polynomial modulo a small prime,
 //! finds a nontrivial split into coprime monic factors, and lifts the pair to a
@@ -6,9 +6,8 @@
 //! reconstructed over the integers and accepted only when exact division
 //! succeeds.
 //!
-//! The implementation is deliberately bounded. It handles low degree inputs
-//! with machine sized coefficients, and it falls back to leaving the
-//! polynomial unfactored when the modular split or lifting assumptions fail.
+//! Coefficients are converted to signed 128 bit values. Inputs that exceed that
+//! range fall back to leaving the polynomial unfactored.
 
 use super::*;
 
@@ -23,18 +22,24 @@ pub(super) fn factor_integer_polynomial(coefficients: &[Rat]) -> Option<Vec<Vec<
         return None;
     }
     let (_, values) = integerize(&coefficients)?;
-    let mut values: Vec<i64> = values
+    let mut values: Vec<i128> = values
         .into_iter()
-        .map(|value| value.to_i64())
+        .map(|value| value.to_i128())
         .collect::<Option<Vec<_>>>()?;
     if values.last().is_some_and(|value| *value < 0) {
         for value in &mut values {
             *value = -*value;
         }
     }
-    let bound = coefficient_bound(&values);
+    let bound = coefficient_bound(&values)?;
     for prime in PRIMES {
-        if values.last().copied().unwrap_or(0) % prime == 0 {
+        if values
+            .last()
+            .copied()
+            .unwrap_or(0)
+            .rem_euclid(prime as i128)
+            == 0
+        {
             continue;
         }
         let reduced = mod_reduce(&values, prime);
@@ -65,28 +70,27 @@ pub(super) fn factor_integer_polynomial(coefficients: &[Rat]) -> Option<Vec<Vec<
     None
 }
 
-fn coefficient_bound(coefficients: &[i64]) -> i128 {
-    let maximum = coefficients
-        .iter()
-        .map(|value| (*value as i128).abs())
-        .max()
-        .unwrap_or(1);
+fn coefficient_bound(coefficients: &[i128]) -> Option<i128> {
+    let mut maximum = 1i128;
+    for value in coefficients {
+        maximum = maximum.max(value.checked_abs()?);
+    }
     let degree = coefficients.len().saturating_sub(1);
-    (1i128 << (degree + 1)) * (maximum + 1)
+    (1i128.checked_shl(degree as u32 + 1)?).checked_mul(maximum.checked_add(1)?)
 }
 
-fn exact_split(coefficients: &[i64], candidate: &[i64]) -> Option<(Vec<Rat>, Vec<Rat>)> {
+fn exact_split(coefficients: &[i128], candidate: &[i128]) -> Option<(Vec<Rat>, Vec<Rat>)> {
     let candidate = primitive_integer(candidate);
     if candidate.len() < 2 || candidate.len() >= coefficients.len() {
         return None;
     }
     let dividend: Vec<Rat> = coefficients
         .iter()
-        .map(|value| Rat::from_i64(*value, 1).ok())
+        .map(|value| rat_from_i128(*value))
         .collect::<Option<Vec<_>>>()?;
     let divisor: Vec<Rat> = candidate
         .iter()
-        .map(|value| Rat::from_i64(*value, 1).ok())
+        .map(|value| rat_from_i128(*value))
         .collect::<Option<Vec<_>>>()?;
     let (quotient, remainder) = dense_div_rem(&dividend, &divisor)?;
     if !remainder.is_empty() {
@@ -94,6 +98,11 @@ fn exact_split(coefficients: &[i64], candidate: &[i64]) -> Option<(Vec<Rat>, Vec
     }
     let quotient = primitive_rational(&quotient)?;
     Some((divisor, quotient))
+}
+
+fn rat_from_i128(value: i128) -> Option<Rat> {
+    let value = Int::from_decimal(&value.to_string()).ok()?;
+    Rat::from_ints(value, Int::one()).ok()
 }
 
 fn primitive_rational(coefficients: &[Rat]) -> Option<Vec<Rat>> {
@@ -112,7 +121,7 @@ fn primitive_rational(coefficients: &[Rat]) -> Option<Vec<Rat>> {
     Some(trim(values))
 }
 
-fn primitive_integer(coefficients: &[i64]) -> Vec<i64> {
+fn primitive_integer(coefficients: &[i128]) -> Vec<i128> {
     let mut coefficients = coefficients.to_vec();
     while coefficients.last() == Some(&0) {
         coefficients.pop();
@@ -120,9 +129,9 @@ fn primitive_integer(coefficients: &[i64]) -> Vec<i64> {
     if coefficients.is_empty() {
         return coefficients;
     }
-    let mut divisor = 0i64;
+    let mut divisor = 0i128;
     for value in &coefficients {
-        divisor = gcd_i64(divisor, value.abs());
+        divisor = gcd_i128(divisor, value.checked_abs().unwrap_or(i128::MAX));
     }
     if divisor > 1 {
         for value in &mut coefficients {
@@ -137,7 +146,7 @@ fn primitive_integer(coefficients: &[i64]) -> Vec<i64> {
     coefficients
 }
 
-fn gcd_i64(mut left: i64, mut right: i64) -> i64 {
+fn gcd_i128(mut left: i128, mut right: i128) -> i128 {
     left = left.abs();
     right = right.abs();
     while right != 0 {
@@ -149,12 +158,12 @@ fn gcd_i64(mut left: i64, mut right: i64) -> i64 {
 }
 
 fn lift_pair(
-    coefficients: &[i64],
+    coefficients: &[i128],
     left: &[i64],
     right: &[i64],
     prime: i64,
     bound: i128,
-) -> Option<(Vec<i64>, Vec<i64>)> {
+) -> Option<(Vec<i128>, Vec<i128>)> {
     let mut modulus = prime as i128;
     let limit = bound.checked_mul(2)?;
     let mut left: Vec<i128> = left.iter().map(|value| *value as i128).collect();
@@ -173,10 +182,10 @@ fn lift_pair(
         *value = mod_mul(*value, inverse, prime);
     }
     while modulus <= limit {
-        let product = integer_multiply(&left, &right);
+        let product = integer_multiply(&left, &right)?;
         let mut error = vec![0i64; coefficients.len()];
         for (index, value) in coefficients.iter().enumerate() {
-            let difference = *value as i128 - product.get(index).copied().unwrap_or(0);
+            let difference = value.checked_sub(product.get(index).copied().unwrap_or(0))?;
             if difference % modulus != 0 {
                 return None;
             }
@@ -200,12 +209,12 @@ fn lift_pair(
         let next_modulus = modulus.checked_mul(prime as i128)?;
         for (index, value) in correction_left.iter().enumerate() {
             if index < left.len() {
-                left[index] += modulus * *value as i128;
+                left[index] = left[index].checked_add(modulus.checked_mul(*value as i128)?)?;
             }
         }
         for (index, value) in correction_right.iter().enumerate() {
             if index < right.len() {
-                right[index] += modulus * *value as i128;
+                right[index] = right[index].checked_add(modulus.checked_mul(*value as i128)?)?;
             }
         }
         for value in &mut left {
@@ -222,7 +231,7 @@ fn lift_pair(
     ))
 }
 
-fn symmetric_coefficients(coefficients: &[i128], modulus: i128) -> Vec<i64> {
+fn symmetric_coefficients(coefficients: &[i128], modulus: i128) -> Vec<i128> {
     let half = modulus / 2;
     coefficients
         .iter()
@@ -231,19 +240,20 @@ fn symmetric_coefficients(coefficients: &[i128], modulus: i128) -> Vec<i64> {
             if value > half {
                 value -= modulus;
             }
-            value as i64
+            value
         })
         .collect()
 }
 
-fn integer_multiply(left: &[i128], right: &[i128]) -> Vec<i128> {
+fn integer_multiply(left: &[i128], right: &[i128]) -> Option<Vec<i128>> {
     let mut product = vec![0i128; left.len() + right.len() - 1];
     for (left_index, left_value) in left.iter().enumerate() {
         for (right_index, right_value) in right.iter().enumerate() {
-            product[left_index + right_index] += left_value * right_value;
+            let index = left_index + right_index;
+            product[index] = product[index].checked_add(left_value.checked_mul(*right_value)?)?;
         }
     }
-    product
+    Some(product)
 }
 
 fn find_modular_factor(coefficients: &[i64], prime: i64) -> Option<(Vec<i64>, Vec<i64>)> {
@@ -267,11 +277,11 @@ fn find_modular_factor(coefficients: &[i64], prime: i64) -> Option<(Vec<i64>, Ve
     None
 }
 
-fn mod_reduce(coefficients: &[i64], prime: i64) -> Vec<i64> {
+fn mod_reduce(coefficients: &[i128], prime: i64) -> Vec<i64> {
     trim_mod(
         coefficients
             .iter()
-            .map(|value| value.rem_euclid(prime))
+            .map(|value| value.rem_euclid(prime as i128) as i64)
             .collect(),
         prime,
     )

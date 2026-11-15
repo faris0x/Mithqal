@@ -11,8 +11,8 @@
 //! - Evaluation and interpolation for bivariate polynomials that split into
 //!   linear factors with polynomial coefficients, including a constant rational
 //!   leading coefficient and both variable orientations.
-//! - Evaluation and interpolation across three variables by sampling a rational
-//!   grid and interpolating bivariate root polynomials.
+//! - Evaluation and interpolation across three and four variables by sampling
+//!   rational grids and interpolating multivariate root polynomials.
 //! - Power extraction from two through twelve for bivariate polynomials,
 //!   including constant rational leading coefficients.
 //! - Polynomial-leading quadratics with a general polynomial leading
@@ -24,8 +24,8 @@
 //!
 //! Reserved stages for the full algorithm:
 //!
-//! - Evaluation and interpolation over more than three variables.
-//! - Wider Hensel coefficient ranges beyond machine-sized inputs.
+//! - Evaluation and interpolation over more than four variables.
+//! - Fully arbitrary precision Hensel lifting.
 
 use super::*;
 
@@ -60,6 +60,7 @@ pub(super) enum FactorStage {
     SquareFree,
     EvaluationInterpolation,
     ThreeVariableInterpolation,
+    FourVariableInterpolation,
     HenselLifting,
 }
 
@@ -109,6 +110,7 @@ impl<'a> MultivariateFactorizer<'a> {
             FactorStage::BivariateRootLift,
             FactorStage::EvaluationInterpolation,
             FactorStage::ThreeVariableInterpolation,
+            FactorStage::FourVariableInterpolation,
             FactorStage::Grouping,
             FactorStage::SquareFree,
             FactorStage::HenselLifting,
@@ -129,6 +131,9 @@ impl<'a> MultivariateFactorizer<'a> {
                 }
                 FactorStage::ThreeVariableInterpolation => {
                     self.factor_three_variable_interpolation(polynomial)
+                }
+                FactorStage::FourVariableInterpolation => {
+                    self.factor_four_variable_interpolation(polynomial)
                 }
                 FactorStage::HenselLifting => self.factor_hensel_stage(polynomial),
             };
@@ -802,6 +807,224 @@ impl<'a> MultivariateFactorizer<'a> {
         Some(factors)
     }
 
+    fn factor_four_variable_interpolation(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
+        let variables = polynomial.variables();
+        if variables.len() != 4 {
+            return None;
+        }
+        let variables: Vec<SymbolId> = variables.into_iter().collect();
+        for horizontal in &variables {
+            let others: Vec<SymbolId> = variables
+                .iter()
+                .filter(|symbol| *symbol != horizontal)
+                .copied()
+                .collect();
+            if let Some(factors) = self.factor_four_variable_orientation(
+                polynomial,
+                *horizontal,
+                others[0],
+                others[1],
+                others[2],
+            ) {
+                return Some(factors);
+            }
+        }
+        None
+    }
+
+    fn factor_four_variable_orientation(
+        &mut self,
+        polynomial: &Poly,
+        horizontal: SymbolId,
+        first: SymbolId,
+        second: SymbolId,
+        third: SymbolId,
+    ) -> Option<Vec<ExprId>> {
+        let degree = x_degree(polynomial, horizontal);
+        if !(2..=4).contains(&degree) || !is_monic_in(polynomial, horizontal) {
+            return None;
+        }
+        let bound = total_degree(polynomial);
+        let root_bound = bound.saturating_sub(degree as u32) + 1;
+        if root_bound > 4 {
+            return None;
+        }
+        let grid = root_bound as usize + 1;
+        for base in [0i64, 10] {
+            for reverse in [false, true] {
+                let axes: Vec<Vec<Rat>> = (0..3)
+                    .map(|axis| {
+                        (0..grid)
+                            .filter_map(|offset| {
+                                Rat::from_i64(base + axis as i64 * 100 + offset as i64, 1).ok()
+                            })
+                            .collect()
+                    })
+                    .collect();
+                if axes.iter().any(|axis| axis.len() != grid) {
+                    continue;
+                }
+                let mut samples: Vec<Vec<Vec<Vec<Rat>>>> = Vec::with_capacity(grid);
+                let mut complete = true;
+                for first_value in &axes[0] {
+                    let mut first_slice = Vec::with_capacity(grid);
+                    for second_value in &axes[1] {
+                        let mut second_slice = Vec::with_capacity(grid);
+                        for third_value in &axes[2] {
+                            let (sample_degree, coefficients) = substitute_four_variables(
+                                polynomial,
+                                horizontal,
+                                first,
+                                first_value,
+                                second,
+                                second_value,
+                                third,
+                                third_value,
+                            );
+                            if sample_degree != degree {
+                                complete = false;
+                                break;
+                            }
+                            let (roots, remaining) = rational_roots(&coefficients);
+                            if remaining.len() > 1 {
+                                complete = false;
+                                break;
+                            }
+                            let mut values = Vec::new();
+                            for (root, multiplicity) in roots {
+                                for _ in 0..multiplicity {
+                                    values.push(root.clone());
+                                }
+                            }
+                            if values.len() != degree {
+                                complete = false;
+                                break;
+                            }
+                            values.sort();
+                            if reverse {
+                                values.reverse();
+                            }
+                            second_slice.push(values);
+                        }
+                        if !complete {
+                            break;
+                        }
+                        first_slice.push(second_slice);
+                    }
+                    if !complete {
+                        break;
+                    }
+                    samples.push(first_slice);
+                }
+                if !complete {
+                    continue;
+                }
+                let mut root_polynomials = Vec::with_capacity(degree);
+                for root_index in 0..degree {
+                    let mut third_table: Vec<Vec<Vec<Rat>>> = Vec::with_capacity(grid);
+                    for third_index in 0..grid {
+                        let mut second_table: Vec<Vec<Rat>> = Vec::with_capacity(grid);
+                        for second_index in 0..grid {
+                            let points: Vec<(Rat, Rat)> = axes[0]
+                                .iter()
+                                .enumerate()
+                                .map(|(first_index, value)| {
+                                    (
+                                        value.clone(),
+                                        samples[first_index][second_index][third_index][root_index]
+                                            .clone(),
+                                    )
+                                })
+                                .collect();
+                            second_table.push(interpolate(&points, root_bound)?);
+                        }
+                        let mut first_table: Vec<Vec<Rat>> = Vec::with_capacity(grid);
+                        for first_power in 0..=root_bound as usize {
+                            let points: Vec<(Rat, Rat)> = axes[1]
+                                .iter()
+                                .enumerate()
+                                .map(|(second_index, value)| {
+                                    (
+                                        value.clone(),
+                                        second_table
+                                            .get(second_index)
+                                            .and_then(|coefficients| coefficients.get(first_power))
+                                            .cloned()
+                                            .unwrap_or_else(Rat::zero),
+                                    )
+                                })
+                                .collect();
+                            first_table.push(interpolate(&points, root_bound)?);
+                        }
+                        third_table.push(first_table);
+                    }
+                    let mut root = Poly::zero();
+                    for first_power in 0..=root_bound as usize {
+                        for second_power in 0..=root_bound as usize {
+                            let points: Vec<(Rat, Rat)> = axes[2]
+                                .iter()
+                                .enumerate()
+                                .map(|(third_index, value)| {
+                                    (
+                                        value.clone(),
+                                        third_table
+                                            .get(third_index)
+                                            .and_then(|table| table.get(first_power))
+                                            .and_then(|coefficients| coefficients.get(second_power))
+                                            .cloned()
+                                            .unwrap_or_else(Rat::zero),
+                                    )
+                                })
+                                .collect();
+                            let coefficients = interpolate(&points, root_bound)?;
+                            for (third_power, coefficient) in coefficients.iter().enumerate() {
+                                if coefficient.is_zero() {
+                                    continue;
+                                }
+                                let mut powers = Vec::new();
+                                if first_power > 0 {
+                                    powers.push((first, first_power as u32));
+                                }
+                                if second_power > 0 {
+                                    powers.push((second, second_power as u32));
+                                }
+                                if third_power > 0 {
+                                    powers.push((third, third_power as u32));
+                                }
+                                powers.sort_by_key(|(symbol, _)| *symbol);
+                                root.terms.insert(Monomial { powers }, coefficient.clone());
+                            }
+                        }
+                    }
+                    root_polynomials.push(root);
+                }
+                let mut collected: Vec<(Poly, u32)> = Vec::new();
+                let mut product = Poly::constant(Rat::one());
+                for root in root_polynomials {
+                    let factor =
+                        Poly::variable(horizontal).add(&root.scale(&Rat::from_i64(-1, 1).ok()?));
+                    product = product.mul(&factor);
+                    merge_poly_factor(&mut collected, factor);
+                }
+                if product != *polynomial {
+                    continue;
+                }
+                let mut factors = Vec::new();
+                for (factor, multiplicity) in collected {
+                    push_factor(
+                        self.arena,
+                        &self.context,
+                        &mut factors,
+                        factor,
+                        multiplicity,
+                    );
+                }
+                return Some(factors);
+            }
+        }
+        None
+    }
+
     fn factor_three_variable_interpolation(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
         let variables = polynomial.variables();
         if variables.len() != 3 {
@@ -1073,6 +1296,29 @@ impl<'a> MultivariateFactorizer<'a> {
         }
         None
     }
+}
+
+fn substitute_four_variables(
+    polynomial: &Poly,
+    horizontal: SymbolId,
+    first: SymbolId,
+    first_value: &Rat,
+    second: SymbolId,
+    second_value: &Rat,
+    third: SymbolId,
+    third_value: &Rat,
+) -> (usize, Vec<Rat>) {
+    let degree = x_degree(polynomial, horizontal);
+    let mut coefficients = vec![Rat::zero(); degree + 1];
+    for (monomial, coefficient) in &polynomial.terms {
+        let horizontal_power = monomial.degree_in(horizontal) as usize;
+        let factor = rat_power(first_value, monomial.degree_in(first))
+            .mul(&rat_power(second_value, monomial.degree_in(second)))
+            .mul(&rat_power(third_value, monomial.degree_in(third)));
+        coefficients[horizontal_power] =
+            coefficients[horizontal_power].add(&coefficient.mul(&factor));
+    }
+    (degree, trim(coefficients))
 }
 
 fn substitute_three_variables(

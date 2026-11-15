@@ -208,6 +208,13 @@ impl Int {
         }
     }
 
+    pub(crate) fn to_i128(&self) -> Option<i128> {
+        if let Some(value) = self.to_i64() {
+            return Some(value as i128);
+        }
+        self.to_decimal().parse::<i128>().ok()
+    }
+
     pub(crate) fn magnitude(&self) -> &[u64] {
         let length = self.inner.size.unsigned_abs() as usize;
         if length == 0 {
