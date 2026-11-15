@@ -501,3 +501,20 @@ fn bivariate_specialization_root_lift() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn bivariate_hensel_non_linear_factors() {
+    assert_eq!(text("factor((x^2+y)*(x^2+y^2))"), "(y+x^2)*(x^2+y^2)");
+    assert_eq!(
+        text("factor((x^2+y*x+1)*(x^2+y^2+1))"),
+        "(1+x^2+y^2)*(1+x^2+x*y)"
+    );
+    assert_eq!(text("factor((x^2+y)*(x^3+y*x+1))"), "(y+x^2)*(1+x^3+x*y)");
+    for source in [
+        "(x^2+y)*(x^2+y^2)",
+        "(x^2+y*x+1)*(x^2+y^2+1)",
+        "(x^2+y)*(x^3+y*x+1)",
+    ] {
+        assert_factor_matches(source);
+    }
+}

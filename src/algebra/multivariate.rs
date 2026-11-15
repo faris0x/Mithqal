@@ -19,12 +19,13 @@
 //!   coefficient.
 //! - Bivariate coefficient content extraction.
 //! - Bivariate specialization root lifting.
+//! - Bivariate Hensel lifting for coprime non-linear factor pairs.
 //! - Even-term grouping.
 //!
 //! Reserved stages for the full algorithm:
 //!
 //! - Evaluation and interpolation over more than three variables.
-//! - A full multivariate Hensel hook for non-linear factors.
+//! - Wider Hensel coefficient ranges beyond machine-sized inputs.
 
 use super::*;
 
@@ -971,8 +972,105 @@ impl<'a> MultivariateFactorizer<'a> {
         None
     }
 
-    fn factor_hensel_stage(&mut self, _polynomial: &Poly) -> Option<Vec<ExprId>> {
-        // Reserved for Hensel lifting over the rationals.
+    fn factor_hensel_stage(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
+        let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        if let Some(factors) = self.factor_hensel_orientation(polynomial, horizontal, vertical) {
+            return Some(factors);
+        }
+        self.factor_hensel_orientation(polynomial, vertical, horizontal)
+    }
+
+    fn factor_hensel_orientation(
+        &mut self,
+        polynomial: &Poly,
+        horizontal: SymbolId,
+        vertical: SymbolId,
+    ) -> Option<Vec<ExprId>> {
+        let degree = x_degree(polynomial, horizontal);
+        if !(2..=6).contains(&degree) {
+            return None;
+        }
+        let bound = total_degree(polynomial);
+        if bound > 12 {
+            return None;
+        }
+        let vertical_degree = y_degree(polynomial, vertical);
+        if vertical_degree == 0 || vertical_degree > 6 {
+            return None;
+        }
+        for base in [0i64, 1, -1, 2, 10] {
+            let Some(value) = Rat::from_i64(base, 1).ok() else {
+                continue;
+            };
+            let (slice_degree, slice) =
+                substitute_vertical(polynomial, horizontal, vertical, &value);
+            if slice_degree != degree {
+                continue;
+            }
+            let Some(components) = super::factor_dense_components(&slice) else {
+                continue;
+            };
+            let mut factors: Vec<Vec<Rat>> = Vec::new();
+            for (component, multiplicity) in components {
+                if component.len() <= 1 {
+                    continue;
+                }
+                for _ in 0..multiplicity {
+                    factors.push(component.clone());
+                }
+            }
+            if !(2..=6).contains(&factors.len()) {
+                continue;
+            }
+            let count = factors.len();
+            for mask in 1usize..(1usize << count) - 1 {
+                let mut left = vec![Rat::one()];
+                let mut right = vec![Rat::one()];
+                for (index, factor) in factors.iter().enumerate() {
+                    if mask & (1 << index) != 0 {
+                        left = dense_multiply(&left, factor);
+                    } else {
+                        right = dense_multiply(&right, factor);
+                    }
+                }
+                if left.len() <= 1 || right.len() <= 1 {
+                    continue;
+                }
+                let product = dense_multiply(&left, &right);
+                let (scalar, remainder) = dense_div_rem(&slice, &product)?;
+                if !remainder.is_empty() || scalar.len() > 1 {
+                    continue;
+                }
+                let scalar = scalar.first().cloned().unwrap_or_else(Rat::one);
+                let left = dense_scale(&left, &scalar);
+                let Some((left_poly, right_poly)) = lift_bivariate_pair(
+                    polynomial,
+                    horizontal,
+                    vertical,
+                    &value,
+                    &left,
+                    &right,
+                    vertical_degree,
+                ) else {
+                    continue;
+                };
+                if left_poly.mul(&right_poly) != *polynomial {
+                    continue;
+                }
+                let mut result = Vec::new();
+                if let Some(mut nested) = self.factor(&left_poly) {
+                    result.append(&mut nested);
+                } else {
+                    result.push(expression_from_poly(self.arena, &left_poly, &self.context));
+                }
+                if let Some(mut nested) = self.factor(&right_poly) {
+                    result.append(&mut nested);
+                } else {
+                    result.push(expression_from_poly(self.arena, &right_poly, &self.context));
+                }
+                return Some(result);
+            }
+        }
         None
     }
 }
@@ -1088,6 +1186,156 @@ fn quadratic_coefficients(
         return None;
     }
     Some((leading, linear, constant))
+}
+
+fn y_degree(polynomial: &Poly, vertical: SymbolId) -> u32 {
+    polynomial
+        .terms
+        .keys()
+        .map(|monomial| monomial.degree_in(vertical))
+        .max()
+        .unwrap_or(0)
+}
+
+fn dense_scale(coefficients: &[Rat], scale: &Rat) -> Vec<Rat> {
+    trim(coefficients.iter().map(|value| value.mul(scale)).collect())
+}
+
+fn dense_subtract(left: &[Rat], right: &[Rat]) -> Vec<Rat> {
+    let length = left.len().max(right.len());
+    let mut difference = vec![Rat::zero(); length];
+    for index in 0..length {
+        difference[index] = left
+            .get(index)
+            .cloned()
+            .unwrap_or_else(Rat::zero)
+            .sub(&right.get(index).cloned().unwrap_or_else(Rat::zero));
+    }
+    trim(difference)
+}
+
+fn dense_extended_gcd(left: &[Rat], right: &[Rat]) -> Option<(Vec<Rat>, Vec<Rat>, Vec<Rat>)> {
+    let mut old_remainder = trim(left.to_vec());
+    let mut remainder = trim(right.to_vec());
+    let mut old_left = vec![Rat::one()];
+    let mut left_coefficient = Vec::new();
+    let mut old_right = Vec::new();
+    let mut right_coefficient = vec![Rat::one()];
+    while !remainder.is_empty() {
+        let (quotient, next_remainder) = dense_div_rem(&old_remainder, &remainder)?;
+        old_remainder = remainder;
+        remainder = next_remainder;
+        let next_left = dense_subtract(&old_left, &dense_multiply(&quotient, &left_coefficient));
+        old_left = left_coefficient;
+        left_coefficient = next_left;
+        let next_right = dense_subtract(&old_right, &dense_multiply(&quotient, &right_coefficient));
+        old_right = right_coefficient;
+        right_coefficient = next_right;
+    }
+    let constant = old_remainder.first()?.clone();
+    if constant.is_zero() {
+        return None;
+    }
+    let inverse = Rat::one().div(&constant).ok()?;
+    Some((
+        old_remainder,
+        dense_scale(&old_left, &inverse),
+        dense_scale(&old_right, &inverse),
+    ))
+}
+
+fn binomial(n: u32, k: u32) -> Rat {
+    let mut result = 1u128;
+    for index in 1..=k {
+        result = result * (n - k + index) as u128 / index as u128;
+    }
+    Rat::from_i64(result as i64, 1).unwrap_or_else(|_| Rat::one())
+}
+
+fn taylor_slices(
+    polynomial: &Poly,
+    horizontal: SymbolId,
+    vertical: SymbolId,
+    value: &Rat,
+    maximum: u32,
+) -> Vec<Vec<Rat>> {
+    let mut slices = vec![Vec::new(); maximum as usize + 1];
+    for (monomial, coefficient) in &polynomial.terms {
+        let horizontal_power = monomial.degree_in(horizontal) as usize;
+        let vertical_power = monomial.degree_in(vertical);
+        for power in 0..=vertical_power {
+            let factor =
+                binomial(vertical_power, power).mul(&rat_power(value, vertical_power - power));
+            let contribution = coefficient.mul(&factor);
+            let slice = &mut slices[power as usize];
+            if slice.len() <= horizontal_power {
+                slice.resize(horizontal_power + 1, Rat::zero());
+            }
+            slice[horizontal_power] = slice[horizontal_power].add(&contribution);
+        }
+    }
+    for slice in &mut slices {
+        *slice = trim(std::mem::take(slice));
+    }
+    slices
+}
+
+fn polynomial_from_t_slices(
+    slices: &[Vec<Rat>],
+    horizontal: SymbolId,
+    vertical: SymbolId,
+    value: &Rat,
+) -> Poly {
+    let t = Poly::variable(vertical).sub(&Poly::constant(value.clone()));
+    let mut result = Poly::zero();
+    let mut power = Poly::constant(Rat::one());
+    for slice in slices {
+        let coefficient = Poly::from_dense(horizontal, slice);
+        result = result.add(&coefficient.mul(&power));
+        power = power.mul(&t);
+    }
+    result
+}
+
+fn lift_bivariate_pair(
+    polynomial: &Poly,
+    horizontal: SymbolId,
+    vertical: SymbolId,
+    value: &Rat,
+    left: &[Rat],
+    right: &[Rat],
+    maximum: u32,
+) -> Option<(Poly, Poly)> {
+    let (gcd, _, bezout_right) = dense_extended_gcd(left, right)?;
+    if gcd.len() != 1 {
+        return None;
+    }
+    let slices = taylor_slices(polynomial, horizontal, vertical, value, maximum);
+    let mut left_slices = vec![trim(left.to_vec())];
+    let mut right_slices = vec![trim(right.to_vec())];
+    for power in 1..=maximum as usize {
+        let mut residual = slices.get(power).cloned().unwrap_or_default();
+        for index in 1..power {
+            residual = dense_subtract(
+                &residual,
+                &dense_multiply(&left_slices[index], &right_slices[power - index]),
+            );
+        }
+        let projected = dense_multiply(&bezout_right, &residual);
+        let (_, correction_left) = dense_div_rem(&projected, left)?;
+        let correction_left = trim(correction_left);
+        let numerator = dense_subtract(&residual, &dense_multiply(&correction_left, right));
+        let (correction_right, remainder) = dense_div_rem(&numerator, left)?;
+        if !remainder.is_empty() {
+            return None;
+        }
+        left_slices.push(correction_left);
+        right_slices.push(correction_right);
+    }
+    Some((
+        polynomial_from_t_slices(&left_slices, horizontal, vertical, value),
+        polynomial_from_t_slices(&right_slices, horizontal, vertical, value),
+    ))
 }
 
 fn coefficient_polynomials(

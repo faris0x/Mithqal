@@ -90,6 +90,7 @@ Initial kernel work.
 - Added bivariate coefficient-content extraction through polynomial gcds.
 - Tightened interpolation root-degree bounds to reduce sample grids in two and three variable stages.
 - Added a bivariate specialization root-lift stage that interpolates a polynomial root, verifies it exactly, divides it out, and recursively factors the quotient.
+- Added bivariate Hensel lifting for coprime non-linear factor pairs using specialization factors, Bezout corrections, and exact product verification.
 - Removed per-term polynomial allocation from polynomial-leading coefficient extraction.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.
@@ -101,4 +102,4 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to more than 650 test functions and more than 1530 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.
+- Expanded the suite to more than 640 test functions and more than 1530 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.
