@@ -27,6 +27,16 @@ The Rust test suite verifies these semantically. Factor results require the exac
 
 Numeric probe records evaluate the operation result at rational assignments and compare against high precision SymPy values. This catches errors that the symbolic simplifier might share with the operation under test.
 
+Failure records cover three outcomes:
+
+```text
+unevaluated<TAB>inverse([[1,2],[2,4]])<TAB>inverse
+diagnostic<TAB>differentiate(x)<TAB>TGN-EVAL-0013
+unchanged<TAB>factor(x^2+y^2+1)<TAB>x^2+y^2+1
+```
+
+`unevaluated` checks the returned call head. `diagnostic` checks the stable error code. `unchanged` checks that an operation leaves the expression mathematically unchanged.
+
 ## Regenerating fixtures
 
 The generator is developer tooling and is not part of the crate build. It requires SymPy outside the Rust dependency graph.

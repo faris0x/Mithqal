@@ -4,6 +4,7 @@ const ALGEBRA: &str = include_str!("fixtures/differential/algebra.tsv");
 const CALCULUS: &str = include_str!("fixtures/differential/calculus.tsv");
 const LINALG: &str = include_str!("fixtures/differential/linalg.tsv");
 const PROBES: &str = include_str!("fixtures/differential/probes.tsv");
+const FAILURES: &str = include_str!("fixtures/differential/failures.tsv");
 
 fn records(source: &'static str) -> Vec<Vec<&'static str>> {
     source
@@ -253,5 +254,40 @@ fn differential_numeric_probes() {
             record[2],
             record[1]
         );
+    }
+}
+
+#[test]
+fn differential_failure_fixtures() {
+    for record in records(FAILURES) {
+        assert_eq!(record.len(), 3, "malformed failure record: {record:?}");
+        let mut session = Session::new();
+        match record[0] {
+            "unevaluated" => {
+                let value = evaluate(&mut session, record[1]);
+                let ExprView::Call { head, .. } = session.view(value).unwrap() else {
+                    panic!("{}: expected an unevaluated call", record[1]);
+                };
+                let ExprView::Symbol(name) = session.view(head).unwrap() else {
+                    panic!("{}: expected a symbol head", record[1]);
+                };
+                assert_eq!(name, record[2], "{}", record[1]);
+            }
+            "diagnostic" => {
+                let error = session.eval_statement(record[1]).unwrap_err();
+                assert_eq!(error.code.as_str(), record[2], "{}", record[1]);
+            }
+            "unchanged" => {
+                let actual = evaluate(&mut session, record[1]);
+                let expected = evaluate(&mut session, record[2]);
+                assert_eq!(
+                    text(&session, actual),
+                    text(&session, expected),
+                    "{}",
+                    record[1]
+                );
+            }
+            kind => panic!("unknown failure fixture kind {kind}"),
+        }
     }
 }
