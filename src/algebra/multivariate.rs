@@ -754,8 +754,8 @@ impl<'a> MultivariateFactorizer<'a> {
                 if !complete {
                     continue;
                 }
+                let mut branches = root_values;
                 for reverse in [false, true] {
-                    let mut branches = root_values.clone();
                     if reverse {
                         for values in &mut branches {
                             values.reverse();

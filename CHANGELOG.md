@@ -130,3 +130,6 @@ Initial kernel work.
 - Replaced 128 bit integer square roots with the native integer square root implementation.
 - Added a quadratic coefficient identity check that avoids full product construction during sparse interpolation verification.
 - Tightened four, five, and six variable factorisation benchmark budgets after bringing all three below one hundred microseconds per operation on the benchmark host.
+- Added a GitHub Actions CI workflow covering formatting, clippy with warnings denied, debug tests, release tests, and documentation tests.
+- Added a test-count script that reports source test functions, assertion sites, and macro-expanded runtime test cases.
+- Removed a redundant clone of sparse interpolation root branches during reversed branch attempts.

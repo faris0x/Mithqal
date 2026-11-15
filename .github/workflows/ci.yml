@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        id: toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-mithqal-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('Cargo.lock', 'build.rs', 'vendor/gmp/**', 'vendor/mpfr/**', 'vendor/mpc/**') }}
+          restore-keys: |
+            ${{ runner.os }}-mithqal-${{ steps.toolchain.outputs.cachekey }}-
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets -- --deny warnings
+
+      - name: Report test counts
+        run: sh scripts/test-counts.sh
+
+      - name: Run debug tests
+        run: cargo test
+
+      - name: Run release tests
+        run: cargo test --release
+
+      - name: Run documentation tests
+        run: cargo test --doc
