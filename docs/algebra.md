@@ -61,7 +61,9 @@ A three-variable interpolation stage factors polynomials that split into linear 
 
 A bivariate coefficient-content stage extracts a common polynomial factor across all coefficients of one variable. It computes the gcd of the coefficient polynomials and divides every coefficient by it.
 
-The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, bivariate coefficient content, evaluation and interpolation in two and three variables, power extraction through twelve, and grouping. Reserved stages cover a broader multivariate Hensel hook.
+A bivariate specialization root-lift stage samples univariate slices, interpolates a polynomial root branch, verifies that the root annihilates the polynomial, divides by the corresponding linear factor exactly, and recursively factors the quotient.
+
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, bivariate coefficient content, specialization root lifting, evaluation and interpolation in two and three variables, power extraction through twelve, and grouping. Reserved stages cover a full multivariate Hensel hook for non-linear factors and interpolation over more than three variables.
 
 Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 

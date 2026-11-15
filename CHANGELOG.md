@@ -89,6 +89,7 @@ Initial kernel work.
 - Added three-variable evaluation and interpolation over rational grids.
 - Added bivariate coefficient-content extraction through polynomial gcds.
 - Tightened interpolation root-degree bounds to reduce sample grids in two and three variable stages.
+- Added a bivariate specialization root-lift stage that interpolates a polynomial root, verifies it exactly, divides it out, and recursively factors the quotient.
 - Removed per-term polynomial allocation from polynomial-leading coefficient extraction.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.

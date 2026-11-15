@@ -492,3 +492,12 @@ fn bivariate_coefficient_content_factorization() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn bivariate_specialization_root_lift() {
+    assert_eq!(text("factor((x+y^2)*(x^2+y^3+1))"), "(x+y^2)*(1+x^2+y^3)");
+    assert_eq!(text("factor((x+y^3)*(x^2+y^2+1))"), "(x+y^3)*(1+x^2+y^2)");
+    for source in ["(x+y^2)*(x^2+y^3+1)", "(x+y^3)*(x^2+y^2+1)"] {
+        assert_factor_matches(source);
+    }
+}

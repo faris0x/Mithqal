@@ -18,12 +18,13 @@
 //! - Polynomial-leading quadratics with a general polynomial leading
 //!   coefficient.
 //! - Bivariate coefficient content extraction.
+//! - Bivariate specialization root lifting.
 //! - Even-term grouping.
 //!
 //! Reserved stages for the full algorithm:
 //!
 //! - Evaluation and interpolation over more than three variables.
-//! - A multivariate Hensel hook beyond the univariate integer path.
+//! - A full multivariate Hensel hook for non-linear factors.
 
 use super::*;
 
@@ -53,6 +54,7 @@ pub(super) enum FactorStage {
     RecursiveQuadratic,
     PolynomialLeadingQuadratic,
     BivariateContent,
+    BivariateRootLift,
     Grouping,
     SquareFree,
     EvaluationInterpolation,
@@ -103,6 +105,7 @@ impl<'a> MultivariateFactorizer<'a> {
             FactorStage::RecursiveQuadratic,
             FactorStage::PolynomialLeadingQuadratic,
             FactorStage::BivariateContent,
+            FactorStage::BivariateRootLift,
             FactorStage::EvaluationInterpolation,
             FactorStage::ThreeVariableInterpolation,
             FactorStage::Grouping,
@@ -117,6 +120,7 @@ impl<'a> MultivariateFactorizer<'a> {
                     self.factor_polynomial_leading_quadratic(polynomial)
                 }
                 FactorStage::BivariateContent => self.factor_bivariate_content(polynomial),
+                FactorStage::BivariateRootLift => self.factor_bivariate_root_lift(polynomial),
                 FactorStage::Grouping => self.factor_by_grouping(polynomial),
                 FactorStage::SquareFree => self.factor_square_free_stage(polynomial),
                 FactorStage::EvaluationInterpolation => {
@@ -293,6 +297,108 @@ impl<'a> MultivariateFactorizer<'a> {
             );
         }
         Some(factors)
+    }
+
+    fn factor_bivariate_root_lift(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
+        let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        if let Some(factors) =
+            self.factor_bivariate_root_lift_orientation(polynomial, horizontal, vertical)
+        {
+            return Some(factors);
+        }
+        self.factor_bivariate_root_lift_orientation(polynomial, vertical, horizontal)
+    }
+
+    fn factor_bivariate_root_lift_orientation(
+        &mut self,
+        polynomial: &Poly,
+        horizontal: SymbolId,
+        vertical: SymbolId,
+    ) -> Option<Vec<ExprId>> {
+        let degree = x_degree(polynomial, horizontal);
+        if !(2..=6).contains(&degree) {
+            return None;
+        }
+        let bound = total_degree(polynomial);
+        if bound > 10 {
+            return None;
+        }
+        let root_bound = bound.saturating_sub(1);
+        let needed = root_bound as usize + 1;
+        for base in [0i64, 10, -10] {
+            for reverse in [false, true] {
+                let mut samples: Vec<(Rat, Vec<Rat>)> = Vec::new();
+                for offset in 0..(4 * needed as i64 + 16) {
+                    let Some(value) = Rat::from_i64(base + offset, 1).ok() else {
+                        continue;
+                    };
+                    let (sample_degree, coefficients) =
+                        substitute_vertical(polynomial, horizontal, vertical, &value);
+                    if sample_degree != degree {
+                        continue;
+                    }
+                    let (roots, remaining) = rational_roots(&coefficients);
+                    if remaining.len() > 1 || roots.is_empty() {
+                        continue;
+                    }
+                    let mut values = Vec::new();
+                    for (root, multiplicity) in roots {
+                        for _ in 0..multiplicity {
+                            values.push(root.clone());
+                        }
+                    }
+                    values.sort();
+                    if reverse {
+                        values.reverse();
+                    }
+                    samples.push((value, values));
+                    if samples.len() == needed {
+                        break;
+                    }
+                }
+                if samples.len() < needed {
+                    continue;
+                }
+                let maximum_roots = samples.iter().map(|(_, roots)| roots.len()).min()?;
+                for root_index in 0..maximum_roots {
+                    let points: Vec<(Rat, Rat)> = samples
+                        .iter()
+                        .map(|(value, roots)| (value.clone(), roots[root_index].clone()))
+                        .collect();
+                    let coefficients = interpolate(&points, root_bound)?;
+                    let root = Poly::from_dense(vertical, &coefficients);
+                    if evaluate_at_horizontal(polynomial, horizontal, vertical, &root)
+                        != Poly::zero()
+                    {
+                        continue;
+                    }
+                    let Some(quotient) =
+                        divide_by_linear_root(polynomial, horizontal, vertical, &root)
+                    else {
+                        continue;
+                    };
+                    if quotient.mul(
+                        &Poly::variable(horizontal).add(&root.scale(&Rat::from_i64(-1, 1).ok()?)),
+                    ) != *polynomial
+                    {
+                        continue;
+                    }
+                    let factor =
+                        Poly::variable(horizontal).add(&root.scale(&Rat::from_i64(-1, 1).ok()?));
+                    let mut factors =
+                        vec![expression_from_poly(self.arena, &factor, &self.context)];
+                    if let Some(mut nested) = self.factor_bivariate_root_lift(&quotient) {
+                        factors.append(&mut nested);
+                    } else if let Some(mut nested) = self.factor(&quotient) {
+                        factors.append(&mut nested);
+                    } else {
+                        factors.push(expression_from_poly(self.arena, &quotient, &self.context));
+                    }
+                    return Some(factors);
+                }
+            }
+        }
+        None
     }
 
     fn factor_bivariate_content(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
@@ -982,6 +1088,81 @@ fn quadratic_coefficients(
         return None;
     }
     Some((leading, linear, constant))
+}
+
+fn coefficient_polynomials(
+    polynomial: &Poly,
+    horizontal: SymbolId,
+    vertical: SymbolId,
+) -> Option<Vec<Poly>> {
+    let degree = x_degree(polynomial, horizontal);
+    let mut coefficients = vec![Poly::zero(); degree + 1];
+    for (monomial, value) in &polynomial.terms {
+        let horizontal_power = monomial.degree_in(horizontal) as usize;
+        let vertical_power = monomial.degree_in(vertical);
+        let mut powers = Vec::new();
+        if vertical_power > 0 {
+            powers.push((vertical, vertical_power));
+        }
+        coefficients[horizontal_power]
+            .terms
+            .insert(Monomial { powers }, value.clone());
+    }
+    Some(coefficients)
+}
+
+fn evaluate_at_horizontal(
+    polynomial: &Poly,
+    horizontal: SymbolId,
+    vertical: SymbolId,
+    value: &Poly,
+) -> Poly {
+    let Some(coefficients) = coefficient_polynomials(polynomial, horizontal, vertical) else {
+        return Poly::zero();
+    };
+    let mut result = Poly::zero();
+    for coefficient in coefficients.iter().rev() {
+        result = result.mul(value).add(coefficient);
+    }
+    result
+}
+
+fn divide_by_linear_root(
+    polynomial: &Poly,
+    horizontal: SymbolId,
+    vertical: SymbolId,
+    root: &Poly,
+) -> Option<Poly> {
+    let coefficients = coefficient_polynomials(polynomial, horizontal, vertical)?;
+    let degree = coefficients.len().checked_sub(1)?;
+    let mut quotient = vec![Poly::zero(); degree];
+    if degree == 0 {
+        return None;
+    }
+    quotient[degree - 1] = coefficients[degree].clone();
+    for power in (1..degree).rev() {
+        let next = coefficients[power].add(&root.mul(&quotient[power]));
+        quotient[power - 1] = next;
+    }
+    let remainder = coefficients[0].add(&root.mul(&quotient[0]));
+    if remainder != Poly::zero() {
+        return None;
+    }
+    let mut result = Poly::zero();
+    for (power, coefficient) in quotient.iter().enumerate() {
+        for (monomial, value) in &coefficient.terms {
+            let mut powers = Vec::new();
+            if power > 0 {
+                powers.push((horizontal, power as u32));
+            }
+            for (symbol, exponent) in &monomial.powers {
+                powers.push((*symbol, *exponent));
+            }
+            powers.sort_by_key(|(symbol, _)| *symbol);
+            result.terms.insert(Monomial { powers }, value.clone());
+        }
+    }
+    Some(result)
 }
 
 fn bivariate_variables(polynomial: &Poly) -> Option<(SymbolId, SymbolId)> {
