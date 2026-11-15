@@ -76,6 +76,7 @@ The test suite covers these areas:
 - Virtual machine equivalence with the reference interpreter.
 - Garbage collection with forced collection at every safepoint.
 - Memory stability under repeated evaluation.
+- Differential algebra, calculus, and linear algebra fixtures generated from SymPy.
 
 ## Remaining work
 

@@ -1,0 +1,43 @@
+name: Differential fixtures
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Report SymPy fixture drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SymPy
+        run: python3 -m pip install sympy
+
+      - name: Regenerate fixtures
+        run: python3 tools/generate_differential_fixtures.py
+
+      - name: Capture drift
+        if: always()
+        run: git diff -- tests/fixtures/differential > differential.diff
+
+      - name: Publish drift summary
+        if: always()
+        run: |
+          {
+            printf '### Differential fixture drift\n\n'
+            if [ -s differential.diff ]; then
+              printf 'The current SymPy release produces fixture changes.\n\n'
+              printf '```diff\n'
+              cat differential.diff
+              printf '```\n'
+            else
+              printf 'No fixture changes.\n'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

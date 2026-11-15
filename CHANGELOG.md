@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 591 source test functions and 1607 assertion sites, with 686 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 594 source test functions and 1612 assertion sites, with 689 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -177,3 +177,6 @@ Initial kernel work.
 - Marked `ExprView`, `ErrorKind`, and `NumError` as non-exhaustive.
 - Added a benchmark compile gate to CI and a scheduled benchmark workflow that publishes output and enforces timing budgets.
 - Fixed the univariate randomized linear-factor generator to use a constant remainder and added a shape regression test.
+- Added committed SymPy-generated differential fixtures for algebra, calculus, and linear algebra with semantic comparison tests.
+- Added the offline fixture generator and a scheduled drift-reporting workflow.
+- Documented the test layers, fixture format, regeneration steps, and long property runs.

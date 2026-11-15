@@ -34,6 +34,7 @@ The first build compiles the vendored numeric libraries and can take several min
 - [Structured IR](docs/ir.md)
 - [Roadmap](docs/roadmap.md)
 - [Maturity](docs/maturity.md)
+- [Testing](docs/testing.md)
 
 ## Status
 
