@@ -188,3 +188,6 @@ Initial kernel work.
 - Added exact differential value fixtures for number theory and statistics, including factorization lists, divisors, totients, sigma, primes, Fibonacci, binomial coefficients, modular arithmetic, means, medians, variances, frequencies, and modes.
 - Added unevaluated fixtures for empty and symbolic statistics inputs plus invalid number theory arguments.
 - Documented exact value fixture records.
+- Pinned the scheduled differential workflow to SymPy 1.14.0 and made fixture drift fail the job.
+- Added fixture line and field-count validation with useful diagnostics.
+- Clarified the README whitespace rule and pinned the documented SymPy version.

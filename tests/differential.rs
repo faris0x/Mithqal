@@ -8,12 +8,40 @@ const FAILURES: &str = include_str!("fixtures/differential/failures.tsv");
 const NUMBER_THEORY: &str = include_str!("fixtures/differential/numbertheory.tsv");
 const STATISTICS: &str = include_str!("fixtures/differential/statistics.tsv");
 
-fn records(source: &'static str) -> Vec<Vec<&'static str>> {
+#[derive(Debug)]
+struct Record {
+    line: usize,
+    fields: Vec<&'static str>,
+}
+
+impl core::ops::Deref for Record {
+    type Target = [&'static str];
+
+    fn deref(&self) -> &Self::Target {
+        &self.fields
+    }
+}
+
+fn records(source: &'static str) -> Vec<Record> {
     source
         .lines()
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .map(|line| line.split('\t').collect())
+        .enumerate()
+        .filter(|(_, line)| !line.is_empty() && !line.starts_with('#'))
+        .map(|(index, line)| Record {
+            line: index + 1,
+            fields: line.split('\t').collect(),
+        })
         .collect()
+}
+
+fn expect_fields(record: &Record, expected: usize, context: &str) {
+    assert_eq!(
+        record.len(),
+        expected,
+        "{context} line {}: expected {expected} fields, found {:?}",
+        record.line,
+        record.fields
+    );
 }
 
 fn evaluate(session: &mut Session, source: &str) -> ExprId {
@@ -69,6 +97,7 @@ fn assert_equivalent_values(session: &mut Session, left: ExprId, right: ExprId, 
 fn differential_algebra_fixtures() {
     for record in records(ALGEBRA) {
         let mut session = Session::new();
+        expect_fields(&record, 3, "algebra.tsv");
         match record[0] {
             "factor" => {
                 let source = record[1];
@@ -109,6 +138,11 @@ fn differential_algebra_fixtures() {
 fn differential_calculus_fixtures() {
     for record in records(CALCULUS) {
         let mut session = Session::new();
+        match record[0] {
+            "diff" | "integrate" => expect_fields(&record, 4, "calculus.tsv"),
+            "limit" => expect_fields(&record, 5, "calculus.tsv"),
+            kind => panic!("unknown calculus fixture kind {kind}"),
+        }
         match record[0] {
             "diff" => {
                 let variable = record[1];
@@ -161,6 +195,7 @@ fn differential_calculus_fixtures() {
 fn differential_linear_algebra_fixtures() {
     for record in records(LINALG) {
         let mut session = Session::new();
+        expect_fields(&record, 3, "linalg.tsv");
         match record[0] {
             "det" => {
                 let matrix = record[1];
@@ -245,7 +280,7 @@ fn probe_value(session: &mut Session, assignments: &str, expression: &str) -> f6
 #[test]
 fn differential_numeric_probes() {
     for record in records(PROBES) {
-        assert_eq!(record.len(), 4, "malformed probe record: {record:?}");
+        expect_fields(&record, 4, "probes.tsv");
         let mut session = Session::new();
         let actual = probe_value(&mut session, record[1], record[2]);
         let expected: f64 = record[3].parse().unwrap();
@@ -262,7 +297,7 @@ fn differential_numeric_probes() {
 #[test]
 fn differential_failure_fixtures() {
     for record in records(FAILURES) {
-        assert_eq!(record.len(), 3, "malformed failure record: {record:?}");
+        expect_fields(&record, 3, "failures.tsv");
         let mut session = Session::new();
         match record[0] {
             "unevaluated" => {
@@ -300,7 +335,7 @@ fn differential_exact_value_fixtures() {
         .into_iter()
         .chain(records(STATISTICS))
     {
-        assert_eq!(record.len(), 3, "malformed exact record: {record:?}");
+        expect_fields(&record, 3, "exact value fixture");
         assert_eq!(record[0], "equal", "unexpected exact record kind");
         let mut session = Session::new();
         let actual = evaluate(&mut session, record[1]);

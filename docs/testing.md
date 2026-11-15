@@ -51,7 +51,7 @@ equal<TAB>frequency([1,1,2])<TAB>[[1,2],[2,1]]
 The generator is developer tooling and is not part of the crate build. It requires SymPy outside the Rust dependency graph.
 
 ```text
-python3 -m pip install sympy
+python3 -m pip install sympy==1.14.0
 python3 tools/generate_differential_fixtures.py
 ```
 
