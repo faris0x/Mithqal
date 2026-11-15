@@ -41,7 +41,7 @@ discriminant(x^2-4,x)                 -> 16
 
 ## Factoring coverage
 
-`factor` handles numeric content, common monomial content, univariate rational roots, univariate square-free decomposition, bounded univariate Hensel lifting, differences of squares, perfect square trinomials, sums of cubes, differences of cubes, homogeneous bivariate forms with rational ratio roots, bivariate quadratics with recursive coefficient constants, evaluation and interpolation for linear splits, multivariate power extraction, and grouping for four to eight even-term multivariate polynomials.
+`factor` handles numeric content, common monomial content, univariate rational roots, univariate square-free decomposition, bounded univariate Hensel lifting, differences of squares, perfect square trinomials, sums of cubes, differences of cubes, homogeneous bivariate forms with rational ratio roots, bivariate quadratics with recursive coefficient constants, evaluation and interpolation for linear splits, three-variable interpolation, multivariate power extraction, bivariate coefficient content extraction, and grouping for four to eight even-term multivariate polynomials.
 
 Univariate square-free decomposition uses polynomial gcds against the derivative. Repeated irreducible factors are separated and emitted with their multiplicities.
 
@@ -57,7 +57,11 @@ The multivariate power stage extracts powers from two through twelve of bivariat
 
 A polynomial-leading quadratic stage handles bivariate quadratics with a general polynomial leading coefficient in one variable. It factors the discriminant when it is a perfect square, builds the two linear factors, distributes factors of the leading polynomial by exact coefficient division, normalises the result, and verifies the product. The stage also retries with the two variable orientations.
 
-The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, evaluation and interpolation, power extraction through twelve, and grouping. Reserved stages cover evaluation and interpolation over three or more variables and a broader multivariate Hensel hook.
+A three-variable interpolation stage factors polynomials that split into linear factors in one variable with polynomial coefficients in the other two. It samples a rational grid, factors each univariate slice, interpolates each root as a bivariate polynomial, rebuilds the factors, and verifies the product.
+
+A bivariate coefficient-content stage extracts a common polynomial factor across all coefficients of one variable. It computes the gcd of the coefficient polynomials and divides every coefficient by it.
+
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, bivariate coefficient content, evaluation and interpolation in two and three variables, power extraction through twelve, and grouping. Reserved stages cover a broader multivariate Hensel hook.
 
 Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 

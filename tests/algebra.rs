@@ -462,3 +462,33 @@ fn non_monic_multivariate_powers() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn three_variable_interpolation_factorization() {
+    assert_eq!(text("factor((x+y+z)*(x+y^2+z^2))"), "(x+y+z)*(x+y^2+z^2)");
+    assert_eq!(text("factor((x+y*z)*(x+y^2+z^2))"), "(x+y*z)*(x+y^2+z^2)");
+    assert_eq!(
+        text("factor((x+y+z)*(x+y^2+z^2)*(x+y^3+z^3))"),
+        "(x+y+z)*(x+y^2+z^2)*(x+y^3+z^3)"
+    );
+    assert_eq!(text("factor((x+y+z)*(x-y+z))"), "(x+y+z)*(x+z-y)");
+    assert_eq!(text("factor((x+y+z)^2)"), "(x+y+z)^2");
+    for source in [
+        "(x+y+z)*(x+y^2+z^2)",
+        "(x+y*z)*(x+y^2+z^2)",
+        "(x+y+z)*(x+y^2+z^2)*(x+y^3+z^3)",
+        "(x+y+z)*(x-y+z)",
+        "(x+y+z)^2",
+    ] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn bivariate_coefficient_content_factorization() {
+    assert_eq!(text("factor((y^2+1)*(x^2+y*x+1))"), "(1+y^2)*(1+x^2+x*y)");
+    assert_eq!(text("factor((y+1)*(x+y)^2)"), "(1+y)*(x+y)^2");
+    for source in ["(y^2+1)*(x^2+y*x+1)", "(y+1)*(x+y)^2"] {
+        assert_factor_matches(source);
+    }
+}
