@@ -1287,6 +1287,27 @@ pub(crate) fn factor(arena: &mut Arena, expression: ExprId, context: &Context) -
     Some(product(arena, &factors, context))
 }
 
+pub(super) fn factor_dense_components(coefficients: &[Rat]) -> Option<Vec<(Vec<Rat>, u32)>> {
+    let coefficients = trim(coefficients.to_vec());
+    if coefficients.len() <= 1 {
+        return Some(Vec::new());
+    }
+    let components = factor_dense_square_free(&coefficients)?;
+    let mut factors = Vec::new();
+    for (component, multiplicity) in components {
+        if component.len() > 4
+            && let Some(parts) = hensel::factor_integer_polynomial(&component)
+        {
+            for part in parts {
+                factors.push((part, multiplicity));
+            }
+            continue;
+        }
+        factors.push((component, multiplicity));
+    }
+    Some(factors)
+}
+
 fn push_dense_factor(
     arena: &mut Arena,
     variable: SymbolId,

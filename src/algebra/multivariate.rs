@@ -10,14 +10,16 @@
 //! - Recursive coefficient factorisation for bivariate quadratics.
 //! - Evaluation and interpolation for bivariate polynomials that split into
 //!   linear factors with polynomial coefficients, including a constant rational
-//!   leading coefficient.
-//! - Power extraction from two through twelve for monic bivariate polynomials.
-//! - Polynomial-leading quadratics whose leading coefficient is a monomial.
+//!   leading coefficient and both variable orientations.
+//! - Power extraction from two through twelve for bivariate polynomials,
+//!   including constant rational leading coefficients.
+//! - Polynomial-leading quadratics with a general polynomial leading
+//!   coefficient.
 //! - Even-term grouping.
 //!
 //! Reserved stages for the full algorithm:
 //!
-//! - General polynomial leading coefficients.
+//! - Evaluation and interpolation over three or more variables.
 //! - A multivariate Hensel hook beyond the univariate integer path.
 
 use super::*;
@@ -284,8 +286,22 @@ impl<'a> MultivariateFactorizer<'a> {
 
     fn factor_polynomial_leading_quadratic(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
         let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        if let Some(factors) =
+            self.factor_polynomial_leading_quadratic_orientation(polynomial, horizontal, vertical)
+        {
+            return Some(factors);
+        }
+        self.factor_polynomial_leading_quadratic_orientation(polynomial, vertical, horizontal)
+    }
+
+    fn factor_polynomial_leading_quadratic_orientation(
+        &mut self,
+        polynomial: &Poly,
+        horizontal: SymbolId,
+        vertical: SymbolId,
+    ) -> Option<Vec<ExprId>> {
         let (leading, linear, constant) = quadratic_coefficients(polynomial, horizontal, vertical)?;
-        if leading.terms.len() != 1 || leading.is_constant() {
+        if leading.is_constant() {
             return None;
         }
         let four = Poly::constant(Rat::from_i64(4, 1).ok()?);
@@ -296,24 +312,85 @@ impl<'a> MultivariateFactorizer<'a> {
         let linear_term = Poly::variable(horizontal).mul(&two_leading);
         let first = linear_term.add(&linear).sub(&root);
         let second = linear_term.add(&linear).add(&root);
-        let (_, first) = extract_common_factor(&first)?;
-        let (_, second) = extract_common_factor(&second)?;
-        if first.mul(&second) != *polynomial {
-            return None;
+        let leading_coefficients = leading.dense_in(vertical)?;
+        let mut attempts: Vec<(Poly, Poly)> = Vec::new();
+        if let Some(quotient) =
+            divide_linear_by_dense(&first, &leading_coefficients, horizontal, vertical)
+        {
+            attempts.push((quotient, second.clone()));
         }
-        Some(vec![
-            expression_from_poly(self.arena, &first, &self.context),
-            expression_from_poly(self.arena, &second, &self.context),
-        ])
+        if let Some(quotient) =
+            divide_linear_by_dense(&second, &leading_coefficients, horizontal, vertical)
+        {
+            attempts.push((quotient, first.clone()));
+        }
+        if let Some(components) = super::factor_dense_components(&leading_coefficients) {
+            let mut left = first.clone();
+            let mut right = second.clone();
+            let mut distributed = true;
+            for (component, multiplicity) in components {
+                for _ in 0..multiplicity {
+                    if let Some(quotient) =
+                        divide_linear_by_dense(&left, &component, horizontal, vertical)
+                    {
+                        left = quotient;
+                    } else if let Some(quotient) =
+                        divide_linear_by_dense(&right, &component, horizontal, vertical)
+                    {
+                        right = quotient;
+                    } else {
+                        distributed = false;
+                        break;
+                    }
+                }
+                if !distributed {
+                    break;
+                }
+            }
+            if distributed {
+                attempts.push((left, right));
+            }
+        }
+        let quarter = Rat::from_i64(1, 4).ok()?;
+        for (left, right) in attempts {
+            let left = left.scale(&quarter);
+            let (_, left) = extract_common_factor(&left)?;
+            let (_, right) = extract_common_factor(&right)?;
+            if left.mul(&right) == *polynomial {
+                return Some(vec![
+                    expression_from_poly(self.arena, &left, &self.context),
+                    expression_from_poly(self.arena, &right, &self.context),
+                ]);
+            }
+        }
+        None
     }
 
     fn factor_square_free_stage(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
         let (horizontal, vertical) = bivariate_variables(polynomial)?;
-        let degree = x_degree(polynomial, horizontal);
-        if degree < 2 || !is_monic_in(polynomial, horizontal) {
+        if let Some(factors) = self.factor_power_orientation(polynomial, horizontal, vertical) {
+            return Some(factors);
+        }
+        self.factor_power_orientation(polynomial, vertical, horizontal)
+    }
+
+    fn factor_power_orientation(
+        &mut self,
+        polynomial: &Poly,
+        horizontal: SymbolId,
+        vertical: SymbolId,
+    ) -> Option<Vec<ExprId>> {
+        let leading = constant_leading_coefficient(polynomial, horizontal)?;
+        let scaling = if leading.is_one() {
+            polynomial.clone()
+        } else {
+            polynomial.scale(&Rat::one().div(&leading).ok()?)
+        };
+        let degree = x_degree(&scaling, horizontal);
+        if degree < 2 || !is_monic_in(&scaling, horizontal) {
             return None;
         }
-        let bound = total_degree(polynomial);
+        let bound = total_degree(&scaling);
         if bound > 24 {
             return None;
         }
@@ -331,7 +408,7 @@ impl<'a> MultivariateFactorizer<'a> {
                         continue;
                     };
                     let (sample_degree, coefficients) =
-                        substitute_vertical(polynomial, horizontal, vertical, &value);
+                        substitute_vertical(&scaling, horizontal, vertical, &value);
                     if sample_degree != degree {
                         continue;
                     }
@@ -381,15 +458,20 @@ impl<'a> MultivariateFactorizer<'a> {
                 for _ in 0..power {
                     expansion = expansion.mul(&root);
                 }
-                if expansion != *polynomial {
+                if expansion != scaling {
                     continue;
                 }
                 let expression = expression_from_poly(self.arena, &root, &self.context);
                 let exponent = self.arena.intern_int(Int::from_u64(power as u64));
-                return Some(vec![
+                let mut factors = Vec::new();
+                if !leading.is_one() {
+                    factors.push(expression_from_rat(self.arena, &leading));
+                }
+                factors.push(
                     self.arena
                         .intern_call(self.context.power, &[expression, exponent]),
-                ]);
+                );
+                return Some(factors);
             }
         }
         None
@@ -397,6 +479,20 @@ impl<'a> MultivariateFactorizer<'a> {
 
     fn factor_evaluation_interpolation_stage(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
         let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        if let Some(factors) =
+            self.factor_evaluation_interpolation_orientation(polynomial, horizontal, vertical)
+        {
+            return Some(factors);
+        }
+        self.factor_evaluation_interpolation_orientation(polynomial, vertical, horizontal)
+    }
+
+    fn factor_evaluation_interpolation_orientation(
+        &mut self,
+        polynomial: &Poly,
+        horizontal: SymbolId,
+        vertical: SymbolId,
+    ) -> Option<Vec<ExprId>> {
         let degree = x_degree(polynomial, horizontal);
         if !(2..=6).contains(&degree) {
             return None;
@@ -526,6 +622,60 @@ impl<'a> MultivariateFactorizer<'a> {
         // Reserved for Hensel lifting over the rationals.
         None
     }
+}
+
+fn split_linear_polynomial(
+    polynomial: &Poly,
+    horizontal: SymbolId,
+    vertical: SymbolId,
+) -> Option<(Poly, Poly)> {
+    let mut coefficient = Poly::zero();
+    let mut constant = Poly::zero();
+    for (monomial, value) in &polynomial.terms {
+        let horizontal_power = monomial.degree_in(horizontal);
+        let vertical_power = monomial.degree_in(vertical);
+        let target = match horizontal_power {
+            1 => &mut coefficient,
+            0 => &mut constant,
+            _ => return None,
+        };
+        let mut powers = Vec::new();
+        if vertical_power > 0 {
+            powers.push((vertical, vertical_power));
+        }
+        let monomial = Monomial { powers };
+        match target.terms.get_mut(&monomial) {
+            Some(existing) => *existing = existing.add(value),
+            None => {
+                target.terms.insert(monomial, value.clone());
+            }
+        }
+    }
+    Some((coefficient, constant))
+}
+
+fn divide_linear_by_dense(
+    factor: &Poly,
+    divisor: &[Rat],
+    horizontal: SymbolId,
+    vertical: SymbolId,
+) -> Option<Poly> {
+    let (coefficient, constant) = split_linear_polynomial(factor, horizontal, vertical)?;
+    let coefficient = coefficient.dense_in(vertical)?;
+    let constant = constant.dense_in(vertical)?;
+    let (coefficient, coefficient_remainder) = dense_div_rem(&coefficient, divisor)?;
+    if !coefficient_remainder.is_empty() {
+        return None;
+    }
+    let (constant, constant_remainder) = dense_div_rem(&constant, divisor)?;
+    if !constant_remainder.is_empty() {
+        return None;
+    }
+    Some(
+        Poly::variable(horizontal)
+            .mul(&Poly::from_dense(vertical, &coefficient))
+            .add(&Poly::from_dense(vertical, &constant)),
+    )
 }
 
 fn quadratic_coefficients(

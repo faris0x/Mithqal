@@ -83,6 +83,9 @@ Initial kernel work.
 - Restricted Hensel lifting to degree four and above, added early irreducibility exit from a square-free prime reduction, and started modular divisor search at degree two.
 - Raised multivariate power extraction to degree twelve.
 - Added polynomial-leading quadratic factoring for monomial leading coefficients.
+- Generalized polynomial-leading quadratics to distribute arbitrary polynomial leading coefficients into the two linear factors.
+- Added variable-orientation retries to interpolation and polynomial-leading stages.
+- Extended multivariate power extraction to constant rational leading coefficients.
 - Removed per-term polynomial allocation from polynomial-leading coefficient extraction.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.
@@ -94,4 +97,4 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to more than 640 test functions and more than 1510 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.
+- Expanded the suite to more than 640 test functions and more than 1520 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, and property corpora.

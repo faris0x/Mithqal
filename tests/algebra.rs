@@ -436,3 +436,29 @@ fn deep_multivariate_powers() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn general_polynomial_leading_splitting() {
+    assert_eq!(
+        text("factor(((y^2+y)*x+1)*(x+y+2))"),
+        "(1+x*y+x*y^2)*(2+x+y)"
+    );
+    assert_eq!(text("factor(((y+1)*x+y^2)*(x+y))"), "(x+y)*(x+y^2+x*y)");
+    assert_eq!(text("factor(((y^2+1)*x+y)*(x+y+1))"), "(1+x+y)*(x+y+x*y^2)");
+    for source in [
+        "((y^2+y)*x+1)*(x+y+2)",
+        "((y+1)*x+y^2)*(x+y)",
+        "((y^2+1)*x+y)*(x+y+1)",
+    ] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn non_monic_multivariate_powers() {
+    assert_eq!(text("factor((2*(x+y^2))^3)"), "8*(x+y^2)^3");
+    assert_eq!(text("factor((3*(x^2+x*y+1))^2)"), "9*(1+x^2+x*y)^2");
+    for source in ["(2*(x+y^2))^3", "(3*(x^2+x*y+1))^2"] {
+        assert_factor_matches(source);
+    }
+}

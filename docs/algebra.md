@@ -51,13 +51,13 @@ Homogeneous bivariate forms are factored by solving their ratio polynomial over 
 
 Bivariate quadratics are evaluated as a polynomial in one variable with coefficients in the other. The homogeneous part is factored first, then the constant coefficients of the two linear factors are solved and checked. Square homogeneous parts use a scalar ratio equation, which also handles distinct linear constants.
 
-The evaluation and interpolation stage factors monic bivariate polynomials that split into linear factors with polynomial coefficients. It also handles a constant rational leading coefficient by scaling to monic form and restoring the scalar on a factor. It samples the vertical variable, factors each univariate slice, interpolates each root branch, and verifies the reconstructed product exactly.
+The evaluation and interpolation stage factors bivariate polynomials that split into linear factors with polynomial coefficients. It handles a constant rational leading coefficient by scaling to monic form and restoring the scalar on a factor. It samples the vertical variable, factors each univariate slice, interpolates each root branch, and verifies the reconstructed product exactly. The stage retries with the two variable orientations.
 
-The multivariate power stage extracts powers from two through twelve of bivariate polynomials by taking exact univariate roots of sampled slices, interpolating the root coefficients, and verifying the full power.
+The multivariate power stage extracts powers from two through twelve of bivariate polynomials by taking exact univariate roots of sampled slices, interpolating the root coefficients, and verifying the full power. Constant rational leading coefficients are scaled to monic form and restored as a scalar factor.
 
-A polynomial-leading quadratic stage handles bivariate quadratics whose leading coefficient in one variable is a monomial in the other. It factors the discriminant when it is a perfect square and normalises the resulting linear factors.
+A polynomial-leading quadratic stage handles bivariate quadratics with a general polynomial leading coefficient in one variable. It factors the discriminant when it is a perfect square, builds the two linear factors, distributes factors of the leading polynomial by exact coefficient division, normalises the result, and verifies the product. The stage also retries with the two variable orientations.
 
-The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, evaluation and interpolation, power extraction through twelve, and grouping. Reserved stages cover general polynomial leading coefficients and a broader multivariate Hensel hook.
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, evaluation and interpolation, power extraction through twelve, and grouping. Reserved stages cover evaluation and interpolation over three or more variables and a broader multivariate Hensel hook.
 
 Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 
