@@ -678,3 +678,12 @@ fn generated_multivariate_factor_products() {
         }
     }
 }
+
+#[test]
+fn recursive_quadratic_rejects_wrong_constant_pair() {
+    assert_eq!(
+        text("factor((1/2)*(x+2*y-3)*(x-2*y-4))"),
+        "(1/2)*(-4+x-2*y)*(-3+x+2*y)"
+    );
+    assert_factor_matches("(1/2)*(x+2*y-3)*(x-2*y-4)");
+}

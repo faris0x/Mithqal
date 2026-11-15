@@ -52,6 +52,73 @@ fn polynomial(rng: &mut Rng, variables: &[&str], maximum_degree: i64) -> String 
     }
 }
 
+fn dense_polynomial(rng: &mut Rng, variables: &[&str], maximum_degree: i64) -> String {
+    let terms = rng.range(1, 5) as usize;
+    let mut parts = Vec::with_capacity(terms);
+    let mut has_variable = false;
+    for term_index in 0..terms {
+        let coefficient = rng.range(-5, 5);
+        if coefficient == 0 {
+            continue;
+        }
+        let mut factors = Vec::new();
+        for (index, variable) in variables.iter().enumerate() {
+            let degree = if term_index == 0 && index == 0 {
+                rng.range(1, maximum_degree)
+            } else {
+                rng.range(0, maximum_degree)
+            };
+            if degree > 0 {
+                factors.push(format!("{variable}^{degree}"));
+                has_variable = true;
+            }
+        }
+        if factors.is_empty() {
+            parts.push(coefficient.to_string());
+        } else {
+            parts.push(format!("{coefficient}*{}", factors.join("*")));
+        }
+    }
+    if !has_variable {
+        parts.push("x".to_string());
+    }
+    parts.join("+")
+}
+
+fn factor_units(session: &Session, value: mithqal::ExprId) -> usize {
+    match session.view(value).unwrap() {
+        ExprView::Integer(_) | ExprView::Rational(_) | ExprView::Real(_) => 0,
+        ExprView::Symbol(_) => 1,
+        ExprView::Call { head, args } => {
+            let name = match session.view(head).unwrap() {
+                ExprView::Symbol(name) => name,
+                _ => return 1,
+            };
+            match name {
+                "times" => args
+                    .iter()
+                    .map(|argument| factor_units(session, *argument))
+                    .sum(),
+                "negate" if args.len() == 1 => factor_units(session, args[0]),
+                "power" if args.len() == 2 => {
+                    let exponent = match session.view(args[1]).unwrap() {
+                        ExprView::Integer(value) => value.to_i64().unwrap_or(1).max(1) as usize,
+                        _ => 1,
+                    };
+                    factor_units(session, args[0]) * exponent
+                }
+                _ => 1,
+            }
+        }
+    }
+}
+
+fn linear_x_factor(rng: &mut Rng, variables: &[&str]) -> String {
+    let rest = &variables[1..];
+    let remainder = dense_polynomial(rng, rest, 1);
+    format!("x+({remainder})")
+}
+
 fn format(session: &Session, value: mithqal::ExprId) -> String {
     session.format_infix(value).unwrap()
 }
@@ -72,7 +139,7 @@ fn random_polynomial_factorisation_preserves_the_polynomial() {
         let source = if univariate {
             polynomial(&mut rng, &["x"], 5)
         } else {
-            polynomial(&mut rng, &["x", "y"], 3)
+            dense_polynomial(&mut rng, &["x", "y"], 3)
         };
         let mut session = Session::new();
         let factored = session
@@ -84,7 +151,12 @@ fn random_polynomial_factorisation_preserves_the_polynomial() {
         let target = session
             .eval_statement(&format!("expand({source})"))
             .unwrap();
-        assert_eq!(expanded, target, "seed {seed}, source {source}");
+        assert_eq!(
+            expanded,
+            target,
+            "seed {seed}, source {source}, factored {}",
+            format(&session, factored)
+        );
     }
 }
 
@@ -248,5 +320,64 @@ fn random_two_by_two_determinants_are_multiplicative() {
             &format!("det(matmul([[{a},{b}],[{c},{d}]],[[{e},{f}],[{g},{h}]]))"),
         );
         assert_eq!(actual, expected, "seed {seed}");
+    }
+}
+
+#[test]
+fn random_factor_products_factor_nontrivially() {
+    for seed in 0..cases() {
+        let mut rng = Rng::new(seed ^ 0x51ed_270b);
+        let variables: &[&str] = match seed % 3 {
+            0 => &["x"],
+            1 => &["x", "y"],
+            _ => &["x", "y", "z"],
+        };
+        let count = rng.range(2, 3) as usize;
+        let mut factors = Vec::with_capacity(count + 1);
+        for _ in 0..count {
+            factors.push(linear_x_factor(&mut rng, variables));
+        }
+        if seed % 4 == 0 {
+            factors.push(factors[0].clone());
+        }
+        let content = match seed % 5 {
+            0 => "2*",
+            1 => "(1/2)*",
+            2 => "3*",
+            _ => "",
+        };
+        let source = format!(
+            "{content}{}",
+            factors
+                .iter()
+                .map(|factor| format!("({factor})"))
+                .collect::<Vec<_>>()
+                .join("*")
+        );
+        let mut session = Session::new();
+        let factored = session
+            .eval_statement(&format!("factor({source})"))
+            .unwrap();
+        let expanded = session
+            .eval_statement(&format!("expand({})", format(&session, factored)))
+            .unwrap();
+        let target = session
+            .eval_statement(&format!("expand({source})"))
+            .unwrap();
+        assert_eq!(
+            expanded,
+            target,
+            "seed {seed}, source {source}, factored {}",
+            format(&session, factored)
+        );
+        assert_ne!(
+            factored, target,
+            "seed {seed}, factor returned the expanded source for {source}"
+        );
+        assert!(
+            factor_units(&session, factored) >= 2,
+            "seed {seed}, source {source}, factored {}",
+            format(&session, factored)
+        );
     }
 }

@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 583 source test functions and 1587 assertion sites, with 678 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 589 source test functions and 1604 assertion sites, with 684 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -159,3 +159,8 @@ Initial kernel work.
 - Reconciled the public API description of hidden internal modules.
 - Updated the evaluator and algebra module documentation to match the current implementation.
 - Extended the documentation check to reject the prior stale module descriptions.
+- Strengthened randomized algebra tests with dense multivariate generators, generated factor products, repeated factors, rational content, non-trivial factorisation checks, and a CI case count of 128.
+- Added randomized interval containment, complex product and quotient, and significance precision and accuracy tests.
+- Added product verification to the recursive quadratic stage after a property test exposed a wrong constant pair.
+- Fixed repeated-root multiplicity collection in the recursive quadratic stage.
+- Added a deterministic regression test for the recursive quadratic constant-pair bug.

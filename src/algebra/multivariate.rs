@@ -245,9 +245,12 @@ impl<'a> MultivariateFactorizer<'a> {
             if first_constant.mul(&second_constant) != quadratic.constant.mul(&scalar) {
                 return None;
             }
-            let mut factors = Vec::new();
             let first_factor = first.add(&Poly::constant(first_constant));
             let second_factor = second.scale(&scalar).add(&Poly::constant(second_constant));
+            if first_factor.mul(&second_factor) != *polynomial {
+                return None;
+            }
+            let mut factors = Vec::new();
             push_factor(self.arena, &self.context, &mut factors, first_factor, 1);
             push_factor(self.arena, &self.context, &mut factors, second_factor, 1);
             return Some(factors);
@@ -277,12 +280,23 @@ impl<'a> MultivariateFactorizer<'a> {
         if roots.1.len() > 1 || roots.0.is_empty() {
             return None;
         }
+        let mut product = Poly::constant(scalar.clone());
+        let mut collected = Vec::new();
+        for (root, multiplicity) in roots.0 {
+            let factor = first.add(&Poly::constant(root.neg()));
+            for _ in 0..multiplicity {
+                product = product.mul(&factor);
+                merge_poly_factor(&mut collected, factor.clone());
+            }
+        }
+        if product != *polynomial {
+            return None;
+        }
         let mut factors = Vec::new();
         if !scalar.is_one() {
             factors.push(expression_from_rat(self.arena, &scalar));
         }
-        for (root, multiplicity) in roots.0 {
-            let factor = first.add(&Poly::constant(root.neg()));
+        for (factor, multiplicity) in collected {
             push_factor(
                 self.arena,
                 &self.context,
