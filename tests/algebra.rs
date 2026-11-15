@@ -558,3 +558,15 @@ fn wide_hensel_coefficients() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn five_variable_interpolation_factorization() {
+    assert_eq!(
+        text("factor((x+a+b+c+d)*(x+a^2+b^2+c^2+d^2))"),
+        "(a+b+c+d+x)*(x+a^2+b^2+c^2+d^2)"
+    );
+    assert_eq!(text("factor((x+a+b+c+d)^2)"), "(a+b+c+d+x)^2");
+    for source in ["(x+a+b+c+d)*(x+a^2+b^2+c^2+d^2)", "(x+a+b+c+d)^2"] {
+        assert_factor_matches(source);
+    }
+}

@@ -41,7 +41,7 @@ discriminant(x^2-4,x)                 -> 16
 
 ## Factoring coverage
 
-`factor` handles numeric content, common monomial content, univariate rational roots, univariate square-free decomposition, bounded univariate Hensel lifting, differences of squares, perfect square trinomials, sums of cubes, differences of cubes, homogeneous bivariate forms with rational ratio roots, bivariate quadratics with recursive coefficient constants, evaluation and interpolation for linear splits, three-variable interpolation, multivariate power extraction, bivariate coefficient content extraction, and grouping for four to eight even-term multivariate polynomials.
+`factor` handles numeric content, common monomial content, univariate rational roots, univariate square-free decomposition, bounded univariate Hensel lifting, differences of squares, perfect square trinomials, sums of cubes, differences of cubes, homogeneous bivariate forms with rational ratio roots, bivariate quadratics with recursive coefficient constants, generic interpolation for two through five variables, multivariate power extraction, bivariate coefficient content extraction, and grouping for four to eight even-term multivariate polynomials.
 
 Univariate square-free decomposition uses polynomial gcds against the derivative. Repeated irreducible factors are separated and emitted with their multiplicities.
 
@@ -51,13 +51,13 @@ Homogeneous bivariate forms are factored by solving their ratio polynomial over 
 
 Bivariate quadratics are evaluated as a polynomial in one variable with coefficients in the other. The homogeneous part is factored first, then the constant coefficients of the two linear factors are solved and checked. Square homogeneous parts use a scalar ratio equation, which also handles distinct linear constants.
 
-The evaluation and interpolation stage factors bivariate polynomials that split into linear factors with polynomial coefficients. It handles a constant rational leading coefficient by scaling to monic form and restoring the scalar on a factor. It samples the vertical variable, factors each univariate slice, interpolates each root branch, and verifies the reconstructed product exactly. The stage retries with the two variable orientations.
+The generic interpolation stage handles two through five variables. It factors polynomials that split into linear factors in one variable with polynomial coefficients in the remaining variables. Constant rational leading coefficients are scaled to monic form and restored on a factor. Samples use the exact root-degree bound, roots are interpolated with tensor-product interpolation, and the product is verified exactly. The stage retries variable orientations, sample bases, and root orderings.
 
 The multivariate power stage extracts powers from two through twelve of bivariate polynomials by taking exact univariate roots of sampled slices, interpolating the root coefficients, and verifying the full power. Constant rational leading coefficients are scaled to monic form and restored as a scalar factor.
 
 A polynomial-leading quadratic stage handles bivariate quadratics with a general polynomial leading coefficient in one variable. It factors the discriminant when it is a perfect square, builds the two linear factors, distributes factors of the leading polynomial by exact coefficient division, normalises the result, and verifies the product. The stage also retries with the two variable orientations.
 
-A generic multivariate interpolation stage factors polynomials in three or four variables that split into linear factors in one variable with polynomial coefficients in the remaining variables. It samples rational grids, factors each univariate slice, builds each root with a tensor Lagrange basis, rebuilds the factors, and verifies the product.
+
 
 A bivariate coefficient-content stage extracts a common polynomial factor across all coefficients of one variable. It computes the gcd of the coefficient polynomials and divides every coefficient by it.
 
@@ -65,7 +65,7 @@ A bivariate specialization root-lift stage samples univariate slices, interpolat
 
 A bivariate Hensel stage lifts a coprime factor pair from a univariate specialization through coefficient orders in the second variable. It solves each correction with a Bezout identity, rebuilds the two bivariate factors, verifies the product, and recurses. This handles non-linear factors such as quadratic and cubic factors.
 
-The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, bivariate coefficient content, specialization root lifting, bivariate Hensel lifting, bivariate evaluation and interpolation, generic interpolation in three or four variables, power extraction through twelve, and grouping. Reserved stages cover interpolation over more than four variables and general multivariate factorisation beyond the staged bounds.
+The multivariate layer is staged in `src/algebra/multivariate.rs`. The current stages cover binary quadratic forms, homogeneous bivariate forms, recursive bivariate quadratics, polynomial-leading quadratics, bivariate coefficient content, generic interpolation in two through five variables, power extraction through twelve, grouping, bivariate Hensel lifting, and specialization root lifting. Reserved stages cover interpolation over more than five variables and general multivariate factorisation beyond the staged bounds.
 
 Unsupported factorizations stay unchanged. Full general multivariate factorization remains future work.
 

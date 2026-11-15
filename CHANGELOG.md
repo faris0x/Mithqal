@@ -95,6 +95,11 @@ Initial kernel work.
 - Added a fast 128 bit Hensel path with GMP fallback for larger coefficients.
 - Removed a coefficient-bound allocation in the Hensel path.
 - Replaced the separate three-variable and four-variable interpolation stages with one generic grid driver.
+- Generalized the generic interpolation driver to two through five variables with constant leading coefficient scaling.
+- Replaced per-root Lagrange basis reconstruction with tensor-product interpolation.
+- Started interpolation grids at the exact root-degree bound, eliminating wasted smaller-grid attempts.
+- Reordered grouping, Hensel, and root-lift stages so cheap and complete stages run before expensive fallbacks.
+- Added factorisation benchmarks for bivariate Hensel, wide Hensel, four-variable, and five-variable cases.
 - Removed per-term polynomial allocation from polynomial-leading coefficient extraction.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.

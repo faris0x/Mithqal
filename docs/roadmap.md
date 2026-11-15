@@ -40,7 +40,7 @@ Included:
 
 Excluded:
 
-- Full multivariate factorization beyond the staged coverage and interpolation above four variables.
+- Full multivariate factorization beyond the staged coverage and interpolation above five variables.
 - Further matrix decompositions and wider assumption domains.
 - Strings, files, and sets beyond `emptyset`.
 - A command line interface.

@@ -95,6 +95,35 @@ fn main() {
     });
 
     let mut cold_arena = Arena::new();
+    measure("cold factor bivariate hensel", 2_000, || {
+        let parsed = parse_statement(&mut cold_arena, "factor((x^2+y)*(x^2+y^2))").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold factor wide hensel", 1_000, || {
+        let parsed = parse_statement(
+            &mut cold_arena,
+            "factor(x^4+30000000000000000000000000*x^2+200000000000000000000000000000000000000000000000000)",
+        )
+        .unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold factor four variable", 1_000, || {
+        let parsed = parse_statement(&mut cold_arena, "factor((x+a+b+c)*(x+a^2+b^2+c^2))").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold factor five variable", 500, || {
+        let parsed =
+            parse_statement(&mut cold_arena, "factor((x+a+b+c+d)*(x+a^2+b^2+c^2+d^2))").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
     measure("cold solve quadratic", 2_000, || {
         let parsed = parse_statement(&mut cold_arena, "solve(x^2-3*x+2==0,x)").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
