@@ -2,7 +2,7 @@
 
 use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode, Span};
-use crate::expr::{Arena, Attributes, ExprId};
+use crate::expr::{Arena, ExprId};
 use crate::num::{Int, NumError, Rat};
 
 use super::lexer::{Token, TokenKind, lex};
@@ -127,7 +127,7 @@ impl Parser<'_> {
     }
 
     fn head(&mut self, name: &str) -> ExprId {
-        let attrs = builtins::attributes(name).unwrap_or_else(Attributes::new);
+        let attrs = builtins::attributes(name).unwrap_or_default();
         let symbol = self.arena.intern_symbol(name, attrs);
         self.arena.symbol_expr(symbol)
     }

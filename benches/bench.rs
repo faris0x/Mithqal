@@ -1,4 +1,5 @@
 use std::hint::black_box;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use mithqal::Session;
@@ -6,7 +7,9 @@ use mithqal::eval::evaluate;
 use mithqal::expr::Arena;
 use mithqal::syntax::parse_statement;
 
-fn measure(name: &str, iterations: u32, mut action: impl FnMut()) {
+static OVER_BUDGET: AtomicBool = AtomicBool::new(false);
+
+fn measure(name: &str, iterations: u32, mut action: impl FnMut()) -> f64 {
     let start = Instant::now();
     for _ in 0..iterations {
         action();
@@ -14,6 +17,16 @@ fn measure(name: &str, iterations: u32, mut action: impl FnMut()) {
     let elapsed = start.elapsed();
     let per = elapsed.as_secs_f64() / iterations as f64;
     println!("{name}: {:.2} us/op", per * 1_000_000.0);
+    per * 1_000_000.0
+}
+
+fn check_budget(name: &str, per_microseconds: f64, budget_microseconds: f64) {
+    if per_microseconds > budget_microseconds {
+        eprintln!(
+            "budget exceeded for {name}: {per_microseconds:.2} us/op > {budget_microseconds:.2} us/op"
+        );
+        OVER_BUDGET.store(true, Ordering::Relaxed);
+    }
 }
 
 fn main() {
@@ -89,19 +102,21 @@ fn main() {
     });
 
     let mut cold_arena = Arena::new();
-    measure("cold factor x^6-1", 1_000, || {
+    let per = measure("cold factor x^6-1", 1_000, || {
         let parsed = parse_statement(&mut cold_arena, "factor(x^6-1)").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
+    check_budget("cold factor x^6-1", per, 250.0);
 
     let mut cold_arena = Arena::new();
-    measure("cold factor bivariate hensel", 2_000, || {
+    let per = measure("cold factor bivariate hensel", 2_000, || {
         let parsed = parse_statement(&mut cold_arena, "factor((x^2+y)*(x^2+y^2))").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
+    check_budget("cold factor bivariate hensel", per, 1_200.0);
 
     let mut cold_arena = Arena::new();
-    measure("cold factor wide hensel", 1_000, || {
+    let per = measure("cold factor wide hensel", 1_000, || {
         let parsed = parse_statement(
             &mut cold_arena,
             "factor(x^4+30000000000000000000000000*x^2+200000000000000000000000000000000000000000000000000)",
@@ -109,19 +124,40 @@ fn main() {
         .unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
+    check_budget("cold factor wide hensel", per, 1_000.0);
 
     let mut cold_arena = Arena::new();
-    measure("cold factor four variable", 1_000, || {
+    let per = measure("cold factor four variable", 1_000, || {
         let parsed = parse_statement(&mut cold_arena, "factor((x+a+b+c)*(x+a^2+b^2+c^2))").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
+    check_budget("cold factor four variable", per, 1_500.0);
 
     let mut cold_arena = Arena::new();
-    measure("cold factor five variable", 500, || {
+    let per = measure("cold factor five variable", 500, || {
         let parsed =
             parse_statement(&mut cold_arena, "factor((x+a+b+c+d)*(x+a^2+b^2+c^2+d^2))").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
+    check_budget("cold factor five variable", per, 3_000.0);
+
+    let mut cold_arena = Arena::new();
+    let per = measure("cold factor six variable", 200, || {
+        let parsed = parse_statement(
+            &mut cold_arena,
+            "factor((x+a+b+c+d+e)*(x+a^2+b^2+c^2+d^2+e^2))",
+        )
+        .unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+    check_budget("cold factor six variable", per, 6_000.0);
+
+    let mut cold_arena = Arena::new();
+    let per = measure("cold factor degree ten hensel", 500, || {
+        let parsed = parse_statement(&mut cold_arena, "factor((x^5+y)*(x^5+y*x+1))").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+    check_budget("cold factor degree ten hensel", per, 2_000.0);
 
     let mut cold_arena = Arena::new();
     measure("cold solve quadratic", 2_000, || {
@@ -266,4 +302,8 @@ fn main() {
         }
         session.collect_garbage(&[]);
     });
+
+    if OVER_BUDGET.load(Ordering::Relaxed) {
+        std::process::exit(1);
+    }
 }

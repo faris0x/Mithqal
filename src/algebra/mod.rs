@@ -429,7 +429,7 @@ fn poly_from_expr(arena: &Arena, context: &Context, expression: ExprId) -> Optio
                     return None;
                 }
                 let exponent = integer_value(arena, args[1])?;
-                if exponent < 0 || exponent > MAX_EXPONENT {
+                if !(0..=MAX_EXPONENT).contains(&exponent) {
                     return None;
                 }
                 Some(poly_from_expr(arena, context, args[0])?.pow_u32_checked(exponent as u32)?)
@@ -544,9 +544,9 @@ fn dense_div_rem(dividend: &[Rat], divisor: &[Rat]) -> Option<(Vec<Rat>, Vec<Rat
         let degree = remainder.len() - divisor_degree;
         let coefficient = remainder[remainder.len() - 1].div(&leading).ok()?;
         quotient[degree] = coefficient.clone();
-        for index in 0..divisor_degree {
+        for (index, divisor_coefficient) in divisor.iter().enumerate().take(divisor_degree) {
             let position = degree + index;
-            let value = remainder[position].sub(&coefficient.mul(&divisor[index]));
+            let value = remainder[position].sub(&coefficient.mul(divisor_coefficient));
             remainder[position] = value;
         }
         remainder = trim(remainder);
@@ -1012,7 +1012,7 @@ fn extract_common_factor(poly: &Poly) -> Option<(Poly, Poly)> {
 
 fn factor_by_grouping(poly: &Poly) -> Option<(Poly, Poly)> {
     let size = poly.terms.len();
-    if size < 4 || size > 8 || size % 2 != 0 {
+    if !(4..=8).contains(&size) || !size.is_multiple_of(2) {
         return None;
     }
     let terms: Vec<(&Monomial, &Rat)> = poly.terms.iter().collect();
@@ -1116,7 +1116,7 @@ fn divisors(value: i64) -> Vec<i64> {
     let mut out = Vec::new();
     let mut divisor = 1i64;
     while (divisor as u128) * (divisor as u128) <= magnitude as u128 {
-        if magnitude % divisor as u64 == 0 {
+        if magnitude.is_multiple_of(divisor as u64) {
             let other = (magnitude / divisor as u64) as i64;
             out.push(divisor);
             if other != divisor {
@@ -1737,9 +1737,9 @@ fn determinant(mut matrix: Vec<Vec<Rat>>) -> Rat {
                 Ok(value) => value,
                 Err(_) => return Rat::zero(),
             };
-            for inner in column..size {
-                let value = matrix[row][inner].sub(&factor.mul(&matrix[column][inner]));
-                matrix[row][inner] = value;
+            let pivot = matrix[column].clone();
+            for (index, value) in matrix[row].iter_mut().enumerate().skip(column) {
+                *value = value.sub(&factor.mul(&pivot[index]));
             }
         }
     }

@@ -1347,10 +1347,10 @@ impl<'a> Evaluator<'a> {
                 let rational = Rat::from_ints(value.clone(), Int::one()).map_err(|_| {
                     Diagnostic::eval(ErrorCode::NumericFailure, "rational conversion failed")
                 })?;
-                return self.approximate_rat(rational, digits);
+                self.approximate_rat(rational, digits)
             }
-            Node::Rat(value) => return self.approximate_rat(value.clone(), digits),
-            Node::Real(value) => return Ok(Some(Numeric::Real(value.clone()))),
+            Node::Rat(value) => self.approximate_rat(value.clone(), digits),
+            Node::Real(value) => Ok(Some(Numeric::Real(value.clone()))),
             Node::Symbol(_) => {
                 if expression == self.heads.pi {
                     return Ok(Some(Numeric::Real(Real::pi(digits).map_err(|_| {
@@ -1372,7 +1372,7 @@ impl<'a> Evaluator<'a> {
                 if self.is_error(expression) {
                     return Ok(Some(Numeric::Error(expression)));
                 }
-                return Ok(None);
+                Ok(None)
             }
             Node::Call { head, args } => {
                 let head = *head;
@@ -2263,14 +2263,14 @@ impl<'a> Evaluator<'a> {
         head: ExprId,
         args: &[ExprId],
     ) -> Result<ExprId, Diagnostic> {
-        let valid = match (function, args.len()) {
-            (CalculusHead::Differentiate, 2) => true,
-            (CalculusHead::Integrate, 2 | 4) => true,
-            (CalculusHead::Limit, 3 | 4) => true,
-            (CalculusHead::Series, 4) => true,
-            (CalculusHead::Converges, 3) => true,
-            _ => false,
-        };
+        let valid = matches!(
+            (function, args.len()),
+            (CalculusHead::Differentiate, 2)
+                | (CalculusHead::Integrate, 2 | 4)
+                | (CalculusHead::Limit, 3 | 4)
+                | (CalculusHead::Series, 4)
+                | (CalculusHead::Converges, 3)
+        );
         if !valid {
             return Err(Diagnostic::eval(
                 ErrorCode::EvalArity,
@@ -3784,9 +3784,9 @@ impl<'a> Evaluator<'a> {
         function: ExactNumericHead,
         args: &[ExprId],
     ) -> Option<ExprId> {
-        let mut value = exact_integer(&self.arena, args[0])?;
+        let mut value = exact_integer(self.arena, args[0])?;
         for arg in &args[1..] {
-            let next = exact_integer(&self.arena, *arg)?;
+            let next = exact_integer(self.arena, *arg)?;
             value = match function {
                 ExactNumericHead::Gcd => value.gcd(&next),
                 ExactNumericHead::Lcm => integer_lcm(&value, &next),
@@ -3803,15 +3803,15 @@ impl<'a> Evaluator<'a> {
     ) -> Option<ExprId> {
         match function {
             ExactNumericHead::Factorial => {
-                let value = exact_integer(&self.arena, args[0])?.to_i64()?;
-                if value < 0 || value > 10_000 {
+                let value = exact_integer(self.arena, args[0])?.to_i64()?;
+                if !(0..=10_000).contains(&value) {
                     return None;
                 }
                 Some(self.arena.intern_int(integer_factorial(value)?))
             }
             ExactNumericHead::Binomial => {
-                let n = exact_integer(&self.arena, args[0])?.to_i64()?;
-                let k = exact_integer(&self.arena, args[1])?.to_i64()?;
+                let n = exact_integer(self.arena, args[0])?.to_i64()?;
+                let k = exact_integer(self.arena, args[1])?.to_i64()?;
                 if n < 0 || k < 0 {
                     return None;
                 }
@@ -3826,7 +3826,7 @@ impl<'a> Evaluator<'a> {
                     };
                     return result.ok().map(|value| self.arena.intern_real(value));
                 }
-                let rational = exact_rational(&self.arena, args[0])?;
+                let rational = exact_rational(self.arena, args[0])?;
                 let value = match function {
                     ExactNumericHead::Floor => rational.floor(),
                     ExactNumericHead::Ceil => rational.ceil(),
@@ -3852,12 +3852,12 @@ impl<'a> Evaluator<'a> {
         for rule in rules {
             let mut bindings = Bindings::new();
             let mut conditions = Vec::new();
-            if !match_pattern(&self.arena, rule.lhs, call, &mut bindings, &mut conditions) {
+            if !match_pattern(self.arena, rule.lhs, call, &mut bindings, &mut conditions) {
                 continue;
             }
             let mut accepted = true;
             for condition in conditions {
-                let condition = substitute(&mut self.arena, condition, &bindings);
+                let condition = substitute(self.arena, condition, &bindings);
                 let value = self.eval(condition)?;
                 if value != self.heads.true_value {
                     accepted = false;
@@ -3867,7 +3867,7 @@ impl<'a> Evaluator<'a> {
             if !accepted {
                 continue;
             }
-            let rhs = substitute(&mut self.arena, rule.rhs, &bindings);
+            let rhs = substitute(self.arena, rule.rhs, &bindings);
             return if rule.delayed {
                 self.eval(rhs).map(Some)
             } else {
@@ -4728,7 +4728,7 @@ fn integer_binomial(n: i64, k: i64) -> Option<Int> {
 
 pub(crate) fn fold_numeric_call(arena: &mut Arena, id: ExprId) -> Option<ExprId> {
     match arena.node(id) {
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) => return Some(id),
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) => Some(id),
         Node::Call { head, args } => {
             let symbol = arena.symbol_id(*head)?;
             let name = arena.symbol_name(symbol);

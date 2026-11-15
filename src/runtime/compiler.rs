@@ -67,17 +67,17 @@ impl Compiler<'_> {
         self.compile_value(args[1])?;
         let jump_end = self.emit(Instr::Jump(u32::MAX))?;
         let else_start = self.code.instrs.len() as u32;
-        self.patch(jump_false as usize, else_start);
+        self.patch(jump_false, else_start);
         self.compile_value(args[2])?;
         let jump_end_two = self.emit(Instr::Jump(u32::MAX))?;
         let fallback_start = self.code.instrs.len() as u32;
-        self.patch(jump_fallback as usize, fallback_start);
+        self.patch(jump_fallback, fallback_start);
         let constant = self.constant(expression)?;
         self.emit(Instr::Const(constant))?;
         self.emit(Instr::Eval)?;
         let end = self.code.instrs.len() as u32;
-        self.patch(jump_end as usize, end);
-        self.patch(jump_end_two as usize, end);
+        self.patch(jump_end, end);
+        self.patch(jump_end_two, end);
         Ok(())
     }
 

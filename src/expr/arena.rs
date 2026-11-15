@@ -180,7 +180,7 @@ impl Arena {
         if let Some(head) = self.builtin_heads.get(name) {
             return *head;
         }
-        let attrs = crate::builtins::attributes(name).unwrap_or_else(Attributes::new);
+        let attrs = crate::builtins::attributes(name).unwrap_or_default();
         let symbol = self.intern_symbol(name, attrs);
         let head = self.symbol_expr(symbol);
         self.builtin_heads.insert(name, head);

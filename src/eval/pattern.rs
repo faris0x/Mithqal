@@ -226,10 +226,7 @@ fn sequence_info(arena: &Arena, pattern: ExprId) -> Option<(Option<SymbolId>, us
         Some("pattern") if args.len() == 2 => {
             let symbol = arena.symbol_id(args[0]);
             let inner = args[1];
-            match sequence_info(arena, inner) {
-                Some((_, minimum)) => Some((symbol, minimum)),
-                None => None,
-            }
+            sequence_info(arena, inner).map(|(_, minimum)| (symbol, minimum))
         }
         _ => None,
     }

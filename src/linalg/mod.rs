@@ -210,11 +210,11 @@ impl Matrix {
             return None;
         }
         let mut augmented = Matrix::new(self.rows, self.columns + 1);
-        for row in 0..self.rows {
+        for (row, value) in right.iter().enumerate().take(self.rows) {
             for column in 0..self.columns {
                 augmented.set(row, column, self.get(row, column));
             }
-            augmented.set(row, self.columns, right[row].clone());
+            augmented.set(row, self.columns, value.clone());
         }
         let (reduced, pivots) = augmented.rref();
         for row in 0..reduced.rows {
@@ -609,7 +609,7 @@ fn symbolic_cofactor(
         target_row += 1;
     }
     let determinant = symbolic_determinant(arena, &minor)?;
-    if (row + column) % 2 == 0 {
+    if (row + column).is_multiple_of(2) {
         Some(determinant)
     } else {
         Some(expression_negate(arena, determinant))
@@ -1063,20 +1063,16 @@ pub(crate) fn qr(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
         for row in 0..rows {
             values.push(rational_expression(arena, &matrix.get(row, column)));
         }
-        for previous in 0..column {
+        for (previous, q_column) in q_columns.iter().enumerate().take(column) {
             let mut products = Vec::with_capacity(rows);
-            for row in 0..rows {
-                products.push(expression_multiply(
-                    arena,
-                    q_columns[previous][row],
-                    values[row],
-                ));
+            for (row, value) in values.iter().enumerate().take(rows) {
+                products.push(expression_multiply(arena, q_column[row], *value));
             }
             let projection = expression_sum(arena, &products);
             r.set(previous, column, projection);
-            for row in 0..rows {
-                let correction = expression_multiply(arena, projection, q_columns[previous][row]);
-                values[row] = expression_subtract(arena, values[row], correction);
+            for (row, value) in values.iter_mut().enumerate().take(rows) {
+                let correction = expression_multiply(arena, projection, q_column[row]);
+                *value = expression_subtract(arena, *value, correction);
             }
         }
         let mut squares = Vec::with_capacity(rows);
@@ -1094,9 +1090,9 @@ pub(crate) fn qr(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
         q_columns.push(q_column);
     }
     let mut q = SymbolicMatrix::new(rows, columns);
-    for column in 0..columns {
-        for row in 0..rows {
-            q.set(row, column, q_columns[column][row]);
+    for (column, q_column) in q_columns.iter().enumerate().take(columns) {
+        for (row, value) in q_column.iter().enumerate().take(rows) {
+            q.set(row, column, *value);
         }
     }
     let list = arena.builtin_head("list");

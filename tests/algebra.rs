@@ -570,3 +570,107 @@ fn five_variable_interpolation_factorization() {
         assert_factor_matches(source);
     }
 }
+
+#[test]
+fn six_and_seven_variable_interpolation_factorization() {
+    assert_eq!(
+        text("factor((x+a+b+c+d+e)*(x+a^2+b^2+c^2+d^2+e^2))"),
+        "(a+b+c+d+e+x)*(x+a^2+b^2+c^2+d^2+e^2)"
+    );
+    assert_eq!(
+        text("factor((x+a+b+c+d+e+f)*(x+a+2*b+3*c+4*d+5*e+6*f))"),
+        "(a+b+c+d+e+f+x)*(a+x+2*b+3*c+4*d+5*e+6*f)"
+    );
+    for source in [
+        "(x+a+b+c+d+e)*(x+a^2+b^2+c^2+d^2+e^2)",
+        "(x+a+b+c+d+e+f)*(x+a+2*b+3*c+4*d+5*e+6*f)",
+    ] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn wide_hensel_degree_and_coefficient_ranges() {
+    assert_eq!(text("factor((x^4+y)*(x^4+y*x+1))"), "(y+x^4)*(1+x^4+x*y)");
+    assert_eq!(text("factor((x^5+y)*(x^5+y*x+1))"), "(y+x^5)*(1+x^5+x*y)");
+    assert_eq!(
+        text("factor((x^4+y^4)*(x^4+y*x+1))"),
+        "(x^4+y^4)*(1+x^4+x*y)"
+    );
+    assert_eq!(
+        text("factor((x^2+y^8)*(x^2+y*x+1))"),
+        "(x^2+y^8)*(1+x^2+x*y)"
+    );
+    assert_eq!(
+        text(
+            "factor(x^4+3000000000000000000000000000000000000000000000000000000000000*x^2+2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)"
+        ),
+        "(1000000000000000000000000000000000000000000000000000000000000+x^2)*(2000000000000000000000000000000000000000000000000000000000000+x^2)"
+    );
+    for source in [
+        "(x^4+y)*(x^4+y*x+1)",
+        "(x^5+y)*(x^5+y*x+1)",
+        "(x^4+y^4)*(x^4+y*x+1)",
+        "(x^2+y^8)*(x^2+y*x+1)",
+    ] {
+        assert_factor_matches(source);
+    }
+}
+
+#[test]
+fn irreducible_multivariate_inputs_stay_factored() {
+    for source in ["x^2+y^2+1", "x^4+y^4+1", "x^2+y^2+z^2+1"] {
+        assert_eq!(text(&format!("factor({source})")), text(source));
+    }
+}
+
+#[test]
+fn multivariate_interpolation_budget_is_bounded() {
+    let source = "(x+a+b+c+d+e)*(x+a^10+b^10+c^10+d^10+e^10)";
+    assert_eq!(
+        text(&format!("factor({source})")),
+        text(&format!("expand({source})"))
+    );
+}
+
+#[test]
+fn seven_variable_interpolation_factorization() {
+    assert_eq!(
+        text("factor((x+a+b+c+d+e+f+g)*(x+a^2+b^2+c^2+d^2+e^2+f^2+g^2))"),
+        "(a+b+c+d+e+f+g+x)*(x+a^2+b^2+c^2+d^2+e^2+f^2+g^2)"
+    );
+    assert_factor_matches("(x+a+b+c+d+e+f+g)*(x+a^2+b^2+c^2+d^2+e^2+f^2+g^2)");
+}
+
+#[test]
+fn generated_multivariate_factor_products() {
+    let symbols = ["a", "b", "c", "d", "e", "f", "g"];
+    for variables in 2..=7 {
+        for seed in 0..4u64 {
+            let mut state = seed.wrapping_mul(6_364_136_223_846_793_005) ^ 0x9e37_79b9;
+            let mut left = String::from("x");
+            let mut right = String::from("x");
+            for symbol in symbols.iter().take(variables) {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                let coefficient = ((state >> 33) % 5) as i64 - 2;
+                if coefficient != 0 {
+                    left.push_str(&format!("{coefficient:+}*{symbol}"));
+                }
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                let coefficient = ((state >> 35) % 4) as i64 - 1;
+                if coefficient != 0 {
+                    if seed % 2 == 0 {
+                        right.push_str(&format!("{coefficient:+}*{symbol}^2"));
+                    } else {
+                        right.push_str(&format!("{coefficient:+}*{symbol}"));
+                    }
+                }
+            }
+            assert_factor_matches(&format!("({left})*({right})"));
+        }
+    }
+}

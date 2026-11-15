@@ -264,7 +264,7 @@ impl Real {
     pub fn to_decimal(&self) -> String {
         let precision = self.precision_digits();
         let digits = if precision.is_finite() {
-            precision.max(1.0).min(1000.0).floor() as usize
+            precision.clamp(1.0, 1000.0).floor() as usize
         } else {
             16
         };
@@ -340,6 +340,7 @@ impl Real {
     }
 
     /// Compare two approximate values by their stored approximations.
+    #[allow(clippy::should_implement_trait)]
     pub fn cmp(&self, other: &Real) -> Ordering {
         // SAFETY: both values are initialized.
         unsafe { ffi_mpfr::mpfr_cmp(&self.inner, &other.inner) }.cmp(&0)
@@ -730,7 +731,7 @@ impl Real {
         if self.is_zero() {
             return (self.bits, 0, 0, Box::new([]), self.error.to_bits());
         }
-        let limbs = (self.bits as usize + 63) / 64;
+        let limbs = (self.bits as usize).div_ceil(64);
         let digits = if limbs == 0 {
             Box::new([])
         } else {
@@ -741,7 +742,7 @@ impl Real {
         (
             self.bits,
             self.sign(),
-            self.inner.exponent as i64,
+            self.inner.exponent,
             digits,
             self.error.to_bits(),
         )
@@ -788,7 +789,7 @@ impl fmt::Debug for Real {
 }
 
 fn bits_for_digits(digits: u32) -> u32 {
-    ((digits as f64 * 3.321_928_094_887_362) as u32)
+    ((digits as f64 * std::f64::consts::LOG2_10) as u32)
         .saturating_add(32)
         .max(64)
 }

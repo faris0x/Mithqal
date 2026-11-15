@@ -3,7 +3,7 @@
 use crate::expr::{Arena, ExprId, Node};
 use crate::num::{Int, Rat};
 
-fn list_values<'a>(arena: &'a Arena, expression: ExprId) -> Option<&'a [ExprId]> {
+fn list_values(arena: &Arena, expression: ExprId) -> Option<&[ExprId]> {
     match arena.node(expression) {
         Node::Call { head, args } => {
             let symbol = arena.symbol_id(*head)?;

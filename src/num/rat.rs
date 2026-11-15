@@ -190,6 +190,7 @@ impl Rat {
     }
 
     /// Compare two rationals by value.
+    #[allow(clippy::should_implement_trait)]
     pub fn cmp(&self, other: &Rat) -> Ordering {
         // SAFETY: both values are initialized.
         unsafe { ffi::__gmpq_cmp(&self.inner, &other.inner) }.cmp(&0)
@@ -334,7 +335,7 @@ impl Eq for Rat {}
 
 impl PartialOrd for Rat {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+        Some(Ord::cmp(self, other))
     }
 }
 

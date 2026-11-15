@@ -74,7 +74,7 @@ fn is_prime_u64(value: u64) -> bool {
         if value == prime {
             return true;
         }
-        if value % prime == 0 {
+        if value.is_multiple_of(prime) {
             return false;
         }
     }
@@ -120,7 +120,7 @@ fn miller_rabin(value: u64, exponent: u64, shifts: u32, bases: &[u64]) -> bool {
 }
 
 fn pollard_rho(value: u64) -> u64 {
-    if value % 2 == 0 {
+    if value.is_multiple_of(2) {
         return 2;
     }
     let mut constant = 1u64;
@@ -323,10 +323,7 @@ pub(crate) fn power_mod(
     }
     let modulus = modulus.abs();
     let two = Int::from_i64(2);
-    let mut base = match modulo_int(&base, &modulus) {
-        Some(value) => value,
-        None => return None,
-    };
+    let mut base = modulo_int(&base, &modulus)?;
     let mut exponent = exponent;
     let mut result = modulo_int(&Int::one(), &modulus)?;
     while exponent.sign() > 0 {
@@ -386,7 +383,11 @@ pub(crate) fn moebius(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
     if factors.iter().any(|(_, exponent)| *exponent > 1) {
         return Some(integer(arena, Int::zero()));
     }
-    let sign = if factors.len() % 2 == 0 { 1 } else { -1 };
+    let sign = if factors.len().is_multiple_of(2) {
+        1
+    } else {
+        -1
+    };
     Some(integer(arena, Int::from_i64(sign)))
 }
 

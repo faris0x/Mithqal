@@ -12,7 +12,7 @@ fn complex_parts(session: &Session, id: u32) -> Option<(f64, f64)> {
         _ => return None,
     };
     match session.view(head) {
-        ExprView::Symbol(name) if name == "complex" => {}
+        ExprView::Symbol("complex") => {}
         _ => return None,
     }
     let real = match session.view(args[0]) {

@@ -162,8 +162,8 @@ fn interval_with_fractional_endpoints() {
 fn interval_with_real_endpoints() {
     check(
         "interval(approx(pi,30),approx(pi,30)+1)",
-        3.141592653589793,
-        4.141592653589793,
+        std::f64::consts::PI,
+        std::f64::consts::PI + 1.0,
     );
 }
 

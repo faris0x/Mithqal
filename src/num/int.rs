@@ -114,6 +114,7 @@ impl Int {
     }
 
     /// Compare two integers.
+    #[allow(clippy::should_implement_trait)]
     pub fn cmp(&self, other: &Int) -> Ordering {
         // SAFETY: both values are initialized.
         unsafe { ffi::__gmpz_cmp(&self.inner, &other.inner) }.cmp(&0)
@@ -257,7 +258,7 @@ impl Eq for Int {}
 
 impl PartialOrd for Int {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+        Some(Ord::cmp(self, other))
     }
 }
 

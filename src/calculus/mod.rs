@@ -165,7 +165,7 @@ fn contains(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {
     }
 }
 
-fn function_name<'a>(arena: &'a Arena, head: ExprId) -> Option<&'a str> {
+fn function_name(arena: &Arena, head: ExprId) -> Option<&str> {
     arena
         .symbol_id(head)
         .map(|symbol| arena.symbol_name(symbol))
