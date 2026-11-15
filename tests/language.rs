@@ -528,3 +528,63 @@ fn guard_expression_is_whitespace_free() {
     let error = session.eval_source(source).unwrap_err();
     assert_eq!(error.code, ErrorCode::ParseUnexpectedToken);
 }
+
+#[test]
+fn low_gc_threshold_keeps_let_bindings_alive() {
+    let config = mithqal::Config {
+        gc_threshold_nodes: 1,
+        ..mithqal::Config::default()
+    };
+    let mut session = Session::with_config(config);
+    let source = r#"
+mod gc
+let x=(a+b+c+d)*(e+f+g+h)
+let y=1
+prt x
+end
+"#;
+    session.eval_language(source).unwrap();
+    assert_eq!(session.output(), &["(a+b+c+d)*(e+f+g+h)"]);
+}
+
+#[test]
+fn low_gc_threshold_keeps_match_scrutinees_alive() {
+    let config = mithqal::Config {
+        gc_threshold_nodes: 1,
+        ..mithqal::Config::default()
+    };
+    let mut session = Session::with_config(config);
+    let source = r#"
+mod gc
+let x=(a+b+c+d)*(e+f+g+h)
+match x
+case (a+b+c+d)*(e+f+g+h)
+  prt 7
+else
+  prt 8
+end
+end
+"#;
+    session.eval_language(source).unwrap();
+    assert_eq!(session.output(), &["7"]);
+}
+
+#[test]
+fn low_gc_threshold_keeps_nested_scope_values_alive() {
+    let config = mithqal::Config {
+        gc_threshold_nodes: 1,
+        ..mithqal::Config::default()
+    };
+    let mut session = Session::with_config(config);
+    let source = r#"
+mod gc
+let x=(a+b+c+d)*(e+f+g+h)
+if 1<2 then
+  let y=1
+  prt x
+end
+end
+"#;
+    session.eval_language(source).unwrap();
+    assert_eq!(session.output(), &["(a+b+c+d)*(e+f+g+h)"]);
+}

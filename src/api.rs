@@ -99,6 +99,10 @@ impl Session {
         self.language_scopes.push(HashMap::default());
         let result = self.eval_language_statements(&program.body);
         self.language_scopes.pop();
+        if let Ok(value) = result {
+            self.last_result = Some(value);
+            self.maybe_collect();
+        }
         result
     }
 
@@ -387,6 +391,9 @@ impl Session {
     }
 
     fn maybe_collect(&mut self) {
+        if !self.language_scopes.is_empty() {
+            return;
+        }
         if self.arena.len() > self.config.gc_threshold_nodes.max(1) {
             self.collect_garbage(&[]);
         }
@@ -440,6 +447,9 @@ impl Session {
         let mut all = roots.to_vec();
         if let Some(last) = self.last_result {
             all.push(last);
+        }
+        for scope in &self.language_scopes {
+            all.extend(scope.values().copied());
         }
         self.definitions.roots(&mut all);
         self.arena.collect(&all);
