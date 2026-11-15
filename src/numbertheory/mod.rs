@@ -447,6 +447,16 @@ pub(crate) fn fibonacci(arena: &mut Arena, expression: ExprId) -> Option<ExprId>
     if !(0..=10_000).contains(&value) {
         return None;
     }
+    if value <= 92 {
+        let mut previous = 0u64;
+        let mut current = 1u64;
+        for _ in 0..value {
+            let next = previous + current;
+            previous = current;
+            current = next;
+        }
+        return Some(integer(arena, Int::from_u64(previous)));
+    }
     let mut previous = Int::zero();
     let mut current = Int::one();
     for _ in 0..value {

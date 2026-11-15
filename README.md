@@ -22,6 +22,7 @@ This repository is in early development. The exact number layer, approximate rea
 - [Public API](docs/api.md)
 - [Structured IR](docs/ir.md)
 - [Roadmap](docs/roadmap.md)
+- [Maturity](docs/maturity.md)
 
 ## Status
 

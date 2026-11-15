@@ -134,7 +134,7 @@ fn main() {
         let parsed = parse_statement(&mut cold_arena, "factor((x^2+y)*(x^2+y^2))").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
-    check_budget("cold factor bivariate hensel", per, 1_200.0);
+    check_budget("cold factor bivariate hensel", per, 250.0);
 
     let mut cold_arena = Arena::new();
     let per = measure("cold factor wide hensel", 1_000, || {

@@ -148,3 +148,8 @@ Initial kernel work.
 - Split evaluator support into numeric, limit, control, dispatch, arithmetic, and shared helper modules.
 - Reduced the largest source files from about five thousand lines to under fifteen hundred lines.
 - Reordered exact statistics fast paths to avoid a second integer scan on common list inputs.
+- Added environment-aware build script reruns for compiler, linker, target, profile, and job variables, and made `CFLAGS` appendable.
+- Added the maturity table and process gates, linked from the README and checked by the documentation script.
+- Added a documentation build step to CI.
+- Added a cheap bivariate interpolation slice guard that avoids the expensive failed interpolation path for non-linear factor pairs.
+- Added 64 bit fast paths for small Fibonacci and factorial loops.

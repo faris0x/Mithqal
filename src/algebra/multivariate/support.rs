@@ -575,6 +575,34 @@ pub(super) fn push_factor(
     factors.push(arena.intern_call(context.power, &[expression, exponent]));
 }
 
+pub(super) fn interpolation_slices_split(
+    polynomial: &Poly,
+    horizontal: SymbolId,
+    others: &[SymbolId],
+    degree: usize,
+) -> bool {
+    for sample in [0i64, 1] {
+        let value = match Rat::from_i64(sample, 1) {
+            Ok(value) => value,
+            Err(_) => return false,
+        };
+        let point = vec![value; others.len()];
+        let Some((sample_degree, roots, remaining)) =
+            sample_rational_roots(polynomial, horizontal, others, &point)
+        else {
+            return false;
+        };
+        let root_count = roots
+            .iter()
+            .map(|(_, multiplicity)| *multiplicity as usize)
+            .sum::<usize>();
+        if sample_degree != degree || remaining > 1 || root_count != degree {
+            return false;
+        }
+    }
+    true
+}
+
 pub(super) fn total_degree(polynomial: &Poly) -> u32 {
     polynomial
         .terms

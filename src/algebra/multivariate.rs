@@ -939,6 +939,9 @@ impl<'a> MultivariateFactorizer<'a> {
         if root_bound > 12 {
             return None;
         }
+        if others.len() == 1 && !interpolation_slices_split(&scaling, horizontal, others, degree) {
+            return None;
+        }
         if others.len() >= 2
             && let Some(factors) = self.factor_sparse_interpolation(
                 &scaling, horizontal, others, degree, root_bound, &leading,

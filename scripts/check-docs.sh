@@ -44,5 +44,13 @@ if ! grep -q 'staged multivariate factorisation through eight variables' README.
     printf 'stale documentation: README lacks the staged factorisation boundary\n' >&2
     status=1
 fi
+if ! grep -q 'Maturity' README.md; then
+    printf 'stale documentation: README lacks the maturity link\n' >&2
+    status=1
+fi
+if ! grep -q 'Process gates' docs/maturity.md; then
+    printf 'stale documentation: maturity document lacks process gates\n' >&2
+    status=1
+fi
 
 exit "$status"

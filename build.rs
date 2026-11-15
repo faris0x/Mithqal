@@ -13,10 +13,28 @@ fn run(command: &mut Command, what: &str) {
 }
 
 fn jobs() -> String {
-    std::thread::available_parallelism()
-        .map(|n| n.get().min(8))
-        .unwrap_or(2)
+    env::var("NUM_JOBS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or_else(|| {
+            std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(2)
+        })
+        .min(8)
         .to_string()
+}
+
+fn compiler_flags() -> String {
+    let mut flags = String::from("-O2 -fPIC -std=gnu11");
+    if let Ok(extra) = env::var("CFLAGS")
+        && !extra.trim().is_empty()
+    {
+        flags.push(' ');
+        flags.push_str(&extra);
+    }
+    flags
 }
 
 fn configure_build_install(
@@ -35,7 +53,7 @@ fn configure_build_install(
         .arg("--with-pic")
         .arg(format!("--prefix={}", prefix.display()))
         .args(args)
-        .env("CFLAGS", "-O2 -fPIC -std=gnu11");
+        .env("CFLAGS", compiler_flags());
     run(&mut configure, &format!("{what} configure"));
 
     let mut make = Command::new("make");
@@ -102,5 +120,25 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     for source in [&gmp_source, &mpfr_source, &mpc_source] {
         println!("cargo:rerun-if-changed={}", source.display());
+    }
+    for variable in [
+        "CC",
+        "CXX",
+        "CFLAGS",
+        "CPPFLAGS",
+        "LDFLAGS",
+        "AR",
+        "RANLIB",
+        "NM",
+        "LD",
+        "STRIP",
+        "TARGET",
+        "HOST",
+        "PROFILE",
+        "OPT_LEVEL",
+        "DEBUG",
+        "NUM_JOBS",
+    ] {
+        println!("cargo:rerun-if-env-changed={variable}");
     }
 }

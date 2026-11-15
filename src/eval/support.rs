@@ -138,6 +138,13 @@ pub(super) fn integer_lcm(left: &Int, right: &Int) -> Int {
 }
 
 pub(super) fn integer_factorial(value: i64) -> Option<Int> {
+    if (0..=20).contains(&value) {
+        let mut result = 1u64;
+        for factor in 2..=value as u64 {
+            result *= factor;
+        }
+        return Some(Int::from_u64(result));
+    }
     let mut result = Int::one();
     let mut factor = 2i64;
     while factor <= value {
