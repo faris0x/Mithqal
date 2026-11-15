@@ -144,3 +144,7 @@ Initial kernel work.
 - Added an `MITHQAL_PROPERTY_CASES` override for longer randomized runs.
 - Added 128 bit integer accumulation fast paths for exact statistics loops, avoiding GMP allocation per list element.
 - Added 64 element mean and variance benchmarks to track loop scaling.
+- Split algebra helpers into dense, rational root, rational function, and multivariate interpolation and support modules.
+- Split evaluator support into numeric, limit, control, dispatch, arithmetic, and shared helper modules.
+- Reduced the largest source files from about five thousand lines to under fifteen hundred lines.
+- Reordered exact statistics fast paths to avoid a second integer scan on common list inputs.

@@ -148,6 +148,11 @@ pub(crate) fn mean_stat(arena: &mut Arena, expression: ExprId) -> Option<ExprId>
     if values.is_empty() {
         return None;
     }
+    if let Some(total) = integer_sum_fast(arena, values) {
+        let count = Int::from_i64(values.len() as i64);
+        let value = Rat::from_ints(total, count).ok()?;
+        return Some(rational_expression(arena, &value));
+    }
     if all_integers(arena, values) {
         let total = integer_sum(arena, values)?;
         let count = Int::from_i64(values.len() as i64);
@@ -224,6 +229,9 @@ pub(crate) fn total(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
     if values.is_empty() {
         return None;
     }
+    if let Some(total) = integer_sum_fast(arena, values) {
+        return Some(arena.intern_int(total));
+    }
     if all_integers(arena, values) {
         return Some(arena.intern_int(integer_sum(arena, values)?));
     }
@@ -265,10 +273,10 @@ fn direct_variance(arena: &Arena, expression: ExprId, sample: bool) -> Option<Ra
     if count == 0 || (sample && count < 2) {
         return None;
     }
+    if let Some(variance) = integer_variance_fast(arena, values, sample) {
+        return Some(variance);
+    }
     if all_integers(arena, values) {
-        if let Some(variance) = integer_variance_fast(arena, values, sample) {
-            return Some(variance);
-        }
         let mut sum = Int::zero();
         let mut squares = Int::zero();
         for value in values {
