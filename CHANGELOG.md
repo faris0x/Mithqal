@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 659 test functions and 1553 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 662 test functions and 1565 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -122,3 +122,11 @@ Initial kernel work.
 - Reused per-point power tables in Vandermonde construction.
 - Removed all clippy warnings across library, benchmarks, and tests.
 - Added a generated multivariate factorisation corpus across two through seven variables.
+- Added conjunctive assumptions through `and` and `&&`, applying several scoped sign facts at once.
+- Added antiderivatives for `asin`, `acos`, `atan`, `asinh`, `acosh`, and `atanh`, including linear argument scaling, with differentiation round-trip tests.
+- Added a 128 bit multivariate evaluator and 128 bit quadratic root path for sparse interpolation samples.
+- Added a floating-point interpolation solve stage with exact product verification and an exact rational fallback.
+- Replaced the initial sparse monomial system with an average-root-degree candidate and lazy dense fallback.
+- Replaced 128 bit integer square roots with the native integer square root implementation.
+- Added a quadratic coefficient identity check that avoids full product construction during sparse interpolation verification.
+- Tightened four, five, and six variable factorisation benchmark budgets after bringing all three below one hundred microseconds per operation on the benchmark host.

@@ -15,6 +15,13 @@ Facts are scoped to the second argument. Nested assumptions are allowed.
 assume(x>0,assuming(y<0,abs(x)+abs(y))) -> x-y
 ```
 
+Conjunctions apply several facts at once.
+
+```text
+assume(and(x>0,y<0),abs(x*y)) -> -(x*y)
+assume(x>0&&y>0,abs(x*y))     -> x*y
+```
+
 ## Supported facts
 
 - `x>0` positive.
@@ -23,7 +30,7 @@ assume(x>0,assuming(y<0,abs(x)+abs(y))) -> x-y
 - `x<=0` nonpositive.
 - `x==0` zero.
 
-The assumption parser accepts a symbol compared against zero. Unsupported assumption forms leave the `assume` call unevaluated.
+The assumption parser accepts a symbol compared against zero, and conjunctions of those facts through `and` or `&&`. Unsupported assumption forms leave the `assume` call unevaluated.
 
 ## Simplifications
 

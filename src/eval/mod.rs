@@ -740,13 +740,28 @@ impl<'a> Evaluator<'a> {
                 "assume expects an assumption and an expression",
             ));
         }
-        let Some(assumption) = self.parse_assumption(args[0]) else {
+        let Some(assumptions) = self.parse_assumptions(args[0]) else {
             return Ok(self.arena.intern_call(self.heads.assume, args));
         };
-        self.assumptions.push(assumption);
+        let length = self.assumptions.len();
+        self.assumptions.extend(assumptions);
         let result = self.eval(args[1]);
-        self.assumptions.pop();
+        self.assumptions.truncate(length);
         result
+    }
+
+    fn parse_assumptions(&self, expression: ExprId) -> Option<Vec<Assumption>> {
+        if let Node::Call { head, args } = self.arena.node(expression)
+            && *head == self.heads.and
+        {
+            let mut assumptions = Vec::new();
+            for argument in args.iter() {
+                assumptions.extend(self.parse_assumptions(*argument)?);
+            }
+            return (!assumptions.is_empty()).then_some(assumptions);
+        }
+        self.parse_assumption(expression)
+            .map(|assumption| vec![assumption])
     }
 
     fn parse_assumption(&self, expression: ExprId) -> Option<Assumption> {

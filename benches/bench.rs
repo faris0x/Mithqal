@@ -131,7 +131,7 @@ fn main() {
         let parsed = parse_statement(&mut cold_arena, "factor((x+a+b+c)*(x+a^2+b^2+c^2))").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
-    check_budget("cold factor four variable", per, 1_500.0);
+    check_budget("cold factor four variable", per, 250.0);
 
     let mut cold_arena = Arena::new();
     let per = measure("cold factor five variable", 500, || {
@@ -139,7 +139,7 @@ fn main() {
             parse_statement(&mut cold_arena, "factor((x+a+b+c+d)*(x+a^2+b^2+c^2+d^2))").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
-    check_budget("cold factor five variable", per, 3_000.0);
+    check_budget("cold factor five variable", per, 350.0);
 
     let mut cold_arena = Arena::new();
     let per = measure("cold factor six variable", 200, || {
@@ -150,7 +150,7 @@ fn main() {
         .unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
     });
-    check_budget("cold factor six variable", per, 6_000.0);
+    check_budget("cold factor six variable", per, 500.0);
 
     let mut cold_arena = Arena::new();
     let per = measure("cold factor degree ten hensel", 500, || {

@@ -63,4 +63,5 @@ unsafe extern "C" {
     pub(crate) fn __gmpq_neg(rop: *mut Mpq, op: *const Mpq);
     pub(crate) fn __gmpq_cmp(left: *const Mpq, right: *const Mpq) -> c_int;
     pub(crate) fn __gmpq_equal(left: *const Mpq, right: *const Mpq) -> c_int;
+    pub(crate) fn __gmpq_get_d(op: *const Mpq) -> f64;
 }

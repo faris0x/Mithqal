@@ -73,3 +73,12 @@ fn assume_arity_and_protection() {
     let error = session.eval_statement("assume=1").unwrap_err();
     assert_eq!(error.code, ErrorCode::EvalProtected);
 }
+
+#[test]
+fn conjunctive_assumptions() {
+    assert_eq!(text("assume(and(x>0,y>0),abs(x*y))"), "x*y");
+    assert_eq!(text("assume(and(x>0,y<0),abs(x*y))"), "-(x*y)");
+    assert_eq!(text("assume(x>0&&y>0,abs(x*y))"), "x*y");
+    assert_eq!(text("assume(and(x>0,y>0,z>0),abs(x*y*z))"), "x*y*z");
+    assert_eq!(text("assuming(and(x<0,y<0),abs(x*y))"), "x*y");
+}

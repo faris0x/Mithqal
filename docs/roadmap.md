@@ -18,12 +18,12 @@ Included:
 - Approximate interval arithmetic with directed endpoint rounding and significance widening.
 - Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, absolute value, gamma, log gamma, and error functions.
 - Exact polynomial expansion, factoring, polynomial gcd, resultants, rational function cancellation, and linear or quadratic solving.
-- Exact symbolic differentiation, integration by parts, partial fractions, and definite and simple improper integrals.
+- Exact symbolic differentiation, integration by parts, partial fractions, inverse function integrals, and definite and simple improper integrals.
 - Exact limits at finite points and at infinity, one sided limits, truncated Taylor series, and limit convergence checks.
 - Principal branch conventions for complex logarithms, powers, and inverse functions.
 - One-sided endpoint limits for improper integrals, transcendental interior singularity checks, and a staged multivariate factorization scaffold with binary, homogeneous, recursive quadratic, polynomial-leading, content extraction, specialization root lifting, bivariate Hensel lifting, generic multivariate interpolation through eight variables, and power extraction stages. It also includes bounded bivariate Hensel lifting to total degree sixteen.
 - Bounded Hensel lifting for univariate integer polynomials.
-- Local sign assumptions and conditional simplification.
+- Local sign assumptions, conjunctive assumptions, and conditional simplification.
 - A line based surface language with modules, definitions, literal patterns, guards, lexical bindings, conditionals, match blocks, and print statements.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
 - Exact rational and symbolic matrix linear algebra with determinants, rank, inverses, row reduction, matrix products, PLU factorization, characteristic polynomials, eigenvalues, eigenvectors, null spaces, QR factorization, and linear solving.

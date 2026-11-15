@@ -539,11 +539,71 @@ fn integrate_raw(
                     let numerator = sum(arena, context, &[product_value, negative_argument]);
                     Some(divide(arena, context, numerator, slope))
                 }
+                "asin" | "acos" | "atan" | "asinh" | "acosh" | "atanh" => {
+                    integrate_inverse_function(arena, &name, argument, slope, context)
+                }
                 _ => None,
             }
         }
         _ => None,
     }
+}
+
+fn integrate_inverse_function(
+    arena: &mut Arena,
+    name: &str,
+    argument: ExprId,
+    slope: ExprId,
+    context: &Context,
+) -> Option<ExprId> {
+    let value = call(arena, name, &[argument]);
+    let product_value = product(arena, context, &[argument, value]);
+    let two = int_expression(arena, 2);
+    let one = int_expression(arena, 1);
+    let half = rat_expression(arena, &Rat::from_i64(1, 2).ok()?);
+    let square = power(arena, context, argument, two);
+    let numerator = match name {
+        "asin" | "acos" => {
+            let negative_square = negation(arena, context, square);
+            let inner = sum(arena, context, &[one, negative_square]);
+            let root = power(arena, context, inner, half);
+            if name == "asin" {
+                sum(arena, context, &[product_value, root])
+            } else {
+                let negative_root = negation(arena, context, root);
+                sum(arena, context, &[product_value, negative_root])
+            }
+        }
+        "atan" => {
+            let inner = sum(arena, context, &[one, square]);
+            let logarithm = call(arena, "ln", &[inner]);
+            let correction = product(arena, context, &[half, logarithm]);
+            let negative_correction = negation(arena, context, correction);
+            sum(arena, context, &[product_value, negative_correction])
+        }
+        "asinh" => {
+            let inner = sum(arena, context, &[one, square]);
+            let root = power(arena, context, inner, half);
+            let negative_root = negation(arena, context, root);
+            sum(arena, context, &[product_value, negative_root])
+        }
+        "acosh" => {
+            let negative_one = negation(arena, context, one);
+            let inner = sum(arena, context, &[square, negative_one]);
+            let root = power(arena, context, inner, half);
+            let negative_root = negation(arena, context, root);
+            sum(arena, context, &[product_value, negative_root])
+        }
+        "atanh" => {
+            let negative_square = negation(arena, context, square);
+            let inner = sum(arena, context, &[one, negative_square]);
+            let logarithm = call(arena, "ln", &[inner]);
+            let correction = product(arena, context, &[half, logarithm]);
+            sum(arena, context, &[product_value, correction])
+        }
+        _ => return None,
+    };
+    Some(divide(arena, context, numerator, slope))
 }
 
 fn is_power_of_variable(arena: &Arena, expression: ExprId, variable: ExprId) -> bool {

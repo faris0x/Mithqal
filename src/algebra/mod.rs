@@ -1129,6 +1129,40 @@ fn divisors(value: i64) -> Vec<i64> {
 }
 
 fn rational_roots(coefficients: &[Rat]) -> (Vec<(Rat, u32)>, Vec<Rat>) {
+    if coefficients.len() == 2 && !coefficients[1].is_zero() {
+        let root = coefficients[0]
+            .neg()
+            .div(&coefficients[1])
+            .unwrap_or_else(|_| Rat::zero());
+        return (vec![(root, 1)], vec![coefficients[1].clone()]);
+    }
+    if coefficients.len() == 3 && !coefficients[2].is_zero() {
+        let constant = &coefficients[0];
+        let linear = &coefficients[1];
+        let quadratic = &coefficients[2];
+        let four = Rat::from_i64(4, 1).unwrap_or_else(|_| Rat::zero());
+        let discriminant = linear.mul(linear).sub(&four.mul(quadratic).mul(constant));
+        let Some(root) = rational_sqrt(&discriminant) else {
+            return (Vec::new(), coefficients.to_vec());
+        };
+        let denominator = quadratic.add(quadratic);
+        let negative_linear = linear.neg();
+        if root.is_zero() {
+            let value = negative_linear
+                .div(&denominator)
+                .unwrap_or_else(|_| Rat::zero());
+            return (vec![(value, 2)], vec![quadratic.clone()]);
+        }
+        let first = negative_linear
+            .add(&root)
+            .div(&denominator)
+            .unwrap_or_else(|_| Rat::zero());
+        let second = negative_linear
+            .sub(&root)
+            .div(&denominator)
+            .unwrap_or_else(|_| Rat::zero());
+        return (vec![(first, 1), (second, 1)], vec![quadratic.clone()]);
+    }
     let Some((_, integer_coefficients)) = integerize(coefficients) else {
         return (Vec::new(), trim(coefficients.to_vec()));
     };

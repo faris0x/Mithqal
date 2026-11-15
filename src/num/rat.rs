@@ -189,6 +189,12 @@ impl Rat {
         }
     }
 
+    /// Approximate the value as a double for heuristic paths.
+    pub(crate) fn to_f64(&self) -> f64 {
+        // SAFETY: the rational is initialized.
+        unsafe { ffi::__gmpq_get_d(&self.inner) }
+    }
+
     /// Compare two rationals by value.
     #[allow(clippy::should_implement_trait)]
     pub fn cmp(&self, other: &Rat) -> Ordering {

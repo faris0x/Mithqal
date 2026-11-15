@@ -235,3 +235,37 @@ fn transcendental_interior_singularities_stay_unevaluated() {
     }
     assert_eq!(text("integrate(tan(x),x,0,1)"), "-ln(abs(cos(1)))");
 }
+
+#[test]
+fn integrate_inverse_functions() {
+    assert_eq!(text("integrate(asin(x),x)"), "(1-x^2)^(1/2)+x*asin(x)");
+    assert_eq!(text("integrate(acos(x),x)"), "-(1-x^2)^(1/2)+x*acos(x)");
+    assert_eq!(text("integrate(atan(x),x)"), "-(1/2)*ln(1+x^2)+x*atan(x)");
+    assert_eq!(text("integrate(asinh(x),x)"), "-(1+x^2)^(1/2)+x*asinh(x)");
+    assert_eq!(text("integrate(acosh(x),x)"), "-(-1+x^2)^(1/2)+x*acosh(x)");
+    assert_eq!(text("integrate(atanh(x),x)"), "(1/2)*ln(1-x^2)+x*atanh(x)");
+}
+
+#[test]
+fn inverse_function_integrals_differentiate_back() {
+    for source in [
+        "asin(x)", "acos(x)", "atan(x)", "asinh(x)", "acosh(x)", "atanh(x)",
+    ] {
+        let mut session = Session::new();
+        let integral = session
+            .eval_statement(&format!("integrate({source},x)"))
+            .unwrap();
+        let derivative = session
+            .eval_statement(&format!(
+                "differentiate({},x)",
+                session.format_infix(integral)
+            ))
+            .unwrap();
+        let target = session.eval_statement(source).unwrap();
+        assert_eq!(
+            session.format_infix(derivative),
+            session.format_infix(target),
+            "round trip failed for {source}"
+        );
+    }
+}
