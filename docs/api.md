@@ -32,9 +32,13 @@ impl Session {
 
     pub fn eval_statement(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval_source(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
+    pub fn eval_language(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval(&mut self, expr: ExprId) -> Result<ExprId, Diagnostic>;
     pub fn eval_compiled(&mut self, expr: ExprId) -> Result<ExprId, Diagnostic>;
     pub fn eval_compiled_statement(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
+
+    pub fn output(&self) -> &[String];
+    pub fn take_output(&mut self) -> Vec<String>;
 
     pub fn format(&self, expr: ExprId) -> Result<String, Diagnostic>;
     pub fn format_infix(&self, expr: ExprId) -> Result<String, Diagnostic>;
@@ -47,7 +51,9 @@ impl Session {
 }
 ```
 
-`eval_source` evaluates statements in order. It stops at the first diagnostic and returns the value of the final statement. `parse_source` returns one handle per statement.
+`eval_source` dispatches module-shaped source to `eval_language`. Ordinary statement source is parsed and evaluated in order. It stops at the first diagnostic and returns the value of the final statement. `parse_source` returns one handle per statement.
+
+`eval_language` parses and evaluates a surface language module. `output` returns the text collected by `prt` statements, and `take_output` moves that text out of the session.
 
 `format` produces canonical source. The output can be parsed back into an equal expression. `format_infix` produces the human form. It may use operators and implicit multiplication. Both methods return `EvalNotLive` for a stale handle.
 
@@ -75,6 +81,7 @@ An `ExprId` carries an arena generation. A handle that is not anchored by the se
 ## Expression views
 
 ```rust
+#[non_exhaustive]
 pub enum ExprView<'a> {
     Integer(&'a Int),
     Rational(&'a Rat),
@@ -134,6 +141,7 @@ pub struct Frame {
     pub span: Option<Span>,
 }
 
+#[non_exhaustive]
 pub enum ErrorKind {
     Parse,
     Eval,
@@ -199,7 +207,7 @@ A `Session` is owned by one thread at a time. It is not `Send` or `Sync` in the 
 
 Version 0.0.x allows breaking changes. Every breaking change is recorded in `CHANGELOG.md`. From version 0.1.0, the public API follows semantic versioning.
 
-Public enums are `#[non_exhaustive]` where extension is expected. Private modules are not part of the API contract.
+`ExprView`, `ErrorKind`, `ErrorCode`, and `NumError` are `#[non_exhaustive]`. Private modules are not part of the API contract.
 
 ## Example
 

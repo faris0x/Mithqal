@@ -16,6 +16,7 @@ pub struct Span {
 }
 
 /// The broad category of a diagnostic.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ErrorKind {
     /// A source reading failure.

@@ -47,6 +47,14 @@ check_absent \
     'stale private arena wording' \
     'The arena, hash table, matcher, virtual machine, and garbage collector remain private' \
     docs/api.md
+check_absent \
+    'stale collection roots' \
+    'definitions, the last result, or the supplied roots' \
+    src/api.rs
+check_absent \
+    'stale fixture extension claim' \
+    'Fixtures use the .expr extension' \
+    docs
 
 if ! grep -q 'initial_arena_capacity' docs/api.md; then
     printf 'stale documentation: Config lacks initial_arena_capacity\n' >&2

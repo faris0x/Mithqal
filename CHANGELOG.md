@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 589 source test functions and 1604 assertion sites, with 684 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 590 source test functions and 1606 assertion sites, with 685 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -171,3 +171,7 @@ Initial kernel work.
 - Refreshed reference documentation for language GC roots, symbolic linear algebra, constant attributes, automatic collection, and current configuration defaults.
 - Removed stale roadmap wording and clarified that source files are not part of the current library surface.
 - Updated multivariate and parser comments to describe the implemented behavior.
+- Completed the public session API reference and added a documentation test that compares documented methods with `src/api.rs`.
+- Corrected the collection root comment and removed obsolete `.expr` fixture claims.
+- Split exact and approximate numeric rows in the maturity table.
+- Marked `ExprView`, `ErrorKind`, and `NumError` as non-exhaustive.

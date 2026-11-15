@@ -110,6 +110,7 @@ fn factor_units(session: &Session, value: mithqal::ExprId) -> usize {
                 _ => 1,
             }
         }
+        _ => 1,
     }
 }
 

@@ -13,6 +13,7 @@ use crate::runtime;
 use crate::syntax::{self, Case, ExprSource, PatternSource, Stmt};
 
 /// A view of an expression.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 pub enum ExprView<'a> {
     /// An exact integer.
@@ -442,7 +443,7 @@ impl Session {
     }
 
     /// Reclaim expressions not reachable from definitions, the last result,
-    /// or the supplied roots.
+    /// active language scope values, or the supplied roots.
     pub fn collect_garbage(&mut self, roots: &[ExprId]) {
         let mut all = roots.to_vec();
         if let Some(last) = self.last_result {

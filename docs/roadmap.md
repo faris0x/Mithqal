@@ -77,8 +77,6 @@ The test suite covers these areas:
 - Garbage collection with forced collection at every safepoint.
 - Memory stability under repeated evaluation.
 
-Fixtures use the `.expr` extension in the current version.
-
 ## Remaining work
 
 Remaining work includes broader improper integration, general multivariate factorization beyond the staged bounds, further matrix decompositions, and wider assumption domains. A command line interface and a graphical interface follow once the library surface is stable.

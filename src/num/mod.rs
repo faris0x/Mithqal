@@ -21,6 +21,7 @@ pub(crate) use mpc::Complex as ComplexMpc;
 use core::fmt;
 
 /// Errors produced by exact numeric operations.
+#[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum NumError {
     /// A decimal or rational literal could not be parsed.
