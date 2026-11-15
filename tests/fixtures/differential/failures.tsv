@@ -15,3 +15,8 @@ diagnostic	2[1,2]	TGN-PARSE-0007
 unchanged	factor(x^2+y^2+1)	x^2+y^2+1
 unchanged	factor(x^4+y^4+1)	x^4+y^4+1
 unchanged	factor(x^2+y^2+z^2+1)	x^2+y^2+z^2+1
+unevaluated	mean([])	mean
+unevaluated	sampleVariance([1])	sampleVariance
+unevaluated	mean([x,1])	mean
+unevaluated	factorInteger(0)	factorInteger
+unevaluated	isPrime(x)	isPrime

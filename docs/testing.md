@@ -37,6 +37,15 @@ unchanged<TAB>factor(x^2+y^2+1)<TAB>x^2+y^2+1
 
 `unevaluated` checks the returned call head. `diagnostic` checks the stable error code. `unchanged` checks that an operation leaves the expression mathematically unchanged.
 
+Exact value records cover number theory and statistics:
+
+```text
+equal<TAB>totient(360)<TAB>96
+equal<TAB>factorInteger(360)<TAB>[[2,3],[3,2],[5,1]]
+equal<TAB>variance([1,2,3,4])<TAB>5/4
+equal<TAB>frequency([1,1,2])<TAB>[[1,2],[2,1]]
+```
+
 ## Regenerating fixtures
 
 The generator is developer tooling and is not part of the crate build. It requires SymPy outside the Rust dependency graph.

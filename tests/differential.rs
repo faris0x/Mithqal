@@ -5,6 +5,8 @@ const CALCULUS: &str = include_str!("fixtures/differential/calculus.tsv");
 const LINALG: &str = include_str!("fixtures/differential/linalg.tsv");
 const PROBES: &str = include_str!("fixtures/differential/probes.tsv");
 const FAILURES: &str = include_str!("fixtures/differential/failures.tsv");
+const NUMBER_THEORY: &str = include_str!("fixtures/differential/numbertheory.tsv");
+const STATISTICS: &str = include_str!("fixtures/differential/statistics.tsv");
 
 fn records(source: &'static str) -> Vec<Vec<&'static str>> {
     source
@@ -289,5 +291,25 @@ fn differential_failure_fixtures() {
             }
             kind => panic!("unknown failure fixture kind {kind}"),
         }
+    }
+}
+
+#[test]
+fn differential_exact_value_fixtures() {
+    for record in records(NUMBER_THEORY)
+        .into_iter()
+        .chain(records(STATISTICS))
+    {
+        assert_eq!(record.len(), 3, "malformed exact record: {record:?}");
+        assert_eq!(record[0], "equal", "unexpected exact record kind");
+        let mut session = Session::new();
+        let actual = evaluate(&mut session, record[1]);
+        let expected = evaluate(&mut session, record[2]);
+        assert_eq!(
+            text(&session, actual),
+            text(&session, expected),
+            "{}",
+            record[1]
+        );
     }
 }

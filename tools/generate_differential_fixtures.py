@@ -243,3 +243,110 @@ failures = [
     ("unchanged", "factor(x^2+y^2+z^2+1)", "x^2+y^2+z^2+1"),
 ]
 write("failures.tsv", failures)
+
+def integer_list(values):
+    return "[" + ",".join(str(value) for value in values) + "]"
+
+
+numbertheory = []
+
+
+def nt(source, expected):
+    numbertheory.append(("equal", source, expected if isinstance(expected, str) else to_mit(expected)))
+
+
+def factor_integer_record(value):
+    if value == 0:
+        return None
+    parts = []
+    if value < 0:
+        parts.append("[-1,1]")
+    for prime, exponent in sorted(sp.factorint(abs(value)).items()):
+        parts.append(f"[{prime},{exponent}]")
+    return "[" + ",".join(parts) + "]"
+
+
+for value in [1, 2, 12, 36, 97, 360, 1001]:
+    nt(f"totient({value})", sp.totient(value))
+    nt(f"divisorCount({value})", sp.divisor_count(value))
+    nt(f"sigma({value})", sp.divisor_sigma(value))
+    nt(f"radical({value})", sp.prod(sp.factorint(value).keys()))
+    nt(f"moebius({value})", sp.mobius(value))
+    nt(f"divisors({value})", integer_list(sp.divisors(value)))
+    nt(f"factorInteger({value})", factor_integer_record(value))
+    nt(f"isPrime({value})", "true" if sp.isprime(value) else "false")
+    nt(f"isSquareFree({value})", "true" if sp.mobius(value) != 0 else "false")
+    nt(f"isEven({value})", "true" if value % 2 == 0 else "false")
+    nt(f"isOdd({value})", "true" if value % 2 == 1 else "false")
+    nt(f"isPerfectSquare({value})", "true" if sp.integer_nthroot(value, 2)[1] else "false")
+    nt(f"fibonacci({value})", sp.fibonacci(value))
+
+nt("factorInteger(-12)", factor_integer_record(-12))
+nt("binomial(10,3)", sp.binomial(10, 3))
+nt("binomial(20,10)", sp.binomial(20, 10))
+nt("gcd(84,30)", sp.igcd(84, 30))
+nt("lcm(12,18)", sp.ilcm(12, 18))
+nt("nextPrime(10)", sp.nextprime(10))
+nt("previousPrime(10)", sp.prevprime(10))
+nt("powerMod(2,10,1000)", pow(2, 10, 1000))
+nt("mod(7,3)", 7 % 3)
+nt("jacobi(5,21)", sp.jacobi_symbol(5, 21))
+
+write("numbertheory.tsv", numbertheory)
+
+statistics = []
+
+
+def st(source, expected):
+    statistics.append(("equal", source, to_mit(expected)))
+
+
+for values in [[1, 2, 3, 4], [0, 5, 7, 9, 11], [-3, -1, 2, 8], [4, 4, 4, 4]]:
+    source = integer_list(values)
+    count = len(values)
+    total = sum(values)
+    mean = sp.Rational(total, count)
+    ordered = sorted(values)
+    if count % 2 == 1:
+        median = sp.Integer(ordered[count // 2])
+    else:
+        median = sp.Rational(ordered[count // 2 - 1] + ordered[count // 2], 2)
+    variance = sp.Rational(sum((value - mean) ** 2 for value in values), count)
+    sample_variance = sp.Rational(sum((value - mean) ** 2 for value in values), count - 1)
+    frequencies = {}
+    for value in values:
+        frequencies[value] = frequencies.get(value, 0) + 1
+    frequency_record = "[" + ",".join(
+        f"[{value},{frequency}]" for value, frequency in sorted(frequencies.items())
+    ) + "]"
+    best = max(frequencies.values())
+    modes = "[" + ",".join(
+        str(value) for value, frequency in sorted(frequencies.items()) if frequency == best
+    ) + "]"
+    st(f"mean({source})", mean)
+    st(f"median({source})", median)
+    st(f"minimum({source})", min(values))
+    st(f"maximum({source})", max(values))
+    st(f"range({source})", max(values) - min(values))
+    st(f"total({source})", total)
+    st(f"count({source})", count)
+    st(f"variance({source})", variance)
+    st(f"sampleVariance({source})", sample_variance)
+    st(f"frequency({source})", frequency_record)
+    st(f"mode({source})", modes)
+
+st("standardDeviation([4,4,4,4])", sp.Integer(0))
+st("sampleStandardDeviation([4,4,4,4])", sp.Integer(0))
+
+write("statistics.tsv", statistics)
+
+failures.extend(
+    [
+        ("unevaluated", "mean([])", "mean"),
+        ("unevaluated", "sampleVariance([1])", "sampleVariance"),
+        ("unevaluated", "mean([x,1])", "mean"),
+        ("unevaluated", "factorInteger(0)", "factorInteger"),
+        ("unevaluated", "isPrime(x)", "isPrime"),
+    ]
+)
+write("failures.tsv", failures)
