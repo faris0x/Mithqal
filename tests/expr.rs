@@ -1,12 +1,13 @@
+use mithqal::ExprId;
 use mithqal::expr::{Arena, Attributes, Node};
 use mithqal::num::{Int, Rat};
 
-fn symbol(arena: &mut Arena, name: &str) -> u32 {
+fn symbol(arena: &mut Arena, name: &str) -> ExprId {
     let id = arena.intern_symbol(name, Attributes::new());
     arena.symbol_expr(id)
 }
 
-fn arithmetic_head(arena: &mut Arena, name: &str) -> u32 {
+fn arithmetic_head(arena: &mut Arena, name: &str) -> ExprId {
     let id = arena.intern_symbol(name, Attributes::arithmetic());
     arena.symbol_expr(id)
 }
@@ -34,7 +35,7 @@ fn associative_flat_args_are_one_node() {
     let yz = arena.intern_call(plus, &[y, z]);
     let right = arena.intern_call(plus, &[x, yz]);
     assert_eq!(left, right);
-    match arena.node(left) {
+    match arena.try_node(left).unwrap() {
         Node::Call { args, .. } => assert_eq!(args.len(), 3),
         _ => panic!("expected a call"),
     }

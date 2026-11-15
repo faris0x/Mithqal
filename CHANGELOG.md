@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 662 test functions and 1565 assertion sites, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 572 source test functions and 1575 assertion sites, with 667 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -133,3 +133,10 @@ Initial kernel work.
 - Added a GitHub Actions CI workflow covering formatting, clippy with warnings denied, debug tests, release tests, and documentation tests.
 - Added a test-count script that reports source test functions, assertion sites, and macro-expanded runtime test cases.
 - Removed a redundant clone of sparse interpolation root branches during reversed branch attempts.
+- Renamed `Config::initial_arena_bytes` to `initial_arena_capacity` and `gc_threshold_bytes` to `gc_threshold_nodes`, and wired both settings into arena construction and automatic collection.
+- Replaced expression handles with generations, so reclaimed handles cannot alias reused arena slots.
+- Made expression inspection and formatting return `EvalNotLive` for stale handles, and hid the unstable arena module from public documentation.
+- Reconciled the semantics, API, README, and changelog with implemented behavior.
+- Added a documentation contract test and a stale-handle regression test.
+- Replaced the parser's recursive precedence chain with precedence climbing, and moved binary construction out of the recursive path.
+- Added deep nesting benchmarks at 512 evaluation levels and 1024 parse levels, plus large stack regression tests.

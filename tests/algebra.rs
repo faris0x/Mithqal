@@ -1,6 +1,7 @@
+use mithqal::ExprId;
 use mithqal::{ErrorCode, ExprView, Session};
 
-fn evaluate(source: &str) -> (Session, u32) {
+fn evaluate(source: &str) -> (Session, ExprId) {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
     (session, value)
@@ -8,7 +9,7 @@ fn evaluate(source: &str) -> (Session, u32) {
 
 fn text(source: &str) -> String {
     let (session, value) = evaluate(source);
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
 fn assert_factor_matches(source: &str) {
@@ -17,7 +18,10 @@ fn assert_factor_matches(source: &str) {
         .eval_statement(&format!("factor({source})"))
         .unwrap();
     let expanded = session
-        .eval_statement(&format!("expand({})", session.format_infix(factored)))
+        .eval_statement(&format!(
+            "expand({})",
+            session.format_infix(factored).unwrap()
+        ))
         .unwrap();
     let target = session
         .eval_statement(&format!("expand({source})"))
@@ -26,7 +30,7 @@ fn assert_factor_matches(source: &str) {
         expanded,
         target,
         "factor mismatch for {source}: {}",
-        session.format_infix(factored)
+        session.format_infix(factored).unwrap()
     );
 }
 
@@ -175,13 +179,13 @@ fn factored_results_survive_collection() {
     let mut session = Session::new();
     let value = session.eval_statement("factor(x^4-1)").unwrap();
     session.collect_garbage(&[value]);
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Call { .. } => {}
         _ => panic!("expected a factored call"),
     }
     let value = session.eval_statement("solve(x^2-4,x)").unwrap();
     session.collect_garbage(&[value]);
-    assert_eq!(session.format_infix(value), "[-2,2]");
+    assert_eq!(session.format_infix(value).unwrap(), "[-2,2]");
 }
 
 #[test]

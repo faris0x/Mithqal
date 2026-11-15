@@ -15,6 +15,7 @@ mod calculus;
 pub mod config;
 pub mod diag;
 pub mod eval;
+#[doc(hidden)]
 pub mod expr;
 mod hash;
 pub mod ir;

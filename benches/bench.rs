@@ -20,6 +20,14 @@ fn measure(name: &str, iterations: u32, mut action: impl FnMut()) -> f64 {
     per * 1_000_000.0
 }
 
+fn nested_call_source(depth: usize) -> String {
+    let mut source = String::from("1");
+    for _ in 0..depth {
+        source = format!("f({source})");
+    }
+    source
+}
+
 fn check_budget(name: &str, per_microseconds: f64, budget_microseconds: f64) {
     if per_microseconds > budget_microseconds {
         eprintln!(
@@ -45,6 +53,19 @@ fn main() {
     let parsed = parse_statement(&mut cold_arena, "1+2").unwrap();
     measure("evaluate parsed 1+2", 50_000, || {
         black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let deep_source = nested_call_source(512);
+    let mut cold_arena = Arena::new();
+    measure("cold parse and evaluate deep call 512", 200, || {
+        let parsed = parse_statement(&mut cold_arena, &deep_source).unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let deep_source = nested_call_source(1024);
+    let mut cold_arena = Arena::new();
+    measure("cold parse deep call 1024", 200, || {
+        black_box(parse_statement(&mut cold_arena, &deep_source).unwrap());
     });
 
     let mut cold_arena = Arena::new();

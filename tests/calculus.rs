@@ -1,6 +1,7 @@
+use mithqal::ExprId;
 use mithqal::{ErrorCode, ExprView, Session};
 
-fn evaluate(source: &str) -> (Session, u32) {
+fn evaluate(source: &str) -> (Session, ExprId) {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
     (session, value)
@@ -8,7 +9,7 @@ fn evaluate(source: &str) -> (Session, u32) {
 
 fn text(source: &str) -> String {
     let (session, value) = evaluate(source);
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
 #[test]
@@ -91,7 +92,7 @@ fn fundamental_theorem_round_trip() {
     let derivative = session
         .eval_statement(&format!(
             "expand(differentiate({},x))",
-            session.format_infix(integral)
+            session.format_infix(integral).unwrap()
         ))
         .unwrap();
     let target = session.eval_statement("expand(x^3-2*x+1)").unwrap();
@@ -127,11 +128,11 @@ fn calculus_results_survive_collection() {
     let mut session = Session::new();
     let value = session.eval_statement("differentiate(x^3,x)").unwrap();
     session.collect_garbage(&[value]);
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Call { .. } => {}
         _ => panic!("expected a derivative call"),
     }
-    assert_eq!(session.format_infix(value), "3*x^2");
+    assert_eq!(session.format_infix(value).unwrap(), "3*x^2");
 }
 
 #[test]
@@ -258,13 +259,13 @@ fn inverse_function_integrals_differentiate_back() {
         let derivative = session
             .eval_statement(&format!(
                 "differentiate({},x)",
-                session.format_infix(integral)
+                session.format_infix(integral).unwrap()
             ))
             .unwrap();
         let target = session.eval_statement(source).unwrap();
         assert_eq!(
-            session.format_infix(derivative),
-            session.format_infix(target),
+            session.format_infix(derivative).unwrap(),
+            session.format_infix(target).unwrap(),
             "round trip failed for {source}"
         );
     }

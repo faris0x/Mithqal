@@ -1,6 +1,7 @@
+use mithqal::ExprId;
 use mithqal::{ErrorCode, ExprView, Int, Rat, Real, Session};
 
-fn evaluate(source: &str) -> (Session, u32) {
+fn evaluate(source: &str) -> (Session, ExprId) {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
     (session, value)
@@ -8,12 +9,12 @@ fn evaluate(source: &str) -> (Session, u32) {
 
 fn text(source: &str) -> String {
     let (session, value) = evaluate(source);
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
 fn integer(source: &str) -> i64 {
     let (session, value) = evaluate(source);
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Integer(value) => value.to_i64().unwrap(),
         _ => panic!("expected an integer for {source}"),
     }
@@ -151,7 +152,7 @@ fn approximate_rounding() {
     let expected = [3.0, 4.0, 3.0, -4.0, -3.0, -3.0];
     for (source, expected) in sources.into_iter().zip(expected) {
         let (session, value) = evaluate(source);
-        match session.view(value) {
+        match session.view(value).unwrap() {
             ExprView::Real(value) => assert_eq!(value.to_f64(), expected, "{source}"),
             _ => panic!("expected a real for {source}"),
         }

@@ -1,27 +1,28 @@
+use mithqal::ExprId;
 use mithqal::{ExprView, Session};
 
-fn evaluate(source: &str) -> (Session, u32) {
+fn evaluate(source: &str) -> (Session, ExprId) {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
     (session, value)
 }
 
-fn complex_parts(session: &Session, id: u32) -> Option<(f64, f64)> {
-    let (head, args) = match session.view(id) {
+fn complex_parts(session: &Session, id: ExprId) -> Option<(f64, f64)> {
+    let (head, args) = match session.view(id).unwrap() {
         ExprView::Call { head, args } => (head, args),
         _ => return None,
     };
-    match session.view(head) {
+    match session.view(head).unwrap() {
         ExprView::Symbol("complex") => {}
         _ => return None,
     }
-    let real = match session.view(args[0]) {
+    let real = match session.view(args[0]).unwrap() {
         ExprView::Real(value) => value.to_f64(),
         ExprView::Integer(value) => value.to_i64()? as f64,
         ExprView::Rational(value) => value.num().to_i64()? as f64 / value.den().to_i64()? as f64,
         _ => return None,
     };
-    let imaginary = match session.view(args[1]) {
+    let imaginary = match session.view(args[1]).unwrap() {
         ExprView::Real(value) => value.to_f64(),
         ExprView::Integer(value) => value.to_i64()? as f64,
         ExprView::Rational(value) => value.num().to_i64()? as f64 / value.den().to_i64()? as f64,
@@ -54,8 +55,8 @@ fn check(source: &str, real: f64, imaginary: f64) {
     }
 }
 
-fn real_part(session: &Session, id: u32) -> f64 {
-    match session.view(id) {
+fn real_part(session: &Session, id: ExprId) -> f64 {
+    match session.view(id).unwrap() {
         ExprView::Real(value) => value.to_f64(),
         ExprView::Integer(value) => value.to_i64().unwrap() as f64,
         ExprView::Rational(value) => {
@@ -144,18 +145,18 @@ fn approximate_complex_constructor_and_calls() {
 #[test]
 fn approximate_complex_error_and_symbolic_paths() {
     let (session, value) = evaluate("approx(1/0+2*i,30)");
-    assert_eq!(session.format_infix(value), "undefined");
+    assert_eq!(session.format_infix(value).unwrap(), "undefined");
     let (session, value) = evaluate("approx(x+i,30)");
     assert!(
-        session.format_infix(value).contains("approx"),
+        session.format_infix(value).unwrap().contains("approx"),
         "{}",
-        session.format_infix(value)
+        session.format_infix(value).unwrap()
     );
     let (session, value) = evaluate("approx(zeta(i),30)");
     assert!(
-        session.format_infix(value).contains("approx"),
+        session.format_infix(value).unwrap().contains("approx"),
         "{}",
-        session.format_infix(value)
+        session.format_infix(value).unwrap()
     );
 }
 
@@ -220,7 +221,7 @@ fn approximate_complex_compiled_path() {
 fn approximate_complex_addition() {
     check("approx(1+i,30)", 1.0, 1.0);
     let (session, value) = evaluate("approx((1+i)+(2-i),30)");
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Real(value) => assert!((value.to_f64() - 3.0).abs() < 1e-9),
         _ => panic!("expected a real"),
     }
@@ -231,7 +232,7 @@ fn approximate_complex_multiplication() {
     check("approx((2+3*i)*(4-i),30)", 11.0, 10.0);
     check("approx((1+i)^2,30)", 0.0, 2.0);
     let (session, value) = evaluate("approx((1+i)*(1-i),30)");
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Real(value) => assert!((value.to_f64() - 2.0).abs() < 1e-9),
         _ => panic!("expected a real"),
     }
@@ -246,7 +247,7 @@ fn approximate_complex_division() {
 #[test]
 fn approximate_complex_absolute_value() {
     let (session, value) = evaluate("approx(abs(3+4*i),30)");
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Real(value) => assert!((value.to_f64() - 5.0).abs() < 1e-9),
         _ => panic!("expected a real"),
     }
@@ -255,11 +256,11 @@ fn approximate_complex_absolute_value() {
 #[test]
 fn complex_constructor_normalizes_zero_imaginary() {
     let (session, value) = evaluate("complex(1,0)");
-    assert_eq!(session.format_infix(value), "1");
+    assert_eq!(session.format_infix(value).unwrap(), "1");
     let (session, value) = evaluate("complex(1,2)");
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Call { head, args } => {
-            match session.view(head) {
+            match session.view(head).unwrap() {
                 ExprView::Symbol(name) => assert_eq!(name, "complex"),
                 _ => panic!("expected a complex head"),
             }
@@ -369,17 +370,17 @@ fn approximate_negative_real_powers_use_principal_branch() {
 #[test]
 fn approximate_complex_singularities_stay_unevaluated() {
     let (session, value) = evaluate("approx(ln(0),30)");
-    assert!(session.format_infix(value).contains("approx"));
+    assert!(session.format_infix(value).unwrap().contains("approx"));
     let (session, value) = evaluate("approx(atanh(1),30)");
-    assert!(session.format_infix(value).contains("approx"));
+    assert!(session.format_infix(value).unwrap().contains("approx"));
     let (session, value) = evaluate("approx(atan(i),30)");
-    assert!(session.format_infix(value).contains("approx"));
+    assert!(session.format_infix(value).unwrap().contains("approx"));
 }
 
 #[test]
 fn approximate_complex_absolute_value_is_stable() {
     let (session, value) = evaluate("approx(abs(3*10^200+4*10^200*i),30)");
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Real(value) => {
             let expected = 5e200;
             assert!((value.to_f64() / expected - 1.0).abs() < 1e-9);
@@ -387,7 +388,7 @@ fn approximate_complex_absolute_value_is_stable() {
         _ => panic!("expected a real"),
     }
     let (session, value) = evaluate("approx(abs(3*10^-200+4*10^-200*i),30)");
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Real(value) => {
             let expected = 5e-200;
             assert!((value.to_f64() / expected - 1.0).abs() < 1e-9);

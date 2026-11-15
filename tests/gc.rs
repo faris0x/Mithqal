@@ -21,7 +21,7 @@ fn collection_keeps_the_last_result() {
     let value = session.eval_statement("1+2").unwrap();
     session.collect_garbage(&[]);
     assert_eq!(session.last_result(), Some(value));
-    assert_eq!(session.format_infix(value), "3");
+    assert_eq!(session.format_infix(value).unwrap(), "3");
 }
 
 #[test]
@@ -33,7 +33,7 @@ fn collection_keeps_definitions() {
     }
     session.collect_garbage(&[]);
     let result = session.eval_statement("f(4)").unwrap();
-    assert_eq!(session.format_infix(result), "16");
+    assert_eq!(session.format_infix(result).unwrap(), "16");
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn collection_keeps_explicit_roots() {
         session.eval_statement(&format!("{}+1", value)).unwrap();
     }
     session.collect_garbage(&[first]);
-    assert_eq!(session.format_infix(first), "a+b");
+    assert_eq!(session.format_infix(first).unwrap(), "a+b");
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn collection_keeps_symbol_nodes() {
     session.eval_statement("x").unwrap();
     session.collect_garbage(&[]);
     let value = session.eval_statement("x").unwrap();
-    assert_eq!(session.format_infix(value), "x");
+    assert_eq!(session.format_infix(value).unwrap(), "x");
 }
 
 #[test]
@@ -104,7 +104,7 @@ fn collection_reuses_freed_slots() {
 #[test]
 fn automatic_collection_keeps_memory_bounded() {
     let config = mithqal::Config {
-        gc_threshold_bytes: 4096,
+        gc_threshold_nodes: 64,
         ..mithqal::Config::default()
     };
     let mut session = Session::with_config(config);

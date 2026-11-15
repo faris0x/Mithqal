@@ -41,6 +41,9 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --all-targets -- --deny warnings
 
+      - name: Check documentation claims
+        run: sh scripts/check-docs.sh
+
       - name: Report test counts
         run: sh scripts/test-counts.sh
 

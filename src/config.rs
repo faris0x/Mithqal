@@ -7,10 +7,10 @@ pub struct Config {
     pub max_steps: u64,
     /// Maximum recursive evaluation depth.
     pub max_depth: u32,
-    /// Initial expression arena capacity in bytes.
-    pub initial_arena_bytes: usize,
-    /// Garbage collection threshold in bytes.
-    pub gc_threshold_bytes: usize,
+    /// Initial expression arena capacity in nodes.
+    pub initial_arena_capacity: usize,
+    /// Garbage collection threshold in live nodes.
+    pub gc_threshold_nodes: usize,
 }
 
 impl Default for Config {
@@ -18,8 +18,8 @@ impl Default for Config {
         Config {
             max_steps: 1_000_000,
             max_depth: 2048,
-            initial_arena_bytes: 1 << 20,
-            gc_threshold_bytes: 8 << 20,
+            initial_arena_capacity: 16_384,
+            gc_threshold_nodes: 131_072,
         }
     }
 }

@@ -151,143 +151,90 @@ impl Parser<'_> {
     }
 
     fn parse_expr(&mut self) -> Result<ExprId, Diagnostic> {
-        self.parse_set()
+        self.parse_binary(0)
     }
 
-    fn parse_set(&mut self) -> Result<ExprId, Diagnostic> {
-        let left = self.parse_rule()?;
-        match self.peek() {
-            Some(TokenKind::Equal) => {
-                self.advance();
-                let right = self.parse_set()?;
-                Ok(self.call_name("set", &[left, right]))
-            }
-            Some(TokenKind::SetDelayed) => {
-                self.advance();
-                let right = self.parse_set()?;
-                Ok(self.call_name("setDelayed", &[left, right]))
-            }
-            _ => Ok(left),
-        }
-    }
-
-    fn parse_rule(&mut self) -> Result<ExprId, Diagnostic> {
-        let left = self.parse_or()?;
-        match self.peek() {
-            Some(TokenKind::Arrow) => {
-                self.advance();
-                let right = self.parse_rule()?;
-                Ok(self.call_name("rule", &[left, right]))
-            }
-            Some(TokenKind::RuleDelayed) => {
-                self.advance();
-                let right = self.parse_rule()?;
-                Ok(self.call_name("ruleDelayed", &[left, right]))
-            }
-            _ => Ok(left),
-        }
-    }
-
-    fn parse_or(&mut self) -> Result<ExprId, Diagnostic> {
-        let mut left = self.parse_and()?;
-        while self.at(&TokenKind::Or) {
-            self.advance();
-            let right = self.parse_and()?;
-            left = self.call_name("or", &[left, right]);
-        }
-        Ok(left)
-    }
-
-    fn parse_and(&mut self) -> Result<ExprId, Diagnostic> {
-        let mut left = self.parse_comparison()?;
-        while self.at(&TokenKind::And) {
-            self.advance();
-            let right = self.parse_comparison()?;
-            left = self.call_name("and", &[left, right]);
-        }
-        Ok(left)
-    }
-
-    fn parse_comparison(&mut self) -> Result<ExprId, Diagnostic> {
-        let left = self.parse_additive()?;
-        let name = match self.peek() {
-            Some(TokenKind::Equal3) => "equal",
-            Some(TokenKind::Equal2) => "equal",
-            Some(TokenKind::NotEqual) => "notEqual",
-            Some(TokenKind::Tilde) => "same",
-            Some(TokenKind::Less) => "less",
-            Some(TokenKind::LessEqual) => "lessEqual",
-            Some(TokenKind::Greater) => "greater",
-            Some(TokenKind::GreaterEqual) => "greaterEqual",
-            _ => return Ok(left),
-        };
-        self.advance();
-        let right = self.parse_additive()?;
-        let result = self.call_name(name, &[left, right]);
-        if is_comparison(self.peek()) {
-            return Err(self.error(
-                ErrorCode::ParseUnexpectedToken,
-                "comparison operators do not chain",
-            ));
-        }
-        Ok(result)
-    }
-
-    fn parse_additive(&mut self) -> Result<ExprId, Diagnostic> {
-        let mut left = self.parse_multiplicative()?;
-        loop {
-            match self.peek() {
-                Some(TokenKind::Plus) => {
-                    self.advance();
-                    let right = self.parse_multiplicative()?;
-                    left = self.call_name("plus", &[left, right]);
-                }
-                Some(TokenKind::Minus) => {
-                    self.advance();
-                    let right = self.parse_multiplicative()?;
-                    let negative = self.negate_value(right)?;
-                    left = self.call_name("plus", &[left, negative]);
-                }
-                _ => break,
-            }
-        }
-        Ok(left)
-    }
-
-    fn parse_multiplicative(&mut self) -> Result<ExprId, Diagnostic> {
+    fn parse_binary(&mut self, minimum: u8) -> Result<ExprId, Diagnostic> {
         let mut left = self.parse_unary()?;
         loop {
-            match self.peek() {
-                Some(TokenKind::Star) => {
-                    self.advance();
-                    let right = self.parse_unary()?;
-                    left = self.call_name("times", &[left, right]);
-                }
-                Some(TokenKind::Slash) => {
-                    self.advance();
-                    let right = self.parse_unary()?;
-                    let quotient = match (self.as_rat(left), self.as_rat(right)) {
-                        (Some(numerator), Some(denominator)) if !denominator.is_zero() => {
-                            numerator.div(&denominator).ok()
-                        }
-                        _ => None,
-                    };
-                    if let Some(value) = quotient {
-                        left = self.arena.intern_rat(value);
-                        continue;
-                    }
-                    let minus_one = self.integer(-1);
-                    let inverse = self.call_name("power", &[right, minus_one]);
-                    left = self.call_name("times", &[left, inverse]);
-                }
-                Some(kind) if starts_primary(kind) => {
-                    let right = self.parse_unary()?;
-                    left = self.call_name("times", &[left, right]);
-                }
+            let (name, left_binding, right_binding, comparison) = match self.peek() {
+                Some(TokenKind::Equal) => ("set", 1, 1, false),
+                Some(TokenKind::SetDelayed) => ("setDelayed", 1, 1, false),
+                Some(TokenKind::Arrow) => ("rule", 2, 2, false),
+                Some(TokenKind::RuleDelayed) => ("ruleDelayed", 2, 2, false),
+                Some(TokenKind::Or) => ("or", 3, 4, false),
+                Some(TokenKind::And) => ("and", 4, 5, false),
+                Some(TokenKind::Equal3 | TokenKind::Equal2) => ("equal", 5, 6, true),
+                Some(TokenKind::NotEqual) => ("notEqual", 5, 6, true),
+                Some(TokenKind::Tilde) => ("same", 5, 6, true),
+                Some(TokenKind::Less) => ("less", 5, 6, true),
+                Some(TokenKind::LessEqual) => ("lessEqual", 5, 6, true),
+                Some(TokenKind::Greater) => ("greater", 5, 6, true),
+                Some(TokenKind::GreaterEqual) => ("greaterEqual", 5, 6, true),
+                Some(TokenKind::Plus) => ("plus", 6, 7, false),
+                Some(TokenKind::Minus) => ("minus", 6, 7, false),
+                Some(TokenKind::Star) => ("times", 7, 8, false),
+                Some(TokenKind::Slash) => ("slash", 7, 8, false),
+                Some(kind) if starts_primary(kind) => ("implicit", 7, 8, false),
                 _ => break,
+            };
+            if left_binding < minimum {
+                break;
+            }
+            if name != "implicit" {
+                self.advance();
+            }
+            let right = self.parse_binary(right_binding)?;
+            left = self.combine_binary(name, left, right)?;
+            if comparison && is_comparison(self.peek()) {
+                return Err(self.error(
+                    ErrorCode::ParseUnexpectedToken,
+                    "comparison operators do not chain",
+                ));
             }
         }
         Ok(left)
+    }
+
+    fn combine_binary(
+        &mut self,
+        name: &str,
+        left: ExprId,
+        right: ExprId,
+    ) -> Result<ExprId, Diagnostic> {
+        Ok(match name {
+            "set" => self.call_name("set", &[left, right]),
+            "setDelayed" => self.call_name("setDelayed", &[left, right]),
+            "rule" => self.call_name("rule", &[left, right]),
+            "ruleDelayed" => self.call_name("ruleDelayed", &[left, right]),
+            "or" => self.call_name("or", &[left, right]),
+            "and" => self.call_name("and", &[left, right]),
+            "equal" | "notEqual" | "same" | "less" | "lessEqual" | "greater" | "greaterEqual" => {
+                self.call_name(name, &[left, right])
+            }
+            "plus" => self.call_name("plus", &[left, right]),
+            "minus" => {
+                let negative = self.negate_value(right)?;
+                self.call_name("plus", &[left, negative])
+            }
+            "times" | "implicit" => self.call_name("times", &[left, right]),
+            "slash" => {
+                let quotient = match (self.as_rat(left), self.as_rat(right)) {
+                    (Some(numerator), Some(denominator)) if !denominator.is_zero() => {
+                        numerator.div(&denominator).ok()
+                    }
+                    _ => None,
+                };
+                if let Some(value) = quotient {
+                    self.arena.intern_rat(value)
+                } else {
+                    let minus_one = self.integer(-1);
+                    let inverse = self.call_name("power", &[right, minus_one]);
+                    self.call_name("times", &[left, inverse])
+                }
+            }
+            _ => unreachable!(),
+        })
     }
 
     fn parse_unary(&mut self) -> Result<ExprId, Diagnostic> {

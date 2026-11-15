@@ -6,7 +6,7 @@ fn session() -> Session {
 
 fn eval(session: &mut Session, source: &str) -> String {
     let value = session.eval_statement(source).unwrap();
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn recursion_with_literal_base_case() {
     let mut session = session();
     let source = "fact(0):=1\nfact(n_):=n*fact(n-1)\nfact(5)\n";
     let value = session.eval_source(source).unwrap();
-    assert_eq!(session.format_infix(value), "120");
+    assert_eq!(session.format_infix(value).unwrap(), "120");
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn literal_rules_win_over_patterns() {
     let mut session = session();
     let source = "f(x_):=x^2\nf(0):=100\nf(0)\n";
     let value = session.eval_source(source).unwrap();
-    assert_eq!(session.format_infix(value), "100");
+    assert_eq!(session.format_infix(value).unwrap(), "100");
     assert_eq!(eval(&mut session, "f(2)"), "4");
 }
 
@@ -70,7 +70,7 @@ fn equal_specificity_keeps_definition_order() {
     let mut session = session();
     let source = "f(x_):=1\nf(y_):=2\nf(10)\n";
     let value = session.eval_source(source).unwrap();
-    assert_eq!(session.format_infix(value), "1");
+    assert_eq!(session.format_infix(value).unwrap(), "1");
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn conditions_accept_and_reject() {
     let mut session = session();
     let source = "f(when(x_,x>0)):=x\nf(5)\n";
     let value = session.eval_source(source).unwrap();
-    assert_eq!(session.format_infix(value), "5");
+    assert_eq!(session.format_infix(value).unwrap(), "5");
     assert_eq!(eval(&mut session, "f(-5)"), "f(-5)");
 }
 
@@ -195,18 +195,18 @@ fn invalid_definition_targets_are_reported() {
 fn constants_can_be_shadowed() {
     let mut session = session();
     let value = session.eval_source("i=3\ni^2\n").unwrap();
-    assert_eq!(session.format_infix(value), "9");
+    assert_eq!(session.format_infix(value).unwrap(), "9");
     let value = session.eval_source("pi=3\npi+1\n").unwrap();
-    assert_eq!(session.format_infix(value), "4");
+    assert_eq!(session.format_infix(value).unwrap(), "4");
     let value = session.eval_source("e=2\ne^3\n").unwrap();
-    assert_eq!(session.format_infix(value), "8");
+    assert_eq!(session.format_infix(value).unwrap(), "8");
 }
 
 #[test]
 fn shadowing_i_disables_gaussian_normalization() {
     let mut session = session();
     let value = session.eval_source("i=3\n(1+i)*(1-i)\n").unwrap();
-    assert_eq!(session.format_infix(value), "-8");
+    assert_eq!(session.format_infix(value).unwrap(), "-8");
 }
 
 #[test]
@@ -222,10 +222,10 @@ fn result_caches_invalidate_when_definitions_change() {
 fn compiled_result_caches_invalidate_when_definitions_change() {
     let mut session = session();
     let first = session.eval_compiled_statement("x+1").unwrap();
-    assert_eq!(session.format_infix(first), "1+x");
+    assert_eq!(session.format_infix(first).unwrap(), "1+x");
     session.eval_statement("x=1").unwrap();
     let second = session.eval_compiled_statement("x+1").unwrap();
-    assert_eq!(session.format_infix(second), "2");
+    assert_eq!(session.format_infix(second).unwrap(), "2");
 }
 
 #[test]

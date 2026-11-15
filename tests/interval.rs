@@ -1,6 +1,7 @@
+use mithqal::ExprId;
 use mithqal::{ExprView, Session};
 
-fn evaluate(source: &str) -> (Session, u32) {
+fn evaluate(source: &str) -> (Session, ExprId) {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
     (session, value)
@@ -8,20 +9,20 @@ fn evaluate(source: &str) -> (Session, u32) {
 
 fn text(source: &str) -> String {
     let (session, value) = evaluate(source);
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
-fn interval_bounds(session: &Session, id: u32) -> (f64, f64) {
-    let (head, args) = match session.view(id) {
+fn interval_bounds(session: &Session, id: ExprId) -> (f64, f64) {
+    let (head, args) = match session.view(id).unwrap() {
         ExprView::Call { head, args } => (head, args),
         _ => panic!("expected a call"),
     };
-    match session.view(head) {
+    match session.view(head).unwrap() {
         ExprView::Symbol(name) => assert_eq!(name, "interval"),
         _ => panic!("expected an interval head"),
     }
     assert_eq!(args.len(), 2);
-    let low = match session.view(args[0]) {
+    let low = match session.view(args[0]).unwrap() {
         ExprView::Real(value) => value.to_f64(),
         ExprView::Integer(value) => value.to_i64().unwrap() as f64,
         ExprView::Rational(value) => {
@@ -29,7 +30,7 @@ fn interval_bounds(session: &Session, id: u32) -> (f64, f64) {
         }
         _ => panic!("expected a numeric endpoint"),
     };
-    let high = match session.view(args[1]) {
+    let high = match session.view(args[1]).unwrap() {
         ExprView::Real(value) => value.to_f64(),
         ExprView::Integer(value) => value.to_i64().unwrap() as f64,
         ExprView::Rational(value) => {
@@ -85,8 +86,8 @@ fn interval_powers() {
 #[test]
 fn interval_spanning_zero_has_no_reciprocal() {
     let (session, value) = evaluate("interval(-1,1)^-1");
-    match session.view(value) {
-        ExprView::Call { head, .. } => match session.view(head) {
+    match session.view(value).unwrap() {
+        ExprView::Call { head, .. } => match session.view(head).unwrap() {
             ExprView::Symbol(name) => assert_eq!(name, "power"),
             _ => panic!("expected a power call"),
         },
@@ -98,13 +99,13 @@ fn interval_spanning_zero_has_no_reciprocal() {
 fn invalid_intervals_fail() {
     let (_session, value) = evaluate("interval(2,1)");
     assert_eq!(value, _session.last_result().unwrap());
-    assert_eq!(_session.format_infix(value), "failed");
+    assert_eq!(_session.format_infix(value).unwrap(), "failed");
 }
 
 #[test]
 fn symbolic_intervals_stay_symbolic() {
     let (session, value) = evaluate("interval(a,b)+1");
-    let text = session.format_infix(value);
+    let text = session.format_infix(value).unwrap();
     assert!(text.contains("interval(a,b)"), "{text}");
 }
 
@@ -170,15 +171,15 @@ fn interval_with_real_endpoints() {
 #[test]
 fn approximate_point_intervals_widen_for_error() {
     let (session, value) = evaluate("interval(approx(1/3,30),approx(1/3,30))+0");
-    let args = match session.view(value) {
+    let args = match session.view(value).unwrap() {
         ExprView::Call { args, .. } => args,
         _ => panic!("expected an interval"),
     };
-    let low = match session.view(args[0]) {
+    let low = match session.view(args[0]).unwrap() {
         ExprView::Real(value) => value,
         _ => panic!("expected a real endpoint"),
     };
-    let high = match session.view(args[1]) {
+    let high = match session.view(args[1]).unwrap() {
         ExprView::Real(value) => value,
         _ => panic!("expected a real endpoint"),
     };

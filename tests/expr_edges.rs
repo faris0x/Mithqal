@@ -1,14 +1,15 @@
 use core::cmp::Ordering;
+use mithqal::ExprId;
 
 use mithqal::expr::{Arena, Attributes, Node};
 use mithqal::num::{Int, Rat};
 
-fn symbol(arena: &mut Arena, name: &str) -> u32 {
+fn symbol(arena: &mut Arena, name: &str) -> ExprId {
     let id = arena.symbol_or_intern(name);
     arena.symbol_expr(id)
 }
 
-fn arithmetic(arena: &mut Arena, name: &str) -> u32 {
+fn arithmetic(arena: &mut Arena, name: &str) -> ExprId {
     let id = arena.intern_symbol(name, Attributes::arithmetic());
     arena.symbol_expr(id)
 }
@@ -34,7 +35,7 @@ fn zero_denominator_is_never_interned() {
     let mut arena = Arena::new();
     let value = Rat::from_i64(7, 1).unwrap();
     let id = arena.intern_rat(value);
-    assert!(matches!(arena.node(id), Node::Int(_)));
+    assert!(matches!(arena.try_node(id).unwrap(), Node::Int(_)));
 }
 
 #[test]
@@ -44,7 +45,7 @@ fn empty_calls_intern() {
     let first = arena.intern_call(f, &[]);
     let second = arena.intern_call(f, &[]);
     assert_eq!(first, second);
-    match arena.node(first) {
+    match arena.try_node(first).unwrap() {
         Node::Call { args, .. } => assert!(args.is_empty()),
         _ => panic!("expected a call"),
     }
@@ -61,7 +62,7 @@ fn deep_flattening() {
     let ab = arena.intern_call(plus, &[a, b]);
     let abc = arena.intern_call(plus, &[ab, c]);
     let all = arena.intern_call(plus, &[abc, d]);
-    match arena.node(all) {
+    match arena.try_node(all).unwrap() {
         Node::Call { args, .. } => assert_eq!(args.len(), 4),
         _ => panic!("expected a call"),
     }
@@ -77,7 +78,7 @@ fn orderless_sorting_is_stable_and_total() {
     let first = arena.intern_call(plus, &[c, a, b]);
     let second = arena.intern_call(plus, &[a, b, c]);
     assert_eq!(first, second);
-    match arena.node(first) {
+    match arena.try_node(first).unwrap() {
         Node::Call { args, .. } => {
             let names: Vec<&str> = args
                 .iter()
@@ -100,7 +101,7 @@ fn raw_calls_skip_flattening() {
     let b = symbol(&mut arena, "b");
     let ab = arena.intern_call(plus, &[a, b]);
     let raw = arena.intern_call_raw(plus, &[ab, a]);
-    match arena.node(raw) {
+    match arena.try_node(raw).unwrap() {
         Node::Call { args, .. } => assert_eq!(args.len(), 2),
         _ => panic!("expected a call"),
     }

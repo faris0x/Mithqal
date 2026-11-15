@@ -1,10 +1,11 @@
+use mithqal::ExprId;
 use mithqal::diag::ErrorCode;
 use mithqal::eval::{evaluate, evaluate_with_limits};
 use mithqal::expr::Arena;
 use mithqal::print::infix;
 use mithqal::syntax::parse_statement;
 
-fn evaluated(source: &str) -> (Arena, u32) {
+fn evaluated(source: &str) -> (Arena, ExprId) {
     let mut arena = Arena::new();
     let parsed = parse_statement(&mut arena, source).unwrap();
     let value = evaluate(&mut arena, parsed).unwrap();

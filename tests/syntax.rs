@@ -10,7 +10,7 @@ fn parse_one(source: &str) -> (Arena, ExprId) {
 }
 
 fn head_name(arena: &Arena, id: ExprId) -> String {
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Call { head, .. } => {
             let symbol = arena.symbol_id(*head).unwrap();
             arena.symbol_name(symbol).to_string()
@@ -96,12 +96,12 @@ fn indexing_is_reserved() {
 #[test]
 fn decimal_literals_are_exact() {
     let (arena, id) = parse_one("1.05");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Rat(value) => assert_eq!(value.to_decimal(), "21/20"),
         _ => panic!("expected a rational"),
     }
     let (arena, id) = parse_one("2.000");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Int(value) => assert_eq!(value.to_decimal(), "2"),
         _ => panic!("expected an integer"),
     }
@@ -111,11 +111,11 @@ fn decimal_literals_are_exact() {
 fn definitions_and_patterns_parse() {
     let (arena, id) = parse_one("f(x_):=x^2");
     assert_eq!(head_name(&arena, id), "setDelayed");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Call { args, .. } => {
             let lhs = args[0];
             assert_eq!(head_name(&arena, lhs), "f");
-            match arena.node(lhs) {
+            match arena.try_node(lhs).unwrap() {
                 Node::Call { args, .. } => {
                     assert_eq!(head_name(&arena, args[0]), "pattern");
                 }

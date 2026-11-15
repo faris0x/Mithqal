@@ -43,8 +43,9 @@ struct SymbolInfo {
 /// An arena of hash consed expression nodes and a symbol table.
 pub struct Arena {
     nodes: Vec<Option<Node>>,
+    generations: Vec<u32>,
     intern: HashMap<Key, ExprId, FnvBuildHasher>,
-    free: Vec<ExprId>,
+    free: Vec<usize>,
     live: usize,
     symbols: Vec<SymbolInfo>,
     symbol_names: HashMap<String, SymbolId, FnvBuildHasher>,
@@ -55,8 +56,14 @@ pub struct Arena {
 impl Arena {
     /// Create an empty arena.
     pub fn new() -> Self {
+        Self::with_capacity(0)
+    }
+
+    /// Create an empty arena with initial node capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
         Arena {
-            nodes: Vec::new(),
+            nodes: Vec::with_capacity(capacity),
+            generations: Vec::with_capacity(capacity),
             intern: HashMap::default(),
             free: Vec::new(),
             live: 0,
@@ -77,11 +84,18 @@ impl Arena {
         self.live == 0
     }
 
-    /// Read a node by handle.
-    pub fn node(&self, id: ExprId) -> &Node {
-        self.nodes[id as usize]
-            .as_ref()
-            .expect("expression handle is not live")
+    /// Read a live node by handle.
+    pub(crate) fn node(&self, id: ExprId) -> &Node {
+        self.try_node(id).expect("expression handle is not live")
+    }
+
+    /// Read a live node by handle, or return `None` for a stale handle.
+    pub fn try_node(&self, id: ExprId) -> Option<&Node> {
+        let index = id.index();
+        if self.generations.get(index).copied()? != id.generation() {
+            return None;
+        }
+        self.nodes.get(index)?.as_ref()
     }
 
     /// Intern an integer.
@@ -249,8 +263,11 @@ impl Arena {
         }
 
         while let Some(id) = stack.pop() {
-            let index = id as usize;
+            let index = id.index();
             if index >= marked.len() || marked[index] {
+                continue;
+            }
+            if self.generations.get(index).copied() != Some(id.generation()) {
                 continue;
             }
             let Some(node) = self.nodes[index].as_ref() else {
@@ -264,19 +281,31 @@ impl Arena {
         }
 
         let mut intern = HashMap::default();
-        for (index, slot) in self.nodes.iter_mut().enumerate() {
+        let nodes = &mut self.nodes;
+        let generations = &mut self.generations;
+        let free = &mut self.free;
+        let mut live = self.live;
+        for (index, slot) in nodes.iter_mut().enumerate() {
             match slot {
                 Some(node) if marked[index] => {
-                    intern.insert(key_for(node), index as ExprId);
+                    intern.insert(
+                        key_for(node),
+                        ExprId::from_parts(index as u32, generations[index]),
+                    );
                 }
                 Some(_) => {
                     *slot = None;
-                    self.free.push(index as ExprId);
-                    self.live -= 1;
+                    generations[index] = generations[index].wrapping_add(1);
+                    if generations[index] == 0 {
+                        generations[index] = 1;
+                    }
+                    free.push(index);
+                    live -= 1;
                 }
                 None => {}
             }
         }
+        self.live = live;
         self.intern = intern;
     }
 
@@ -290,13 +319,14 @@ impl Arena {
         if let Some(&id) = self.intern.get(&key) {
             return id;
         }
-        let id = if let Some(id) = self.free.pop() {
-            self.nodes[id as usize] = Some(node);
-            id
+        let id = if let Some(index) = self.free.pop() {
+            self.nodes[index] = Some(node);
+            ExprId::from_parts(index as u32, self.generations[index])
         } else {
-            let id = self.nodes.len() as ExprId;
+            let index = self.nodes.len();
             self.nodes.push(Some(node));
-            id
+            self.generations.push(0);
+            ExprId::from_parts(index as u32, 0)
         };
         self.live += 1;
         self.intern.insert(key, id);

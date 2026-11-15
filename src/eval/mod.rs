@@ -457,7 +457,7 @@ struct SmallArgs {
 impl SmallArgs {
     fn new() -> Self {
         SmallArgs {
-            inline: [0; 6],
+            inline: [ExprId::default(); 6],
             len: 0,
             heap: Vec::new(),
         }
@@ -465,7 +465,7 @@ impl SmallArgs {
 
     fn from_slice(args: &[ExprId]) -> Self {
         if args.len() <= 6 {
-            let mut inline = [0; 6];
+            let mut inline = [ExprId::default(); 6];
             inline[..args.len()].copy_from_slice(args);
             SmallArgs {
                 inline,
@@ -474,7 +474,7 @@ impl SmallArgs {
             }
         } else {
             SmallArgs {
-                inline: [0; 6],
+                inline: [ExprId::default(); 6],
                 len: 0,
                 heap: args.to_vec(),
             }
@@ -2950,7 +2950,10 @@ impl<'a> Evaluator<'a> {
             && head == self.heads.power
             && let Some((base, exponent)) = self.negative_power(args[0], args[1])
         {
-            let denominator = if exponent == 1 {
+            let denominator = if matches!(
+                self.arena.node(exponent),
+                Node::Int(value) if value.is_one()
+            ) {
                 base
             } else {
                 self.arena.intern_call(self.heads.power, &[base, exponent])

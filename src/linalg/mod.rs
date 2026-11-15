@@ -424,7 +424,7 @@ impl SymbolicMatrix {
         SymbolicMatrix {
             rows,
             columns,
-            entries: vec![0; rows * columns],
+            entries: vec![ExprId::default(); rows * columns],
         }
     }
 

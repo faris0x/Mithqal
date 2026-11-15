@@ -3,7 +3,7 @@ use mithqal::Session;
 fn text(source: &str) -> String {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
 macro_rules! eval_case {

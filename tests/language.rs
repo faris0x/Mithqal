@@ -1,6 +1,7 @@
+use mithqal::ExprId;
 use mithqal::{ErrorCode, Session};
 
-fn eval(source: &str) -> (Session, u32) {
+fn eval(source: &str) -> (Session, ExprId) {
     let mut session = Session::new();
     let value = session.eval_source(source).unwrap();
     (session, value)
@@ -28,7 +29,7 @@ prt x*y
 end
 "#;
     let (session, value) = eval(source);
-    assert_eq!(session.format_infix(value), "12");
+    assert_eq!(session.format_infix(value).unwrap(), "12");
     assert_eq!(session.output(), &["7", "12"]);
 }
 

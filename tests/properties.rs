@@ -2,7 +2,7 @@ use mithqal::{ExprView, Session};
 
 fn value_text(session: &mut Session, source: &str) -> String {
     let value = session.eval_statement(source).unwrap();
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
 #[test]
@@ -27,7 +27,10 @@ fn factor_expand_round_trips() {
             .eval_statement(&format!("factor({polynomial})"))
             .unwrap();
         let expanded = session
-            .eval_statement(&format!("expand({})", session.format_infix(factored)))
+            .eval_statement(&format!(
+                "expand({})",
+                session.format_infix(factored).unwrap()
+            ))
             .unwrap();
         let target = session
             .eval_statement(&format!("expand({polynomial})"))
@@ -46,7 +49,7 @@ fn integral_derivative_round_trips() {
         let derivative = session
             .eval_statement(&format!(
                 "expand(differentiate({},x))",
-                session.format_infix(integral)
+                session.format_infix(integral).unwrap()
             ))
             .unwrap();
         let target = session
@@ -104,15 +107,16 @@ fn nullspace_annihilates_its_matrix() {
         let value = session
             .eval_statement(&format!("nullspace([[{a},{b}],[{c},{d}]])"))
             .unwrap();
-        let vectors = match session.view(value) {
+        let vectors = match session.view(value).unwrap() {
             ExprView::Call { args, .. } => args.to_vec(),
             _ => panic!("expected a list"),
         };
         for vector in vectors {
-            let (x, y) = match session.view(vector) {
-                ExprView::Call { args, .. } => {
-                    (session.format_infix(args[0]), session.format_infix(args[1]))
-                }
+            let (x, y) = match session.view(vector).unwrap() {
+                ExprView::Call { args, .. } => (
+                    session.format_infix(args[0]).unwrap(),
+                    session.format_infix(args[1]).unwrap(),
+                ),
                 _ => panic!("expected a vector"),
             };
             let first = value_text(&mut session, &format!("{a}*({x})+{b}*({y})"));
@@ -165,7 +169,7 @@ fn divisor_count_matches_manual_count() {
         let result = session
             .eval_statement(&format!("divisorCount({value})"))
             .unwrap();
-        let ExprView::Integer(result) = session.view(result) else {
+        let ExprView::Integer(result) = session.view(result).unwrap() else {
             panic!("expected an integer");
         };
         assert_eq!(result.to_i64().unwrap(), count, "{value}");
@@ -180,7 +184,7 @@ fn totient_below_prime_count_identity() {
         let result = session
             .eval_statement(&format!("totient({value})"))
             .unwrap();
-        let ExprView::Integer(result) = session.view(result) else {
+        let ExprView::Integer(result) = session.view(result).unwrap() else {
             panic!("expected an integer");
         };
         sum += result.to_i64().unwrap();

@@ -58,6 +58,8 @@ pub enum ErrorCode {
     EvalArity,
     /// A definition target is invalid.
     EvalDefinition,
+    /// An expression handle is no longer live.
+    EvalNotLive,
     /// A numeric operation failed.
     NumericFailure,
     /// An internal invariant failed.
@@ -81,6 +83,7 @@ impl ErrorCode {
             ErrorCode::EvalBudget => "TGN-EVAL-0012",
             ErrorCode::EvalArity => "TGN-EVAL-0013",
             ErrorCode::EvalDefinition => "TGN-EVAL-0014",
+            ErrorCode::EvalNotLive => "TGN-EVAL-0015",
             ErrorCode::NumericFailure => "TGN-NUM-0001",
             ErrorCode::InternalInvariant => "TGN-INT-0001",
         }
@@ -101,7 +104,8 @@ impl ErrorCode {
             | ErrorCode::EvalProtected
             | ErrorCode::EvalBudget
             | ErrorCode::EvalArity
-            | ErrorCode::EvalDefinition => ErrorKind::Eval,
+            | ErrorCode::EvalDefinition
+            | ErrorCode::EvalNotLive => ErrorKind::Eval,
             ErrorCode::NumericFailure => ErrorKind::Numeric,
             ErrorCode::InternalInvariant => ErrorKind::Internal,
         }

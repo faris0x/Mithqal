@@ -10,7 +10,7 @@ fn parse_one(source: &str) -> (Arena, ExprId) {
 }
 
 fn head_name(arena: &Arena, id: ExprId) -> String {
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Call { head, .. } => {
             let symbol = arena.symbol_id(*head).unwrap();
             arena.symbol_name(symbol).to_string()
@@ -20,7 +20,7 @@ fn head_name(arena: &Arena, id: ExprId) -> String {
 }
 
 fn arg(arena: &Arena, id: ExprId, index: usize) -> ExprId {
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Call { args, .. } => args[index],
         _ => panic!("expected a call"),
     }
@@ -48,11 +48,17 @@ fn unary_minus_precedence() {
 
     let (arena, id) = parse_one("(-2)^2");
     assert_eq!(head_name(&arena, id), "power");
-    assert!(matches!(arena.node(arg(&arena, id, 0)), Node::Int(_)));
+    assert!(matches!(
+        arena.try_node(arg(&arena, id, 0)).unwrap(),
+        Node::Int(_)
+    ));
 
     let (arena, id) = parse_one("2^-1");
     assert_eq!(head_name(&arena, id), "power");
-    assert!(matches!(arena.node(arg(&arena, id, 1)), Node::Int(_)));
+    assert!(matches!(
+        arena.try_node(arg(&arena, id, 1)).unwrap(),
+        Node::Int(_)
+    ));
 }
 
 #[test]
@@ -71,7 +77,7 @@ fn empty_calls_and_lists() {
     assert_eq!(head_name(&arena, id), "f");
     let (arena, id) = parse_one("[]");
     assert_eq!(head_name(&arena, id), "list");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Call { args, .. } => assert!(args.is_empty()),
         _ => panic!("expected a list"),
     }
@@ -88,17 +94,17 @@ fn nested_lists() {
 #[test]
 fn exact_decimal_forms() {
     let (arena, id) = parse_one("1.05");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Rat(value) => assert_eq!(value.to_decimal(), "21/20"),
         _ => panic!("expected a rational"),
     }
     let (arena, id) = parse_one("0001.20");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Rat(value) => assert_eq!(value.to_decimal(), "6/5"),
         _ => panic!("expected a rational"),
     }
     let (arena, id) = parse_one("0.0");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Int(value) => assert_eq!(value.to_decimal(), "0"),
         _ => panic!("expected an integer"),
     }
@@ -107,17 +113,17 @@ fn exact_decimal_forms() {
 #[test]
 fn negative_numbers_fold_during_parsing() {
     let (arena, id) = parse_one("-1");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Int(value) => assert_eq!(value.to_decimal(), "-1"),
         _ => panic!("expected an integer"),
     }
     let (arena, id) = parse_one("-1.5");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Rat(value) => assert_eq!(value.to_decimal(), "-3/2"),
         _ => panic!("expected a rational"),
     }
     let (arena, id) = parse_one("--1");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Int(value) => assert_eq!(value.to_decimal(), "1"),
         _ => panic!("expected an integer"),
     }
@@ -126,12 +132,12 @@ fn negative_numbers_fold_during_parsing() {
 #[test]
 fn numeric_division_folds() {
     let (arena, id) = parse_one("1/2");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Rat(value) => assert_eq!(value.to_decimal(), "1/2"),
         _ => panic!("expected a rational"),
     }
     let (arena, id) = parse_one("2/4");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Rat(value) => assert_eq!(value.to_decimal(), "1/2"),
         _ => panic!("expected a rational"),
     }
@@ -280,7 +286,7 @@ fn invalid_numbers_are_reported_by_the_parser() {
 #[test]
 fn integer_literals_use_arbitrary_precision() {
     let (arena, id) = parse_one("123456789012345678901234567890");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Int(value) => assert_eq!(value.to_decimal(), "123456789012345678901234567890"),
         _ => panic!("expected an integer"),
     }
@@ -289,7 +295,7 @@ fn integer_literals_use_arbitrary_precision() {
 #[test]
 fn zero_is_an_integer_node() {
     let (arena, id) = parse_one("0");
-    match arena.node(id) {
+    match arena.try_node(id).unwrap() {
         Node::Int(value) => assert_eq!(value, &Int::zero()),
         _ => panic!("expected an integer"),
     }

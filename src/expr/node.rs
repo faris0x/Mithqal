@@ -1,9 +1,34 @@
 //! Expression nodes, symbols, and attributes.
 
+use core::fmt;
+
 use crate::num::{Int, Rat, Real};
 
-/// A handle to an expression in the arena.
-pub type ExprId = u32;
+/// A generational handle to an expression in the arena.
+#[derive(Copy, Clone, Default, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub struct ExprId(u64);
+
+impl ExprId {
+    const INDEX_BITS: u32 = 32;
+
+    pub(crate) fn from_parts(index: u32, generation: u32) -> Self {
+        ExprId(((generation as u64) << Self::INDEX_BITS) | index as u64)
+    }
+
+    pub(crate) fn index(self) -> usize {
+        (self.0 & ((1u64 << Self::INDEX_BITS) - 1)) as usize
+    }
+
+    pub(crate) fn generation(self) -> u32 {
+        (self.0 >> Self::INDEX_BITS) as u32
+    }
+}
+
+impl fmt::Debug for ExprId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "ExprId({}, {})", self.index(), self.generation())
+    }
+}
 
 /// A handle to a symbol table entry.
 pub type SymbolId = u32;

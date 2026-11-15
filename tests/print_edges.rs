@@ -1,8 +1,9 @@
+use mithqal::ExprId;
 use mithqal::expr::Arena;
 use mithqal::print::{canonical, infix};
 use mithqal::syntax::parse_statement;
 
-fn parsed(source: &str) -> (Arena, u32) {
+fn parsed(source: &str) -> (Arena, ExprId) {
     let mut arena = Arena::new();
     let id = parse_statement(&mut arena, source).unwrap();
     (arena, id)

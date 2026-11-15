@@ -32,6 +32,10 @@ pub enum ExprView<'a> {
     },
 }
 
+fn stale_handle() -> Diagnostic {
+    Diagnostic::eval(ErrorCode::EvalNotLive, "expression handle is not live")
+}
+
 /// A symbolic math session.
 pub struct Session {
     arena: Arena,
@@ -55,7 +59,7 @@ impl Session {
     /// Create a session with explicit limits.
     pub fn with_config(config: Config) -> Self {
         Session {
-            arena: Arena::new(),
+            arena: Arena::with_capacity(config.initial_arena_capacity),
             definitions: SessionDefinitions::new(),
             last_result: None,
             parse_cache: HashMap::default(),
@@ -210,7 +214,7 @@ impl Session {
             Stmt::Print { body } => {
                 let value = self.resolved_language_expression(body, &[])?;
                 let value = self.eval(value)?;
-                self.output.push(self.format_infix(value));
+                self.output.push(self.format_infix(value)?);
                 Ok(value)
             }
         }
@@ -331,6 +335,9 @@ impl Session {
 
     /// Evaluate an expression to a normal form.
     pub fn eval(&mut self, expression: ExprId) -> Result<ExprId, Diagnostic> {
+        if !self.is_live(expression) {
+            return Err(stale_handle());
+        }
         let version = self.definitions.version();
         if let Some(value) = self.eval_cache.get(&(expression, version)) {
             self.last_result = Some(*value);
@@ -351,6 +358,9 @@ impl Session {
 
     /// Evaluate an expression through the compiled instruction path.
     pub fn eval_compiled(&mut self, expression: ExprId) -> Result<ExprId, Diagnostic> {
+        if !self.is_live(expression) {
+            return Err(stale_handle());
+        }
         let version = self.definitions.version();
         if let Some(value) = self.compiled_results.get(&(expression, version)) {
             self.last_result = Some(*value);
@@ -377,8 +387,7 @@ impl Session {
     }
 
     fn maybe_collect(&mut self) {
-        let threshold = (self.config.gc_threshold_bytes / 64).max(64);
-        if self.arena.len() > threshold {
+        if self.arena.len() > self.config.gc_threshold_nodes.max(1) {
             self.collect_garbage(&[]);
         }
     }
@@ -389,19 +398,31 @@ impl Session {
         self.eval_compiled(expression)
     }
 
+    /// True when the handle still refers to a live expression.
+    pub fn is_live(&self, expression: ExprId) -> bool {
+        self.arena.try_node(expression).is_some()
+    }
+
     /// Render an expression in canonical form.
-    pub fn format(&self, expression: ExprId) -> String {
-        print::canonical(&self.arena, expression)
+    pub fn format(&self, expression: ExprId) -> Result<String, Diagnostic> {
+        if !self.is_live(expression) {
+            return Err(stale_handle());
+        }
+        Ok(print::canonical(&self.arena, expression))
     }
 
     /// Render an expression in human surface form.
-    pub fn format_infix(&self, expression: ExprId) -> String {
-        print::infix(&self.arena, expression)
+    pub fn format_infix(&self, expression: ExprId) -> Result<String, Diagnostic> {
+        if !self.is_live(expression) {
+            return Err(stale_handle());
+        }
+        Ok(print::infix(&self.arena, expression))
     }
 
     /// Inspect an expression.
-    pub fn view(&self, expression: ExprId) -> ExprView<'_> {
-        match self.arena.node(expression) {
+    pub fn view(&self, expression: ExprId) -> Result<ExprView<'_>, Diagnostic> {
+        let node = self.arena.try_node(expression).ok_or_else(stale_handle)?;
+        Ok(match node {
             Node::Int(value) => ExprView::Integer(value),
             Node::Rat(value) => ExprView::Rational(value),
             Node::Real(value) => ExprView::Real(value),
@@ -410,7 +431,7 @@ impl Session {
                 head: *head,
                 args: args.as_ref(),
             },
-        }
+        })
     }
 
     /// Reclaim expressions not reachable from definitions, the last result,

@@ -1,6 +1,7 @@
+use mithqal::ExprId;
 use mithqal::{ErrorCode, Session};
 
-fn evaluate(source: &str) -> (Session, u32) {
+fn evaluate(source: &str) -> (Session, ExprId) {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
     (session, value)
@@ -8,7 +9,7 @@ fn evaluate(source: &str) -> (Session, u32) {
 
 fn text(source: &str) -> String {
     let (session, value) = evaluate(source);
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
 #[test]

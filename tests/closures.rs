@@ -2,7 +2,7 @@ use mithqal::{ErrorCode, Session};
 
 fn eval(session: &mut Session, source: &str) -> String {
     let value = session.eval_statement(source).unwrap();
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn globals_resolve_at_call_time() {
     let mut session = Session::new();
     let source = "x=5\nf=fn(y)=>x+y\nx=6\nf(1)\n";
     let value = session.eval_source(source).unwrap();
-    assert_eq!(session.format_infix(value), "7");
+    assert_eq!(session.format_infix(value).unwrap(), "7");
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn nested_closures() {
     let mut session = Session::new();
     let source = "f=fn(x)=>fn(y)=>x+y\ng=f(2)\ng(3)\n";
     let value = session.eval_source(source).unwrap();
-    assert_eq!(session.format_infix(value), "5");
+    assert_eq!(session.format_infix(value).unwrap(), "5");
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn recursive_closures() {
     let mut session = Session::new();
     let source = "f=fn(n)=>if(n===0,1,n*f(n-1))\nf(5)\n";
     let value = session.eval_source(source).unwrap();
-    assert_eq!(session.format_infix(value), "120");
+    assert_eq!(session.format_infix(value).unwrap(), "120");
 }
 
 #[test]
@@ -86,17 +86,17 @@ fn closures_work_through_the_compiled_path() {
     let mut session = Session::new();
     session.eval_statement("f=fn(x)=>x^2").unwrap();
     let value = session.eval_compiled_statement("f(4)").unwrap();
-    assert_eq!(session.format_infix(value), "16");
+    assert_eq!(session.format_infix(value).unwrap(), "16");
 }
 
 #[test]
 fn closure_values_can_be_formatted_and_reparsed() {
     let mut session = Session::new();
     let value = session.eval_statement("fn(x)=>x+1").unwrap();
-    let text = session.format(value);
+    let text = session.format(value).unwrap();
     let reparsed = session.parse_statement(&text).unwrap();
     let reparsed = session.eval(reparsed).unwrap();
-    assert_eq!(session.format(reparsed), text);
+    assert_eq!(session.format(reparsed).unwrap(), text);
 }
 
 #[test]

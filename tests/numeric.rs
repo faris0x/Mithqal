@@ -1,13 +1,14 @@
+use mithqal::ExprId;
 use mithqal::{Config, ErrorCode, ExprView, NumError, Rat, Real, Session};
 
 fn approx(source: &str) -> (Session, String) {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
-    let text = session.format_infix(value);
+    let text = session.format_infix(value).unwrap();
     (session, text)
 }
 
-fn evaluated(source: &str) -> (Session, u32) {
+fn evaluated(source: &str) -> (Session, ExprId) {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
     (session, value)
@@ -79,7 +80,7 @@ fn approximate_digit_count_is_checked() {
 fn real_views_expose_precision() {
     let mut session = Session::new();
     let value = session.eval_statement("approx(pi,30)").unwrap();
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Real(real) => {
             assert!(real.precision_digits() > 25.0);
             assert!(real.accuracy_digits() > 25.0);
@@ -121,7 +122,7 @@ fn approximate_values_survive_collection() {
     let mut session = Session::new();
     let value = session.eval_statement("approx(pi,30)").unwrap();
     session.collect_garbage(&[value]);
-    assert!(session.format_infix(value).starts_with("3.14159"));
+    assert!(session.format_infix(value).unwrap().starts_with("3.14159"));
 }
 
 #[test]
@@ -143,7 +144,7 @@ fn third() -> Real {
 fn real_value(source: &str) -> f64 {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Real(value) => value.to_f64(),
         ExprView::Integer(value) => value.to_i64().unwrap() as f64,
         ExprView::Rational(value) => {
@@ -263,7 +264,7 @@ fn real_general_power_method() {
 #[test]
 fn approximate_default_digits() {
     let (session, value) = evaluated("approx(pi)");
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Real(value) => assert!(value.to_decimal().starts_with("3.1415")),
         _ => panic!("expected a real"),
     }
@@ -272,13 +273,13 @@ fn approximate_default_digits() {
 #[test]
 fn approximate_symbolic_sums_stay_unevaluated() {
     let (session, value) = evaluated("approx(1+x,30)");
-    assert!(session.format_infix(value).contains("approx"));
+    assert!(session.format_infix(value).unwrap().contains("approx"));
 }
 
 #[test]
 fn approximate_rational_powers_are_numeric() {
     let (session, value) = evaluated("approx(2^(1/2),30)");
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Real(value) => {
             assert!((value.to_f64() - 2f64.sqrt()).abs() < 1e-14);
         }
@@ -362,7 +363,7 @@ fn special_functions() {
 #[test]
 fn special_function_domains() {
     let (session, value) = evaluated("approx(gamma(0),30)");
-    assert!(session.format_infix(value).contains("approx"));
+    assert!(session.format_infix(value).unwrap().contains("approx"));
     let (session, value) = evaluated("approx(gamma(-1),30)");
-    assert!(session.format_infix(value).contains("approx"));
+    assert!(session.format_infix(value).unwrap().contains("approx"));
 }

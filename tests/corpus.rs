@@ -5,7 +5,7 @@ use mithqal::{ExprView, Session};
 
 fn integer_value(session: &mut Session, source: &str) -> i64 {
     let value = session.eval_statement(source).unwrap();
-    match session.view(value) {
+    match session.view(value).unwrap() {
         ExprView::Integer(value) => value.to_i64().unwrap(),
         _ => panic!("expected an integer for {source}"),
     }
@@ -218,7 +218,11 @@ fn primality_execution_corpus() {
             .eval_statement(&format!("isPrime({value})"))
             .unwrap();
         let expected_text = if expected { "true" } else { "false" };
-        assert_eq!(session.format_infix(text), expected_text, "{value}");
+        assert_eq!(
+            session.format_infix(text).unwrap(),
+            expected_text,
+            "{value}"
+        );
     }
 }
 
@@ -249,7 +253,7 @@ fn divisor_count_execution_corpus() {
         let divisors = session
             .eval_statement(&format!("divisors({value})"))
             .unwrap();
-        match session.view(divisors) {
+        match session.view(divisors).unwrap() {
             ExprView::Call { args, .. } => assert_eq!(args.len() as i64, count, "{value}"),
             _ => panic!("expected a list for {value}"),
         }
@@ -264,11 +268,11 @@ fn logic_truth_table_corpus() {
             let source = format!("xor({left},{right})");
             let value = session.eval_statement(&source).unwrap();
             let expected = if left ^ right { "true" } else { "false" };
-            assert_eq!(session.format_infix(value), expected, "{source}");
+            assert_eq!(session.format_infix(value).unwrap(), expected, "{source}");
             let source = format!("implies({left},{right})");
             let value = session.eval_statement(&source).unwrap();
             let expected = if !left || right { "true" } else { "false" };
-            assert_eq!(session.format_infix(value), expected, "{source}");
+            assert_eq!(session.format_infix(value).unwrap(), expected, "{source}");
         }
     }
 }
@@ -288,7 +292,7 @@ fn mean_execution_corpus() {
         } else {
             ((size + 1) / 2).to_string()
         };
-        assert_eq!(session.format_infix(value), expected, "{size}");
+        assert_eq!(session.format_infix(value).unwrap(), expected, "{size}");
     }
 }
 
@@ -300,7 +304,7 @@ fn prime_count_execution_corpus() {
         let result = session
             .eval_statement(&format!("primeCount({value})"))
             .unwrap();
-        match session.view(result) {
+        match session.view(result).unwrap() {
             ExprView::Integer(result) => {
                 assert_eq!(result.to_i64().unwrap(), expected as i64, "{value}")
             }
@@ -327,7 +331,7 @@ fn fibonacci_execution_corpus() {
         let result = session
             .eval_statement(&format!("fibonacci({index})"))
             .unwrap();
-        match session.view(result) {
+        match session.view(result).unwrap() {
             ExprView::Integer(value) => {
                 let expected = if index == 0 { 0 } else { current };
                 assert_eq!(value.to_i64().unwrap(), expected, "{index}");

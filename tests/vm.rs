@@ -3,9 +3,9 @@ use mithqal::{Config, ErrorCode, Session};
 fn both(source: &str) -> (String, String) {
     let mut session = Session::new();
     let normal = session.eval_statement(source).unwrap();
-    let normal_text = session.format_infix(normal);
+    let normal_text = session.format_infix(normal).unwrap();
     let compiled = session.eval_compiled_statement(source).unwrap();
-    let compiled_text = session.format_infix(compiled);
+    let compiled_text = session.format_infix(compiled).unwrap();
     (normal_text, compiled_text)
 }
 
@@ -58,7 +58,7 @@ fn compiled_definitions_share_session_state() {
     let mut session = Session::new();
     session.eval_statement("f(x_):=x^2").unwrap();
     let value = session.eval_compiled_statement("f(5)").unwrap();
-    assert_eq!(session.format_infix(value), "25");
+    assert_eq!(session.format_infix(value).unwrap(), "25");
 }
 
 #[test]
@@ -68,7 +68,7 @@ fn compiled_recursion_matches_the_evaluator() {
         .eval_source("fact(0):=1\nfact(n_):=n*fact(n-1)\n")
         .unwrap();
     let value = session.eval_compiled_statement("fact(6)").unwrap();
-    assert_eq!(session.format_infix(value), "720");
+    assert_eq!(session.format_infix(value).unwrap(), "720");
 }
 
 #[test]
@@ -76,7 +76,7 @@ fn compiled_path_can_be_called_with_a_handle() {
     let mut session = Session::new();
     let parsed = session.parse_statement("x+x").unwrap();
     let value = session.eval_compiled(parsed).unwrap();
-    assert_eq!(session.format_infix(value), "2*x");
+    assert_eq!(session.format_infix(value).unwrap(), "2*x");
 }
 
 #[test]
@@ -104,7 +104,7 @@ fn compiled_path_survives_garbage_collection() {
     session.eval_statement("f(x_):=x+1").unwrap();
     session.collect_garbage(&[]);
     let value = session.eval_compiled_statement("f(2)").unwrap();
-    assert_eq!(session.format_infix(value), "3");
+    assert_eq!(session.format_infix(value).unwrap(), "3");
 }
 
 #[test]

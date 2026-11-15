@@ -34,9 +34,10 @@ impl Session {
     pub fn eval_compiled(&mut self, expr: ExprId) -> Result<ExprId, Diagnostic>;
     pub fn eval_compiled_statement(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
 
-    pub fn format(&self, expr: ExprId) -> String;
-    pub fn format_infix(&self, expr: ExprId) -> String;
-    pub fn view(&self, expr: ExprId) -> ExprView<'_>;
+    pub fn format(&self, expr: ExprId) -> Result<String, Diagnostic>;
+    pub fn format_infix(&self, expr: ExprId) -> Result<String, Diagnostic>;
+    pub fn view(&self, expr: ExprId) -> Result<ExprView<'_>, Diagnostic>;
+    pub fn is_live(&self, expr: ExprId) -> bool;
 
     pub fn collect_garbage(&mut self, roots: &[ExprId]);
     pub fn live_expressions(&self) -> usize;
@@ -46,9 +47,11 @@ impl Session {
 
 `eval_source` evaluates statements in order. It stops at the first diagnostic and returns the value of the final statement. `parse_source` returns one handle per statement.
 
-`format` produces canonical source. The output can be parsed back into an equal expression. `format_infix` produces the human form. It may use operators and implicit multiplication.
+`format` produces canonical source. The output can be parsed back into an equal expression. `format_infix` produces the human form. It may use operators and implicit multiplication. Both methods return `EvalNotLive` for a stale handle.
 
-`view` borrows the session. The borrow ends before the next mutation.
+`view` borrows the session. The borrow ends before the next mutation. It returns `EvalNotLive` for a stale handle.
+
+`is_live` reports whether a handle still refers to a live expression.
 
 `eval_compiled` and `eval_compiled_statement` use the typed instruction compiler and machine. They share the arena and definitions with the symbolic path.
 
@@ -59,14 +62,13 @@ The session caches parsed statements, compiled code, and evaluation results. Eva
 ## Expression handles
 
 ```rust
-#[repr(transparent)]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct ExprId(u32);
+pub struct ExprId(/* private generational handle */);
 ```
 
 Symbolic expressions are hash consed, so equal expressions have equal handles. Closures are expressions and follow the same interning rule.
 
-An `ExprId` that is not anchored by the session or by an explicit root can become invalid after `collect_garbage`.
+An `ExprId` carries an arena generation. A handle that is not anchored by the session or by an explicit root becomes invalid after `collect_garbage`. `view`, `format`, `format_infix`, and `eval` return `EvalNotLive` instead of panicking. The `expr` module is an unstable internal surface and is not part of the stable API contract.
 
 ## Expression views
 
@@ -161,8 +163,8 @@ Parser diagnostics carry exact spans. Evaluator diagnostics carry a trace of hea
 pub struct Config {
     pub max_steps: u64,
     pub max_depth: u32,
-    pub initial_arena_bytes: usize,
-    pub gc_threshold_bytes: usize,
+    pub initial_arena_capacity: usize,
+    pub gc_threshold_nodes: usize,
 }
 
 impl Default for Config {
@@ -172,7 +174,7 @@ impl Default for Config {
 }
 ```
 
-The step budget counts evaluator and matcher steps. The depth limit protects the Rust stack. The arena settings control initial allocation and the automatic collection threshold used when automatic collection is enabled in a later version.
+The step budget counts evaluator and matcher steps. The depth limit protects the Rust stack. `initial_arena_capacity` preallocates arena slots. `gc_threshold_nodes` sets the live node count that triggers automatic collection after a top level evaluation.
 
 Configuration does not introduce randomness or wall clock dependence.
 
@@ -202,7 +204,7 @@ fn main() -> Result<(), mithqal::Diagnostic> {
     let value = session.eval_statement("f(x_):=x^2+1")?;
     let _ = value;
     let result = session.eval_statement("f(3)")?;
-    assert_eq!(session.format(result), "10");
+    assert_eq!(session.format(result)?, "10");
     Ok(())
 }
 ```

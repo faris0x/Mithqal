@@ -20,7 +20,7 @@ The current version supports exact integers and exact rationals.
 - Integers use GMP `mpz`.
 - Rationals use GMP `mpq` and remain canonical. The denominator is positive. The greatest common divisor of the numerator and denominator is one. Zero has denominator one.
 - A decimal literal is exact. `1.23` denotes `123/100`.
-- There is no approximate literal. Approximate values arrive through an explicit evaluation boundary in a later version.
+- There is no approximate literal. Approximate values are produced through the explicit `approx` evaluation boundary.
 - Scientific notation is written with `10^`. The lexer has no exponent literal syntax.
 - Exact integer functions include `gcd`, `lcm`, `factorial`, `binomial`, `floor`, `ceil`, and `round`. The rounding functions also accept approximate reals.
 
@@ -63,7 +63,7 @@ The numeric boundary supports complex addition, subtraction, multiplication, sta
 The constants are `i`, `pi`, `e`, and `inf`.
 
 - `i` has the built in meaning of the imaginary unit while no user definition shadows it.
-- `pi` and `e` are symbolic constants with built in numeric evaluators in a later version.
+- `pi` and `e` are symbolic constants with built in numeric evaluators.
 - `inf` is a protected constant. It represents positive infinity when an infinite limit is expressed. It is not a number.
 - `i`, `pi`, and `e` can be shadowed by user definitions.
 - `inf` cannot be redefined.
@@ -185,7 +185,7 @@ x*x^-1
 
 evaluates to `1`.
 
-The cancellation in the previous example assumes generic symbolic values. Users can obtain conditional simplification through assumptions in a later version.
+The cancellation in the previous example assumes generic symbolic values. Users can obtain conditional simplification through `assume` and `assuming`.
 
 ### `power`
 

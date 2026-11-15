@@ -3,7 +3,7 @@ use mithqal::{ErrorCode, Session};
 fn text(source: &str) -> String {
     let mut session = Session::new();
     let value = session.eval_statement(source).unwrap();
-    session.format_infix(value)
+    session.format_infix(value).unwrap()
 }
 
 #[test]
