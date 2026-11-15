@@ -6,6 +6,17 @@ The public interface is a Rust library. Programs are whitespace free statements 
 
 This repository is in early development. The exact number layer, approximate reals with significance tracking, directed rounded interval arithmetic, approximate complex arithmetic and elementary functions, exact polynomial algebra with staged multivariate factorisation through eight variables, exact symbolic calculus with definite and supported improper integrals, exact rational linear algebra with eigenvalues and eigenvectors, exact integer number theory, exact descriptive statistics, boolean logic, a line-based surface language, expression arena, source reader, printers, arithmetic evaluator, definitions, pattern matching, lexical `let`, closures, diagnostics, public session API, structured IR scaffold, typed instruction virtual machine, and explicit mark and sweep collector are implemented. General multivariate factorisation beyond the staged bounds, broader assumption domains, and inferential statistics remain open.
 
+## Building
+
+The supported build target is Linux on x86-64. A native build requires:
+
+- The Rust toolchain pinned in `rust-toolchain.toml`.
+- A C compiler such as GCC or Clang.
+- GNU Make.
+- The standard build tools required by the vendored GMP, MPFR, and MPC configure scripts.
+
+The first build compiles the vendored numeric libraries and can take several minutes. Cargo caches the result in `target`.
+
 ## Documentation
 
 - [Language](docs/language.md)

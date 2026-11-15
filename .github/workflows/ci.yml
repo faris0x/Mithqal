@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -15,14 +19,16 @@ jobs:
   check:
     name: Check and test
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Rust
         id: toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.97.1
           components: rustfmt, clippy
 
       - name: Cache Cargo and build output
@@ -32,7 +38,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-mithqal-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('Cargo.lock', 'build.rs', 'vendor/gmp/**', 'vendor/mpfr/**', 'vendor/mpc/**') }}
+          key: ${{ runner.os }}-mithqal-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'build.rs', 'vendor/gmp/**', 'vendor/mpfr/**', 'vendor/mpc/**') }}
           restore-keys: |
             ${{ runner.os }}-mithqal-${{ steps.toolchain.outputs.cachekey }}-
 
@@ -40,7 +46,7 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Run Clippy
-        run: cargo clippy --all-targets -- --deny warnings
+        run: cargo clippy --locked --all-targets -- --deny warnings
 
       - name: Check documentation claims
         run: sh scripts/check-docs.sh
@@ -49,13 +55,17 @@ jobs:
         run: sh scripts/test-counts.sh
 
       - name: Run debug tests
-        run: cargo test
+        run: cargo test --locked
 
       - name: Run release tests
-        run: cargo test --release
+        run: cargo test --release --locked
 
       - name: Build documentation
-        run: cargo doc --no-deps
+        run: cargo doc --no-deps --locked
 
       - name: Run documentation tests
-        run: cargo test --doc
+        run: cargo test --doc --locked
+
+      - name: Report cache size
+        if: always()
+        run: du -sh target ~/.cargo

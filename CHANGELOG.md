@@ -164,3 +164,7 @@ Initial kernel work.
 - Added product verification to the recursive quadratic stage after a property test exposed a wrong constant pair.
 - Fixed repeated-root multiplicity collection in the recursive quadratic stage.
 - Added a deterministic regression test for the recursive quadratic constant-pair bug.
+- Pinned the Rust toolchain and declared the minimum supported Rust version.
+- Added locked CI builds, workflow concurrency cancellation, a job timeout, pinned toolchain installation, and cache size reporting.
+- Included the toolchain file in the CI cache key.
+- Documented native build prerequisites and the supported target in the README.
