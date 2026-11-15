@@ -144,3 +144,83 @@ for matrix in [
     linalg.append(("inverse", matrix_to_mit(matrix), matrix_to_mit(matrix.inv())))
 
 write("linalg.tsv", linalg)
+
+def probe_record(expression, assignments, expected):
+    substitutions = {symbol: value for symbol, value in assignments}
+    value = sp.N(expected.subs(substitutions), 50)
+    assignment_text = ",".join(
+        f"{symbol.name}={to_mit(value)}" for symbol, value in assignments
+    )
+    return ("probe", assignment_text, expression, str(value))
+
+
+probes = []
+for expression, points in [
+    (x**5 - 3 * x**3 + 2 * x, [sp.Rational(-3, 2), sp.Rational(1, 3), sp.Rational(5, 2)]),
+    (sp.sin(x) * sp.cos(x), [sp.Rational(-1, 2), sp.Rational(1, 3), sp.Rational(2, 1)]),
+    (sp.exp(2 * x), [sp.Rational(-1, 1), sp.Rational(0, 1), sp.Rational(1, 1)]),
+    (sp.log(x), [sp.Rational(1, 2), sp.Rational(2, 1), sp.Rational(3, 1)]),
+    (1 / (x + 1), [sp.Rational(-2, 1), sp.Rational(1, 2), sp.Rational(3, 1)]),
+    (x * sp.exp(x), [sp.Rational(-1, 1), sp.Rational(1, 2), sp.Rational(2, 1)]),
+    (sp.atan(x), [sp.Rational(-1, 1), sp.Rational(0, 1), sp.Rational(1, 1)]),
+    (x**2 * sp.sin(x), [sp.Rational(-1, 1), sp.Rational(1, 2), sp.Rational(2, 1)]),
+]:
+    for point in points:
+        probes.append(
+            probe_record(
+                f"differentiate({to_mit(expression)},x)",
+                [(x, point)],
+                sp.diff(expression, x),
+            )
+        )
+
+for expression, points in [
+    (x**4 - 2 * x**2 + 1, [sp.Rational(-1, 1), sp.Rational(1, 2), sp.Rational(2, 1)]),
+    (sp.sin(2 * x), [sp.Rational(-1, 1), sp.Rational(0, 1), sp.Rational(1, 1)]),
+    (sp.exp(3 * x), [sp.Rational(-1, 1), sp.Rational(0, 1), sp.Rational(1, 1)]),
+    (x * sp.exp(x), [sp.Rational(-1, 1), sp.Rational(1, 2), sp.Rational(2, 1)]),
+    (sp.log(x), [sp.Rational(1, 2), sp.Rational(2, 1), sp.Rational(3, 1)]),
+    (sp.atan(x), [sp.Rational(-1, 1), sp.Rational(0, 1), sp.Rational(1, 1)]),
+    (sp.cos(2 * x), [sp.Rational(-1, 1), sp.Rational(0, 1), sp.Rational(1, 1)]),
+    (x**2 * sp.exp(x), [sp.Rational(-1, 1), sp.Rational(1, 2), sp.Rational(2, 1)]),
+]:
+    for point in points:
+        probes.append(
+            probe_record(
+                f"integrate({to_mit(expression)},x)",
+                [(x, point)],
+                sp.integrate(expression, x),
+            )
+        )
+
+for expression, point in [
+    ((x**2 - 1) / (x - 1), 1),
+    ((x**3 - 1) / (x - 1), 1),
+    ((x**2 - 4) / (x - 2), 2),
+    ((2 * x + 1) / (x + 3), sp.oo),
+    ((x + 1) / (x**2 + 1), sp.oo),
+    (x**2, 2),
+    ((x**2 + 3 * x + 2) / (x + 1), -1),
+    ((3 * x**2 + 2) / (x**2 - 1), sp.oo),
+]:
+    limit_expression = f"limit({to_mit(expression)},x,{to_mit(point)})"
+    probes.append(probe_record(limit_expression, [], sp.limit(expression, x, point)))
+
+for matrix in [
+    sp.Matrix([[1, 2], [3, 4]]),
+    sp.Matrix([[2, 0], [0, 3]]),
+    sp.Matrix([[1, 2, 3], [4, 5, 6], [7, 8, 10]]),
+    sp.Matrix([[a, b], [c, d]]),
+]:
+    assignments = []
+    for symbol in sorted(matrix.free_symbols, key=lambda value: value.name):
+        assignments.append((symbol, {a: sp.Rational(1, 2), b: -2, c: 3, d: 5}[symbol]))
+    probes.append(
+        probe_record(
+            f"det({matrix_to_mit(matrix)})",
+            assignments,
+            matrix.det(),
+        )
+    )
+
+write("probes.tsv", probes)

@@ -16,13 +16,16 @@ The suite combines concrete examples, randomized properties, and committed diffe
 Fixtures live under `tests/fixtures/differential`. Each file uses tab separated fields and ignores comment and blank lines.
 
 ```text
-factor  x^2-1  (x-1)*(x+1)
-diff    x      sin(x)  cos(x)
-integrate x    x^2     (1/3)*x^3
-det     [[1,2],[3,4]]  -2
+factor<TAB>x^2-1<TAB>(x-1)*(x+1)
+diff<TAB>x<TAB>sin(x)<TAB>cos(x)
+integrate<TAB>x<TAB>x^2<TAB>(1/3)*x^3
+det<TAB>[[1,2],[3,4]]<TAB>-2
+probe<TAB>x=1/2<TAB>differentiate(sin(x),x)<TAB>0.877582...
 ```
 
-The Rust test suite verifies these semantically. Polynomial results are compared after expansion. Rational results are combined and cancelled. Integrals are checked by differentiation. Matrix inverses are compared exactly.
+The Rust test suite verifies these semantically. Factor results require the exact number of nonconstant factors and an exact expanded product. Rational results are combined and cancelled. Integrals are checked by differentiation. Matrix inverses are compared exactly.
+
+Numeric probe records evaluate the operation result at rational assignments and compare against high precision SymPy values. This catches errors that the symbolic simplifier might share with the operation under test.
 
 ## Regenerating fixtures
 

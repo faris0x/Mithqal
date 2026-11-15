@@ -3,6 +3,7 @@ use mithqal::{ExprId, ExprView, Session};
 const ALGEBRA: &str = include_str!("fixtures/differential/algebra.tsv");
 const CALCULUS: &str = include_str!("fixtures/differential/calculus.tsv");
 const LINALG: &str = include_str!("fixtures/differential/linalg.tsv");
+const PROBES: &str = include_str!("fixtures/differential/probes.tsv");
 
 fn records(source: &'static str) -> Vec<Vec<&'static str>> {
     source
@@ -73,9 +74,10 @@ fn differential_algebra_fixtures() {
                 let expected_value = evaluate(&mut session, expected);
                 let units = factor_units(&session, factored);
                 let expected_units = factor_units(&session, expected_value);
-                assert!(
-                    units >= expected_units,
-                    "{source}: factored {}, units {units}, expected at least {expected_units}",
+                assert_eq!(
+                    units,
+                    expected_units,
+                    "{source}: factored {}, units {units}, expected {expected_units}",
                     text(&session, factored)
                 );
                 let factored_text = text(&session, factored);
@@ -176,5 +178,80 @@ fn differential_linear_algebra_fixtures() {
             }
             kind => panic!("unknown linear algebra fixture kind {kind}"),
         }
+    }
+}
+
+fn substitute_symbols(source: &str, assignments: &[(String, String)]) -> String {
+    let bytes = source.as_bytes();
+    let mut output = String::with_capacity(source.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if byte.is_ascii_alphabetic() || byte == b'_' {
+            let start = index;
+            index += 1;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            let name = &source[start..index];
+            if let Some((_, value)) = assignments.iter().find(|(symbol, _)| symbol == name) {
+                output.push('(');
+                output.push_str(value);
+                output.push(')');
+            } else {
+                output.push_str(name);
+            }
+        } else {
+            output.push(byte as char);
+            index += 1;
+        }
+    }
+    output
+}
+
+fn probe_value(session: &mut Session, assignments: &str, expression: &str) -> f64 {
+    let result = evaluate(session, expression);
+    let result_text = text(session, result);
+    let assignments = if assignments.is_empty() {
+        Vec::new()
+    } else {
+        assignments
+            .split(',')
+            .map(|assignment| {
+                let (name, value) = assignment
+                    .split_once('=')
+                    .unwrap_or_else(|| panic!("malformed probe assignment {assignment}"));
+                (name.to_string(), value.to_string())
+            })
+            .collect::<Vec<_>>()
+    };
+    let substituted = substitute_symbols(&result_text, &assignments);
+    let value = evaluate(session, &format!("approx(({substituted}),50)"));
+    match session.view(value).unwrap() {
+        ExprView::Real(value) => value.to_f64(),
+        ExprView::Integer(value) => value.to_i64().unwrap() as f64,
+        ExprView::Rational(value) => {
+            value.num().to_i64().unwrap() as f64 / value.den().to_i64().unwrap() as f64
+        }
+        _ => panic!("probe did not produce a numeric value for {expression}"),
+    }
+}
+
+#[test]
+fn differential_numeric_probes() {
+    for record in records(PROBES) {
+        assert_eq!(record.len(), 4, "malformed probe record: {record:?}");
+        let mut session = Session::new();
+        let actual = probe_value(&mut session, record[1], record[2]);
+        let expected: f64 = record[3].parse().unwrap();
+        let tolerance = 1e-12 * expected.abs().max(1.0);
+        assert!(
+            (actual - expected).abs() <= tolerance,
+            "{} with {}: actual {actual}, expected {expected}",
+            record[2],
+            record[1]
+        );
     }
 }
