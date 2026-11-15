@@ -83,7 +83,7 @@ Attributes used in the current version:
 - `holdAll`, `holdFirst`, and `holdRest`: argument evaluation is controlled by the head.
 - `listable`: the head threads over arguments that are lists.
 - `protected`: user definitions of the symbol are rejected.
-- `constant`: reserved for later numeric work.
+- `constant`: marks built in constants such as `i`, `pi`, `e`, and `null`.
 
 Protected symbols in the current version:
 

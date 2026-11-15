@@ -1,4 +1,4 @@
-//! Multivariate factorisation scaffold.
+//! Multivariate factorisation stages.
 //!
 //! The current pipeline extracts content and monomial factors before it reaches
 //! this module. This module owns the multivariate stages that follow.
@@ -56,7 +56,7 @@ impl Default for FactorLimits {
     }
 }
 
-/// The stages that are currently available to the multivariate driver.
+/// The stages run by the multivariate driver.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(super) enum FactorStage {
     BinaryQuadratic,

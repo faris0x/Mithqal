@@ -168,3 +168,6 @@ Initial kernel work.
 - Added locked CI builds, workflow concurrency cancellation, a job timeout, pinned toolchain installation, and cache size reporting.
 - Included the toolchain file in the CI cache key.
 - Documented native build prerequisites and the supported target in the README.
+- Refreshed reference documentation for language GC roots, symbolic linear algebra, constant attributes, automatic collection, and current configuration defaults.
+- Removed stale roadmap wording and clarified that source files are not part of the current library surface.
+- Updated multivariate and parser comments to describe the implemented behavior.

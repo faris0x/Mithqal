@@ -118,9 +118,9 @@ Roots:
 - The last result held by the session.
 - Extra roots supplied by the caller.
 
-The collector marks reachable nodes, frees unmarked nodes, and rebuilds the intern table from surviving nodes. Collection does not move surviving nodes, so rooted handles remain valid. Freed slots are reused by later allocations.
+The collector marks reachable nodes, frees unmarked nodes, and rebuilds the intern table from surviving nodes. Collection does not move surviving nodes, so rooted handles remain valid. Freed slots are reused with a new generation, so stale handles do not alias later expressions.
 
-Collection can be explicit, and the session also collects after a top level evaluation when the live node count exceeds the configured threshold. The session automatically roots definitions and the last result. Any handle not rooted at collection time becomes invalid. The machine emits `Safepoint` instructions. Collection during machine execution is future work.
+Collection can be explicit, and the session also collects after a top level evaluation when the live node count exceeds the configured threshold. The session roots definitions, the last result, and active language scope values. Any handle not rooted at collection time becomes invalid. The machine emits `Safepoint` instructions. Collection during machine execution is future work.
 
 ## Determinism
 

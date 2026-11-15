@@ -14,7 +14,7 @@ Public items use Rust naming conventions. Rust methods use snake_case. Source id
 
 The stable surface exposes sessions, expression handles, expression views, diagnostics, and configuration. Internal modules such as `expr` are hidden from public documentation and are not part of the stable contract.
 
-Handles are valid until an explicit garbage collection removes them. The session roots its definitions and its last result. Callers pass additional roots when they collect.
+Handles are valid until an explicit or automatic garbage collection removes them. The session roots its definitions, its last result, active language scopes, and any caller-supplied roots.
 
 ## Session
 
@@ -57,7 +57,7 @@ impl Session {
 
 `eval_compiled` and `eval_compiled_statement` use the typed instruction compiler and machine. They share the arena and definitions with the symbolic path.
 
-`collect_garbage` marks definitions, the last result, symbol nodes, and the supplied roots. `live_expressions` reports the number of live expression nodes. The session also collects after a top level evaluation when the live node count exceeds the configured collection threshold.
+`collect_garbage` marks definitions, the last result, symbol nodes, active language scope values, and the supplied roots. `live_expressions` reports the number of live expression nodes. The session collects after a top level evaluation when the live node count exceeds the configured collection threshold, except while a language evaluation is active.
 
 The session caches parsed statements, compiled code, and evaluation results. Evaluation caches are keyed by the current definition version, so installing or changing a definition invalidates them. Collection clears all caches because their handles are not extra roots.
 
@@ -157,7 +157,7 @@ error TGN-EVAL-0010: cannot call a non callable value
       2. apply: head evaluated to 3
 ```
 
-Parser diagnostics carry exact spans. Evaluator diagnostics carry a trace of heads and expressions. Full source mapping for evaluator frames arrives with a located expression layer later.
+Parser diagnostics carry exact spans. Evaluator diagnostics carry a trace of heads and printed expressions. Evaluator frames do not yet carry source spans.
 
 ## Configuration
 
@@ -171,7 +171,12 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        // deterministic defaults
+        Self {
+            max_steps: 1_000_000,
+            max_depth: 2048,
+            initial_arena_capacity: 16_384,
+            gc_threshold_nodes: 131_072,
+        }
     }
 }
 ```

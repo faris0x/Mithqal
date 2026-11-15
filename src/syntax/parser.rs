@@ -65,7 +65,7 @@ fn parse_statement_tokens(arena: &mut Arena, tokens: &[Token]) -> Result<ExprId,
             ErrorCode::ParseUnexpectedToken
         };
         let message = if code == ErrorCode::ParseIndexingUnsupported {
-            "indexing is not implemented; use a part call"
+            "indexing is not supported"
         } else {
             "unexpected token after the statement"
         };

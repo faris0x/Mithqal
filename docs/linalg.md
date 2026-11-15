@@ -14,7 +14,7 @@ Vectors are plain lists.
 [1,2,3]
 ```
 
-Symbolic entries and approximate entries are not accepted by this layer yet. An unsupported argument leaves the call unevaluated.
+Exact rational and symbolic entries are accepted by the documented operations. Approximate entries are not accepted. An unsupported argument leaves the call unevaluated.
 
 ## Functions
 

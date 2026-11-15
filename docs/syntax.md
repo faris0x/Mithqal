@@ -325,4 +325,4 @@ error TGN-PARSE-0002: comments must occupy their own lines
 
 ## File fixtures
 
-Test fixtures use the `.expr` extension for the current version. The project has no file reader in this version. The final source extension will be chosen with the project name.
+Test fixtures use the `.expr` extension. The library has no file reader, and source files are not part of the current surface.
