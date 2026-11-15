@@ -100,6 +100,7 @@ Initial kernel work.
 - Started interpolation grids at the exact root-degree bound, eliminating wasted smaller-grid attempts.
 - Reordered grouping, Hensel, and root-lift stages so cheap and complete stages run before expensive fallbacks.
 - Added factorisation benchmarks for bivariate Hensel, wide Hensel, four-variable, and five-variable cases.
+- Added a sparse total-degree interpolation path with a multi-right-hand-side rational solver, with dense tensor interpolation as fallback.
 - Removed per-term polynomial allocation from polynomial-leading coefficient extraction.
 - Added transcendental interior singularity checks for definite integrals by sampling logarithmic antiderivative arguments, catching cases such as `tan(x)` across a pole.
 - Added interval `sqrt`, `exp`, `ln`, `abs`, and conservative `sin` and `cos`.
