@@ -25,7 +25,7 @@ A feature is advertised only after it clears these gates:
 2. Concrete tests cover normal cases, boundaries, and error paths.
 3. Randomized property tests cover the invariant that makes the feature correct.
 4. Formatting, clippy with warnings denied, and documentation checks pass.
-5. Hot paths have a benchmark or an existing benchmark that covers the change.
+5. Hot paths have a benchmark covered by the CI compile gate, with timing budgets exercised by the scheduled benchmark workflow.
 6. Public API changes are recorded in `CHANGELOG.md`.
 
 Areas marked Partial or Experimental must say so in their reference documentation. Unsupported inputs remain unevaluated or return a diagnostic.

@@ -116,7 +116,11 @@ fn factor_units(session: &Session, value: mithqal::ExprId) -> usize {
 
 fn linear_x_factor(rng: &mut Rng, variables: &[&str]) -> String {
     let rest = &variables[1..];
-    let remainder = dense_polynomial(rng, rest, 1);
+    let remainder = if rest.is_empty() {
+        rng.range(-5, 5).to_string()
+    } else {
+        dense_polynomial(rng, rest, 1)
+    };
     format!("x+({remainder})")
 }
 
@@ -379,6 +383,19 @@ fn random_factor_products_factor_nontrivially() {
             factor_units(&session, factored) >= 2,
             "seed {seed}, source {source}, factored {}",
             format(&session, factored)
+        );
+    }
+}
+
+#[test]
+fn univariate_linear_factor_uses_a_constant_remainder() {
+    for seed in 0..cases() {
+        let mut rng = Rng::new(seed ^ 0x1234_abcd);
+        let factor = linear_x_factor(&mut rng, &["x"]);
+        assert_eq!(
+            factor.matches('x').count(),
+            1,
+            "seed {seed}: unexpected univariate factor {factor}"
         );
     }
 }

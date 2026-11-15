@@ -1,0 +1,53 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bench:
+    name: Run benchmark budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        id: toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+
+      - name: Cache Cargo and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-mithqal-bench-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'build.rs', 'vendor/gmp/**', 'vendor/mpfr/**', 'vendor/mpc/**') }}
+          restore-keys: |
+            ${{ runner.os }}-mithqal-bench-${{ steps.toolchain.outputs.cachekey }}-
+
+      - name: Run benchmarks
+        run: cargo bench --bench bench --locked 2>&1 | tee benchmark.txt
+
+      - name: Publish benchmark summary
+        if: always()
+        run: |
+          if [ -f benchmark.txt ]; then
+            {
+              printf '### Benchmark output\n\n'
+              printf '```text\n'
+              cat benchmark.txt
+              printf '```\n'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -66,6 +66,9 @@ jobs:
       - name: Run documentation tests
         run: cargo test --doc --locked
 
+      - name: Compile benchmarks
+        run: cargo bench --no-run --locked
+
       - name: Report cache size
         if: always()
         run: du -sh target ~/.cargo
