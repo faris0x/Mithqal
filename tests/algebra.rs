@@ -148,7 +148,7 @@ fn algebra_arity_errors() {
         "cancel()",
         "polynomialGcd(x,y)",
         "resultant(x,y)",
-        "solve(x)",
+        "solve(1)",
     ] {
         let mut session = Session::new();
         let error = session.eval_statement(source).unwrap_err();
@@ -213,6 +213,8 @@ fn solve_repeated_root_is_reported_once() {
 
 #[test]
 fn solve_accepts_equation_syntax() {
+    assert_eq!(text("solve(x^2-4)"), "[-2,2]");
+    assert_eq!(text("solve(x)"), "[0]");
     assert_eq!(text("solve(x==1,x)"), "[1]");
     assert_eq!(text("solve(x^2==4,x)"), "[-2,2]");
     assert_eq!(text("solve(x^2-1==0,x)"), "[-1,1]");
@@ -686,4 +688,11 @@ fn recursive_quadratic_rejects_wrong_constant_pair() {
         "(1/2)*(-4+x-2*y)*(-3+x+2*y)"
     );
     assert_factor_matches("(1/2)*(x+2*y-3)*(x-2*y-4)");
+}
+
+#[test]
+fn solve_inference_rejects_ambiguous_variables() {
+    let mut session = Session::new();
+    let error = session.eval_statement("solve(x*y)").unwrap_err();
+    assert_eq!(error.code, ErrorCode::EvalArity);
 }

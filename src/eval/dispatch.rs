@@ -235,10 +235,15 @@ impl<'a> Evaluator<'a> {
                 )
             }
             AlgebraHead::Solve => {
-                require_arity(args, 2, "solve expects an equation and a variable")?;
-                let original = self.arena.intern_call(head, args);
+                let normalized = if let [expression] = args {
+                    vec![*expression, self.infer_variable(*expression)?]
+                } else {
+                    args.to_vec()
+                };
+                require_arity(&normalized, 2, "solve expects an equation and a variable")?;
+                let original = self.arena.intern_call(head, &normalized);
                 Ok(
-                    crate::algebra::solve(self.arena, args[0], args[1], &context)
+                    crate::algebra::solve(self.arena, normalized[0], normalized[1], &context)
                         .unwrap_or(original),
                 )
             }
@@ -291,6 +296,30 @@ impl<'a> Evaluator<'a> {
         head: ExprId,
         args: &[ExprId],
     ) -> Result<ExprId, Diagnostic> {
+        let normalized = match (function, args) {
+            (CalculusHead::Differentiate, [expression]) => {
+                vec![*expression, self.infer_variable(*expression)?]
+            }
+            (CalculusHead::Integrate, [expression]) => {
+                vec![*expression, self.infer_variable(*expression)?]
+            }
+            (CalculusHead::Limit, [expression, point]) => {
+                vec![*expression, self.infer_variable(*expression)?, *point]
+            }
+            (CalculusHead::Series, [expression, point, order]) => {
+                vec![
+                    *expression,
+                    self.infer_variable(*expression)?,
+                    *point,
+                    *order,
+                ]
+            }
+            (CalculusHead::Converges, [expression, point]) => {
+                vec![*expression, self.infer_variable(*expression)?, *point]
+            }
+            _ => args.to_vec(),
+        };
+        let args = normalized.as_slice();
         let valid = matches!(
             (function, args.len()),
             (CalculusHead::Differentiate, 2)

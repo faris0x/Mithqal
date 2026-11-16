@@ -49,6 +49,7 @@ fn configure_build_install(
     configure
         .current_dir(build)
         .arg("--disable-shared")
+        .arg("--disable-maintainer-mode")
         .arg("--enable-static")
         .arg("--with-pic")
         .arg(format!("--prefix={}", prefix.display()))

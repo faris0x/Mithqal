@@ -151,11 +151,12 @@ fn convergence_checks() {
 #[test]
 fn limit_arity_errors() {
     for source in [
-        "limit(x,x)",
+        "limit(x)",
         "limit(x,x,0,right,1)",
-        "series(x,x,0)",
+        "series(x)",
         "series(x,x,0,1,2)",
-        "converges(x,x)",
+        "converges(x)",
+        "converges(x,x,0,1)",
     ] {
         let mut session = Session::new();
         let error = session.eval_statement(source).unwrap_err();

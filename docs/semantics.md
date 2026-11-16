@@ -235,7 +235,7 @@ The algebra layer rejects exponents above 4096, expanded forms above 20000 terms
 
 The calculus layer provides `differentiate`, `integrate`, `limit`, `series`, and `converges`. Differentiation, integration, and limits take an expression and a variable. `integrate` accepts two optional bound arguments, and `limit` accepts an optional side argument.
 
-`differentiate` applies exact differentiation rules for sums, products, powers, the elementary functions, and the inverse trigonometric and hyperbolic functions. Unknown function calls remain unevaluated. A symbol other than the differentiation variable is treated as a constant.
+`differentiate` applies exact differentiation rules for sums, products, powers, the elementary functions, and the inverse trigonometric and hyperbolic functions. Unknown function calls remain unevaluated. A symbol other than the differentiation variable is treated as a constant. `differentiate`, `integrate`, `limit`, `series`, `converges`, and `solve` accept an omitted variable when the expression has exactly one free symbol. An ambiguous expression produces an arity diagnostic.
 
 `integrate` covers polynomials, powers with constant exponents, linear substitutions, `exp`, `sin`, `cos`, `tan`, `sinh`, `cosh`, `tanh`, `ln`, reciprocal linear terms, `1/(1+x^2)`, `1/sqrt(1-x^2)`, and the inverse trigonometric and hyperbolic functions `asin`, `acos`, `atan`, `asinh`, `acosh`, and `atanh`. It also performs integration by parts for polynomial and elementary factor products, and partial fractions for reciprocal polynomials with distinct rational roots. Products of dependent factors are expanded when the algebra layer can expand them. An antiderivative constant is omitted. Unsupported integrals remain unevaluated.
 

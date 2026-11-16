@@ -383,3 +383,52 @@ pub(super) fn rat_pow(base: &Rat, power: i64) -> Result<Rat, ()> {
         Ok(result)
     }
 }
+
+impl<'a> Evaluator<'a> {
+    pub(super) fn infer_variable(&self, expression: ExprId) -> Result<ExprId, Diagnostic> {
+        fn collect(arena: &Arena, expression: ExprId, variables: &mut Vec<ExprId>) {
+            match arena.node(expression) {
+                Node::Symbol(symbol) => {
+                    if !arena.symbol_attributes(*symbol).has(Attributes::CONSTANT)
+                        && !variables.contains(&expression)
+                    {
+                        variables.push(expression);
+                    }
+                }
+                Node::Call { args, .. } => {
+                    for argument in args.iter() {
+                        collect(arena, *argument, variables);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let mut variables = Vec::new();
+        collect(self.arena, expression, &mut variables);
+        match variables.as_slice() {
+            [variable] => Ok(*variable),
+            [] => Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "cannot infer a variable because the expression has no free symbols",
+            )),
+            many => {
+                let names = many
+                    .iter()
+                    .filter_map(|variable| {
+                        self.arena
+                            .symbol_id(*variable)
+                            .map(|symbol| self.arena.symbol_name(symbol).to_string())
+                    })
+                    .collect::<Vec<_>>();
+                Err(Diagnostic::eval(
+                    ErrorCode::EvalArity,
+                    format!(
+                        "cannot infer a variable because several candidates exist: {}",
+                        names.join(", ")
+                    ),
+                ))
+            }
+        }
+    }
+}

@@ -102,9 +102,9 @@ fn fundamental_theorem_round_trip() {
 #[test]
 fn calculus_arity_errors() {
     for source in [
-        "differentiate(x)",
+        "differentiate(2)",
         "differentiate(x,x,x)",
-        "integrate(x)",
+        "integrate(2)",
         "integrate(x,x,x)",
     ] {
         let mut session = Session::new();
@@ -268,5 +268,22 @@ fn inverse_function_integrals_differentiate_back() {
             session.format_infix(target).unwrap(),
             "round trip failed for {source}"
         );
+    }
+}
+
+#[test]
+fn calculus_infers_single_free_variables() {
+    assert_eq!(text("differentiate(x^2)"), "2*x");
+    assert_eq!(text("integrate(x^2)"), "(1/3)*x^3");
+    assert_eq!(text("limit(x^2,2)"), "4");
+    assert_eq!(text("integrate(exp(-x^2))"), "integrate(exp(-x^2),x)");
+}
+
+#[test]
+fn calculus_inference_rejects_ambiguous_or_empty_expressions() {
+    for source in ["differentiate(x*y)", "integrate(x+y)", "differentiate(2)"] {
+        let mut session = Session::new();
+        let error = session.eval_statement(source).unwrap_err();
+        assert_eq!(error.code, ErrorCode::EvalArity, "source {source}");
     }
 }
