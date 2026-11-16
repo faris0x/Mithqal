@@ -4,7 +4,7 @@ use crate::Session;
 
 use crate::catalog;
 
-use super::license;
+use super::{license, settings};
 
 pub(super) enum Outcome {
     Continue,
@@ -18,6 +18,9 @@ pub(super) fn help() -> &'static str {
   list functions [TEXT] list functions, optionally filtered
   list capabilities [TEXT]
                         show the support matrix
+  set                   show settings
+  set timing on|off     toggle processing time
+  set pretty on|off     toggle formatted output
   license               show the license notice
   quit                  exit the calculator
 
@@ -25,7 +28,11 @@ Type an expression and press Enter. Tab completes commands and function names.
 Assignments use name = expression."
 }
 
-pub(super) fn handle(session: &mut Session, source: &str) -> Option<Outcome> {
+pub(super) fn handle(
+    session: &mut Session,
+    source: &str,
+    settings: &mut settings::Settings,
+) -> Option<Outcome> {
     let source = source.trim();
     match source {
         "quit" | "exit" => return Some(Outcome::Quit),
@@ -37,7 +44,15 @@ pub(super) fn handle(session: &mut Session, source: &str) -> Option<Outcome> {
             license::print_notice();
             return Some(Outcome::Continue);
         }
+        "set" | "settings" => {
+            settings::show(settings);
+            return Some(Outcome::Continue);
+        }
         _ => {}
+    }
+    if let Some(rest) = source.strip_prefix("set ") {
+        settings::set(rest, settings);
+        return Some(Outcome::Continue);
     }
     if let Some(name) = source.strip_prefix("help ") {
         show_function(name.trim());

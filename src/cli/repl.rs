@@ -1,6 +1,7 @@
 //! Interactive read, evaluate, print loop.
 
 use std::path::PathBuf;
+use std::time::Instant;
 
 use rustyline::error::ReadlineError;
 use rustyline::history::DefaultHistory;
@@ -10,6 +11,8 @@ use crate::Session;
 
 use super::commands;
 use super::completion::CliHelper;
+use super::format;
+use super::settings::Settings;
 
 fn history_path() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("XDG_DATA_HOME") {
@@ -75,6 +78,7 @@ pub(super) fn run() -> i32 {
         env!("CARGO_PKG_VERSION")
     );
     let mut session = Session::new();
+    let mut settings = Settings::default();
     let mut status = 0;
     loop {
         match editor.readline("> ") {
@@ -83,21 +87,31 @@ pub(super) fn run() -> i32 {
                 if line.is_empty() {
                     continue;
                 }
-                if let Some(outcome) = commands::handle(&mut session, line) {
+                if let Some(outcome) = commands::handle(&mut session, line, &mut settings) {
                     if matches!(outcome, commands::Outcome::Quit) {
                         break;
                     }
                     continue;
                 }
                 let source = rewrite_assignment(line).unwrap_or_else(|| line.to_string());
+                let started = Instant::now();
                 match session.eval_source(&source) {
                     Ok(value) => {
                         for line in session.take_output() {
                             println!("{line}");
                         }
-                        match session.format_infix(value) {
-                            Ok(text) => println!("{text}"),
-                            Err(error) => eprintln!("error: {error}"),
+                        let text = if settings.pretty {
+                            format::value(&session, &source, value)
+                        } else {
+                            session
+                                .format_infix(value)
+                                .unwrap_or_else(|_| "?".to_string())
+                        };
+                        let elapsed = started.elapsed().as_secs_f64() * 1_000_000.0;
+                        if settings.timing {
+                            println!("{text} ({elapsed:.2} us)");
+                        } else {
+                            println!("{text}");
                         }
                     }
                     Err(error) => {

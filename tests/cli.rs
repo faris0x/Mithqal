@@ -78,3 +78,25 @@ fn capability_listing_exposes_support_metadata() {
     );
     assert!(text.contains("display: infix"), "{text}");
 }
+
+#[test]
+fn factor_integer_uses_prime_product_display() {
+    assert_eq!(stdout(&run(&["--eval", "factorInteger(67)"])), "67\n");
+    assert_eq!(
+        stdout(&run(&["--eval", "factorInteger(360)"])),
+        "2^3*3^2*5\n"
+    );
+    assert_eq!(stdout(&run(&["--eval", "factorInteger(-12)"])), "-2^2*3\n");
+}
+
+#[test]
+fn settings_control_timing_and_pretty_output() {
+    let output = run_stdin("set timing on\n5+3\nset pretty off\nfactorInteger(67)\nset\nquit\n");
+    assert!(output.status.success());
+    let text = stdout(&output);
+    assert!(text.contains("8 ("), "{text}");
+    assert!(text.contains(" us)"), "{text}");
+    assert!(text.contains("[[67,1]]"), "{text}");
+    assert!(text.contains("timing on"), "{text}");
+    assert!(text.contains("pretty off"), "{text}");
+}

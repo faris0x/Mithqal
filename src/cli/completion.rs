@@ -30,7 +30,7 @@ impl Completer for CliHelper {
             .iter()
             .map(|function| function.name)
             .collect::<Vec<_>>();
-        names.extend(["help", "list", "license", "quit", "exit"]);
+        names.extend(["help", "list", "license", "quit", "exit", "set"]);
         names.sort_unstable();
         names.dedup();
         let candidates = names

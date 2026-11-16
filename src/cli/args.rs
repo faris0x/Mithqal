@@ -2,7 +2,7 @@
 
 use crate::Session;
 
-use super::{license, repl};
+use super::{format, license, repl};
 
 fn usage() -> &'static str {
     "usage: mithqal [options]
@@ -60,16 +60,8 @@ fn evaluate(source: &str) -> i32 {
             for line in session.take_output() {
                 println!("{line}");
             }
-            match session.format_infix(value) {
-                Ok(text) => {
-                    println!("{text}");
-                    0
-                }
-                Err(error) => {
-                    eprintln!("error: {error}");
-                    1
-                }
-            }
+            println!("{}", format::value(&session, source, value));
+            0
         }
         Err(error) => {
             eprintln!("error: {error}");
