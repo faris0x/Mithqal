@@ -116,3 +116,33 @@ fn closures_survive_collection() {
     session.collect_garbage(&[]);
     assert_eq!(eval(&mut session, "f(4)"), "5");
 }
+
+#[test]
+fn higher_order_list_forms() {
+    let mut session = Session::new();
+    assert_eq!(eval(&mut session, "map([1,2,3],fn(x)=>x^2)"), "[1,4,9]");
+    assert_eq!(eval(&mut session, "apply(fn(x,y)=>x+y,[3,4])"), "7");
+    assert_eq!(eval(&mut session, "fold(fn(x,y)=>x+y,0,[1,2,3])"), "6");
+    assert_eq!(eval(&mut session, "nest(fn(x)=>x+1,0,5)"), "5");
+}
+
+#[test]
+fn higher_order_list_forms_reject_invalid_shapes() {
+    let mut session = Session::new();
+    for source in [
+        "map(1,fn(x)=>x)",
+        "apply(fn(x)=>x,1)",
+        "fold(fn(x,y)=>x+y,0,1)",
+        "nest(fn(x)=>x,0,-1)",
+    ] {
+        let value = session.eval_statement(source).unwrap();
+        let text = session.format_infix(value).unwrap();
+        assert!(
+            text.contains("map")
+                || text.contains("apply")
+                || text.contains("fold")
+                || text.contains("nest"),
+            "{source} => {text}"
+        );
+    }
+}

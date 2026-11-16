@@ -146,6 +146,31 @@ impl Capability {
     }
 }
 
+/// Expected behavior of the documented example.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ExampleKind {
+    /// Evaluation should change the expression.
+    Evaluates,
+    /// Symbolic output may remain unchanged.
+    Symbolic,
+    /// Approximate evaluation should change the expression.
+    Approximate,
+    /// Language or definition form.
+    Language,
+}
+
+impl ExampleKind {
+    /// Short label used by documentation and tests.
+    pub const fn label(self) -> &'static str {
+        match self {
+            ExampleKind::Evaluates => "evaluates",
+            ExampleKind::Symbolic => "symbolic",
+            ExampleKind::Approximate => "approx",
+            ExampleKind::Language => "language",
+        }
+    }
+}
+
 /// Metadata for one built-in function.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct FunctionInfo {
@@ -159,6 +184,8 @@ pub struct FunctionInfo {
     pub summary: &'static str,
     /// Documented example.
     pub example: &'static str,
+    /// Expected example behavior.
+    pub example_kind: ExampleKind,
     /// Capability metadata.
     pub capability: Capability,
 }
@@ -184,6 +211,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "gcd(a,b,...)",
         summary: "Greatest common divisor.",
         example: "gcd(84,30)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("documented integer and rational inputs"),
     },
     FunctionInfo {
@@ -192,6 +220,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "lcm(a,b,...)",
         summary: "Least common multiple.",
         example: "lcm(12,18)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("documented integer and rational inputs"),
     },
     FunctionInfo {
@@ -200,6 +229,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "factorial(n)",
         summary: "Exact factorial.",
         example: "factorial(10)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("non-negative integers up to 10000")
             .errors("Out of range input remains unevaluated."),
     },
@@ -209,6 +239,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "binomial(n,k)",
         summary: "Exact binomial coefficient.",
         example: "binomial(20,10)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("documented integer and rational inputs"),
     },
     FunctionInfo {
@@ -217,6 +248,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "floor(value)",
         summary: "Floor of an exact or approximate value.",
         example: "floor(7/2)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("documented integer and rational inputs"),
     },
     FunctionInfo {
@@ -225,6 +257,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "ceil(value)",
         summary: "Ceiling of an exact or approximate value.",
         example: "ceil(7/2)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("documented integer and rational inputs"),
     },
     FunctionInfo {
@@ -233,6 +266,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "round(value)",
         summary: "Nearest integer.",
         example: "round(7/2)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("documented integer and rational inputs"),
     },
     FunctionInfo {
@@ -241,6 +275,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "expand(expr)",
         summary: "Expand products and powers of polynomials.",
         example: "expand((x+y)^3)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -249,6 +284,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "factor(expr)",
         summary: "Factor a polynomial over the rationals.",
         example: "factor(x^6-1)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -257,6 +293,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "together(expr)",
         summary: "Combine a rational expression over one denominator.",
         example: "together(1/x+1/(x+1))",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -265,6 +302,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "cancel(expr)",
         summary: "Cancel common polynomial factors.",
         example: "cancel((x^2-1)/(x-1))",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -273,6 +311,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "polynomialGcd(p,q,var)",
         summary: "Polynomial gcd in one variable.",
         example: "polynomialGcd(x^2-1,x^2-2*x+1,x)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -281,6 +320,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "resultant(p,q,var)",
         summary: "Resultant of two polynomials.",
         example: "resultant(x^2-1,x-1,x)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -289,6 +329,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "solve(expr[,var])",
         summary: "Solve an equation with one inferred variable.",
         example: "solve(x^2-4)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain")
             .display(DisplayForm::List),
     },
@@ -298,6 +339,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "degree(p,var)",
         summary: "Polynomial degree in one variable.",
         example: "degree(x^3-2*x+1,x)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -306,6 +348,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "coefficient(p,var,n)",
         summary: "Coefficient of one power.",
         example: "coefficient(x^3-2*x+1,x,1)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -314,6 +357,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "polynomialDivide(p,q,var)",
         summary: "Polynomial quotient and remainder.",
         example: "polynomialDivide(x^2-1,x-1,x)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -322,6 +366,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "discriminant(p,var)",
         summary: "Polynomial discriminant.",
         example: "discriminant(x^2-4,x)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -330,6 +375,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "differentiate(expr[,var])",
         summary: "Exact derivative with single-variable inference.",
         example: "differentiate(sin(x))",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -338,6 +384,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "integrate(expr[,var]) | integrate(expr,a,b) | integrate(expr,var,a,b)",
         summary: "Antiderivative or definite integral.",
         example: "integrate(x^2*exp(x))",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -346,6 +393,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "limit(expr[,var],point[,side])",
         summary: "Limit at a finite point or infinity.",
         example: "limit(sin(x)/x,0)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -354,6 +402,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "series(expr[,var],point,order)",
         summary: "Truncated Taylor series.",
         example: "series(sin(x),0,5)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("analytic expressions with supported derivatives")
             .display(DisplayForm::OrderedSeries)
             .errors("Unsupported forms remain unevaluated."),
@@ -364,6 +413,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "converges(expr[,var],point)",
         summary: "Whether a limit exists.",
         example: "converges(1/x,inf)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("supported expressions in the documented domain"),
     },
     FunctionInfo {
@@ -372,6 +422,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "assume(fact,expr)",
         summary: "Evaluate under local sign assumptions.",
         example: "assume(x>0,abs(x))",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::language(),
     },
     FunctionInfo {
@@ -380,6 +431,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "assuming(fact,expr)",
         summary: "Alias for assume.",
         example: "assuming(x<0,sqrt(x^2))",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::language(),
     },
     FunctionInfo {
@@ -388,6 +440,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "det(matrix)",
         summary: "Determinant.",
         example: "det([[1,2],[3,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -396,6 +449,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "rank(matrix)",
         summary: "Matrix rank.",
         example: "rank([[1,2],[2,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -404,6 +458,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "transpose(matrix)",
         summary: "Matrix transpose.",
         example: "transpose([[1,2],[3,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -412,6 +467,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "inverse(matrix)",
         summary: "Matrix inverse when it exists.",
         example: "inverse([[1,2],[3,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -420,6 +476,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "rref(matrix)",
         summary: "Reduced row echelon form.",
         example: "rref([[1,2],[3,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -428,6 +485,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "trace(matrix)",
         summary: "Sum of diagonal entries.",
         example: "trace([[1,2],[3,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -436,6 +494,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "matmul(a,b)",
         summary: "Matrix product.",
         example: "matmul([[1,2],[3,4]],[[5,6],[7,8]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -444,6 +503,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "identity(n)",
         summary: "Identity matrix.",
         example: "identity(3)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -452,6 +512,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "solveLinear(a,b)",
         summary: "Solve a linear system.",
         example: "solveLinear([[2,1],[1,3]],[5,7])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -460,6 +521,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "dot(a,b)",
         summary: "Vector dot product.",
         example: "dot([1,2,3],[4,5,6])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -468,6 +530,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "cross(a,b)",
         summary: "Three-dimensional cross product.",
         example: "cross([1,0,0],[0,1,0])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices"),
     },
     FunctionInfo {
@@ -476,6 +539,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "plu(matrix)",
         summary: "Permutation, lower, and upper factors.",
         example: "plu([[2,1],[4,3]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices")
             .display(DisplayForm::List),
     },
@@ -485,6 +549,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "charpoly(matrix)",
         summary: "Characteristic polynomial coefficients.",
         example: "charpoly([[1,2],[3,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices")
             .display(DisplayForm::List),
     },
@@ -494,6 +559,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "eigenvalues(matrix)",
         summary: "Exact eigenvalues where supported.",
         example: "eigenvalues([[1,2],[3,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices")
             .display(DisplayForm::List),
     },
@@ -503,6 +569,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "eigenvectors(matrix)",
         summary: "Exact eigenvectors where supported.",
         example: "eigenvectors([[1,1],[0,2]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices")
             .display(DisplayForm::List),
     },
@@ -512,6 +579,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "nullspace(matrix)",
         summary: "Basis of the null space.",
         example: "nullspace([[1,2],[2,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices")
             .display(DisplayForm::List),
     },
@@ -521,6 +589,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "kernel(matrix)",
         summary: "Alias for nullspace.",
         example: "kernel([[1,2],[2,4]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices")
             .display(DisplayForm::List),
     },
@@ -530,6 +599,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "qr(matrix)",
         summary: "Thin QR factors.",
         example: "qr([[1,0],[0,1]])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("exact rational and symbolic matrices")
             .display(DisplayForm::List),
     },
@@ -539,6 +609,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "isPrime(n)",
         summary: "Primality test.",
         example: "isPrime(1000000007)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -547,6 +618,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "nextPrime(n)",
         summary: "Next prime above n.",
         example: "nextPrime(100)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -555,6 +627,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "previousPrime(n)",
         summary: "Previous prime below n.",
         example: "previousPrime(100)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -563,6 +636,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "factorInteger(n)",
         summary: "Prime factorization list.",
         example: "factorInteger(360)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("nonzero integers")
             .display(DisplayForm::PrimeProduct)
             .symbolic_text("Noninteger arguments remain unevaluated.")
@@ -574,6 +648,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "divisors(n)",
         summary: "Positive divisors.",
         example: "divisors(36)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers").display(DisplayForm::List),
     },
     FunctionInfo {
@@ -582,6 +657,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "divisorCount(n)",
         summary: "Number of positive divisors.",
         example: "divisorCount(360)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -590,6 +666,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "totient(n)",
         summary: "Euler totient.",
         example: "totient(360)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -598,6 +675,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "sigma(n)",
         summary: "Sum of positive divisors.",
         example: "sigma(36)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -606,6 +684,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "isEven(n)",
         summary: "Parity test.",
         example: "isEven(42)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -614,6 +693,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "isOdd(n)",
         summary: "Parity test.",
         example: "isOdd(43)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -622,6 +702,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "divides(a,b)",
         summary: "Whether a divides b.",
         example: "divides(3,12)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -630,6 +711,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "mod(a,m)",
         summary: "Nonnegative remainder.",
         example: "mod(-7,3)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -638,7 +720,35 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "powerMod(a,e,m)",
         summary: "Modular exponentiation.",
         example: "powerMod(2,10,1000)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
+    },
+    FunctionInfo {
+        name: "moebius",
+        category: "number theory",
+        signature: "moebius(n)",
+        summary: "Moebius function.",
+        example: "moebius(30)",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("integers"),
+    },
+    FunctionInfo {
+        name: "radical",
+        category: "number theory",
+        signature: "radical(n)",
+        summary: "Product of distinct prime factors.",
+        example: "radical(360)",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("integers"),
+    },
+    FunctionInfo {
+        name: "isSquareFree",
+        category: "number theory",
+        signature: "isSquareFree(n)",
+        summary: "Square-free predicate.",
+        example: "isSquareFree(30)",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("integers").display(DisplayForm::Boolean),
     },
     FunctionInfo {
         name: "primeCount",
@@ -646,6 +756,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "primeCount(n)",
         summary: "Number of primes at most n.",
         example: "primeCount(1000)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -654,6 +765,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "fibonacci(n)",
         summary: "Fibonacci number.",
         example: "fibonacci(20)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -662,6 +774,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "isPerfectSquare(n)",
         summary: "Perfect square test.",
         example: "isPerfectSquare(144)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -670,6 +783,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "modInverse(a,m)",
         summary: "Modular inverse.",
         example: "modInverse(3,7)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -678,6 +792,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "jacobi(a,n)",
         summary: "Jacobi symbol.",
         example: "jacobi(5,21)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("integers"),
     },
     FunctionInfo {
@@ -686,6 +801,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "mean(list)",
         summary: "Exact arithmetic mean.",
         example: "mean([1,2,3,4])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -694,6 +810,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "median(list)",
         summary: "Exact median.",
         example: "median([1,2,3,4])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -702,6 +819,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "minimum(list)",
         summary: "Smallest value.",
         example: "minimum([3,1,2])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -710,6 +828,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "maximum(list)",
         summary: "Largest value.",
         example: "maximum([3,1,2])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -718,6 +837,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "range(list)",
         summary: "Maximum minus minimum.",
         example: "range([3,1,2])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -726,6 +846,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "total(list)",
         summary: "Sum of values.",
         example: "total([1,2,3,4])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -734,6 +855,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "count(list)",
         summary: "Number of values.",
         example: "count([1,2,3,4])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -742,6 +864,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "variance(list)",
         summary: "Population variance.",
         example: "variance([1,2,3,4])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -750,6 +873,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "sampleVariance(list)",
         summary: "Sample variance.",
         example: "sampleVariance([1,2,3,4])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -758,6 +882,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "standardDeviation(list)",
         summary: "Population standard deviation.",
         example: "standardDeviation([4,4,4,4])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -766,6 +891,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "sampleStandardDeviation(list)",
         summary: "Sample standard deviation.",
         example: "sampleStandardDeviation([4,4,4,4])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists"),
     },
     FunctionInfo {
@@ -774,6 +900,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "frequency(list)",
         summary: "Sorted value counts.",
         example: "frequency([1,1,2])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists").display(DisplayForm::List),
     },
     FunctionInfo {
@@ -782,6 +909,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "mode(list)",
         summary: "Most frequent values.",
         example: "mode([1,1,2])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("numeric lists").display(DisplayForm::List),
     },
     FunctionInfo {
@@ -790,6 +918,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "and(a,b,...)",
         summary: "Logical conjunction.",
         example: "and(true,false)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("boolean expressions").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -798,6 +927,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "or(a,b,...)",
         summary: "Logical disjunction.",
         example: "or(true,false)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("boolean expressions").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -806,6 +936,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "not(a)",
         summary: "Logical negation.",
         example: "not(true)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("boolean expressions").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -814,6 +945,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "xor(a,b)",
         summary: "Exclusive or.",
         example: "xor(true,false)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("boolean expressions").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -822,22 +954,25 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "implies(a,b)",
         summary: "Logical implication.",
         example: "implies(true,false)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("boolean expressions").display(DisplayForm::Boolean),
     },
     FunctionInfo {
         name: "all",
         category: "logic",
-        signature: "all(list,predicate)",
-        summary: "True when every item matches.",
-        example: "all([2,4],isEven)",
+        signature: "all(list)",
+        summary: "True when every item is true.",
+        example: "all([true,true])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("boolean expressions").display(DisplayForm::Boolean),
     },
     FunctionInfo {
         name: "any",
         category: "logic",
-        signature: "any(list,predicate)",
-        summary: "True when one item matches.",
-        example: "any([2,3],isEven)",
+        signature: "any(list)",
+        summary: "True when at least one item is true.",
+        example: "any([false,true])",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("boolean expressions").display(DisplayForm::Boolean),
     },
     FunctionInfo {
@@ -846,6 +981,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "approx(expr[,digits])",
         summary: "Numeric boundary with significance tracking.",
         example: "approx(pi,30)",
+        example_kind: ExampleKind::Approximate,
         capability: Capability::approximate("supported numeric values under approx"),
     },
     FunctionInfo {
@@ -854,6 +990,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "interval(low,high)",
         summary: "Approximate interval value.",
         example: "interval(1,2)+3",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -862,6 +999,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "complex(real,imaginary)",
         summary: "Approximate complex value.",
         example: "approx(2+3*i,30)",
+        example_kind: ExampleKind::Evaluates,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -870,6 +1008,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "abs(expr)",
         summary: "Absolute value with assumption support.",
         example: "abs(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -878,6 +1017,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "sqrt(expr)",
         summary: "Square root.",
         example: "sqrt(x^2)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -886,6 +1026,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "exp(expr)",
         summary: "Exponential function.",
         example: "exp(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -894,6 +1035,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "ln(expr)",
         summary: "Natural logarithm.",
         example: "ln(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -902,6 +1044,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "sin(expr)",
         summary: "Sine.",
         example: "sin(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -910,6 +1053,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "cos(expr)",
         summary: "Cosine.",
         example: "cos(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -918,6 +1062,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "tan(expr)",
         summary: "Tangent.",
         example: "tan(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -926,6 +1071,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "asin(expr)",
         summary: "Inverse sine.",
         example: "asin(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -934,6 +1080,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "acos(expr)",
         summary: "Inverse cosine.",
         example: "acos(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -942,6 +1089,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "atan(expr)",
         summary: "Inverse tangent.",
         example: "atan(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -950,6 +1098,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "sinh(expr)",
         summary: "Hyperbolic sine.",
         example: "sinh(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -958,6 +1107,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "cosh(expr)",
         summary: "Hyperbolic cosine.",
         example: "cosh(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -966,6 +1116,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "tanh(expr)",
         summary: "Hyperbolic tangent.",
         example: "tanh(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -974,6 +1125,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "asinh(expr)",
         summary: "Inverse hyperbolic sine.",
         example: "asinh(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -982,6 +1134,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "acosh(expr)",
         summary: "Inverse hyperbolic cosine.",
         example: "acosh(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -990,6 +1143,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "atanh(expr)",
         summary: "Inverse hyperbolic tangent.",
         example: "atanh(x)",
+        example_kind: ExampleKind::Symbolic,
         capability: Capability::exact("supported exact numeric inputs"),
     },
     FunctionInfo {
@@ -998,6 +1152,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "gamma(expr)",
         summary: "Gamma function.",
         example: "approx(gamma(5),30)",
+        example_kind: ExampleKind::Approximate,
         capability: Capability::approximate("real and complex values under approx")
             .errors("Poles at non-positive integers; invalid inputs return a diagnostic."),
     },
@@ -1007,6 +1162,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "lgamma(expr)",
         summary: "Log gamma function.",
         example: "approx(lgamma(5),30)",
+        example_kind: ExampleKind::Approximate,
         capability: Capability::approximate("real and complex values under approx")
             .errors("Poles at non-positive integers; invalid inputs return a diagnostic."),
     },
@@ -1016,6 +1172,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "erf(expr)",
         summary: "Error function.",
         example: "approx(erf(1),30)",
+        example_kind: ExampleKind::Approximate,
         capability: Capability::approximate("supported numeric values under approx"),
     },
     FunctionInfo {
@@ -1024,6 +1181,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "erfc(expr)",
         summary: "Complementary error function.",
         example: "approx(erfc(1),30)",
+        example_kind: ExampleKind::Approximate,
         capability: Capability::approximate("supported numeric values under approx"),
     },
     FunctionInfo {
@@ -1032,6 +1190,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "set(symbol,value)",
         summary: "Immediate definition.",
         example: "set(f,3)",
+        example_kind: ExampleKind::Language,
         capability: Capability::language(),
     },
     FunctionInfo {
@@ -1040,14 +1199,16 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "setDelayed(lhs,rhs)",
         summary: "Delayed definition.",
         example: "setDelayed(f(x_),x^2)",
+        example_kind: ExampleKind::Language,
         capability: Capability::language(),
     },
     FunctionInfo {
-        name: "function",
+        name: "fn",
         category: "language",
-        signature: "function(params,body)",
+        signature: "fn(params)=>body",
         summary: "Anonymous function.",
-        example: "map([1,2],function(x,x^2))",
+        example: "fn(x)=>x^2",
+        example_kind: ExampleKind::Language,
         capability: Capability::language(),
     },
     FunctionInfo {
@@ -1055,7 +1216,8 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         category: "language",
         signature: "let(binding,expr)",
         summary: "Lexical binding.",
-        example: "let(x,2)",
+        example: "let([x=2],x)",
+        example_kind: ExampleKind::Language,
         capability: Capability::language(),
     },
     FunctionInfo {
@@ -1064,6 +1226,7 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         signature: "if(condition,then,else)",
         summary: "Conditional expression.",
         example: "if(true,1,2)",
+        example_kind: ExampleKind::Language,
         capability: Capability::language(),
     },
     FunctionInfo {
@@ -1071,7 +1234,8 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         category: "language",
         signature: "map(list,function)",
         summary: "Apply a function to every item.",
-        example: "map([1,2],function(x,x^2))",
+        example: "map([1,2],fn(x)=>x^2)",
+        example_kind: ExampleKind::Language,
         capability: Capability::language(),
     },
     FunctionInfo {
@@ -1079,7 +1243,8 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         category: "language",
         signature: "apply(function,list)",
         summary: "Apply a function to an argument list.",
-        example: "apply(function(x,x^2),[3])",
+        example: "apply(fn(x,y)=>x+y,[3,4])",
+        example_kind: ExampleKind::Language,
         capability: Capability::language(),
     },
     FunctionInfo {
@@ -1087,7 +1252,8 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         category: "language",
         signature: "fold(function,initial,list)",
         summary: "Fold a function over a list.",
-        example: "fold(function(x,y,x+y),0,[1,2,3])",
+        example: "fold(fn(x,y)=>x+y,0,[1,2,3])",
+        example_kind: ExampleKind::Language,
         capability: Capability::language(),
     },
     FunctionInfo {
@@ -1095,7 +1261,8 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         category: "language",
         signature: "nest(function,value,count)",
         summary: "Repeated function application.",
-        example: "nest(function(x,x+1),0,5)",
+        example: "nest(fn(x)=>x+1,0,5)",
+        example_kind: ExampleKind::Language,
         capability: Capability::language(),
     },
 ];
@@ -1145,6 +1312,7 @@ mod tests {
             assert!(!function.capability.errors.is_empty());
             assert!(!function.capability.support.label().is_empty());
             assert!(!function.capability.display.label().is_empty());
+            assert!(!function.example_kind.label().is_empty());
         }
     }
 
@@ -1180,6 +1348,7 @@ mod tests {
             "complex",
             "set",
             "setDelayed",
+            "fn",
             "function",
             "let",
             "if",

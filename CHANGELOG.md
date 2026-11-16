@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 613 source test functions and 1684 assertion sites, with 708 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 618 source test functions and 1693 assertion sites, with 713 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -202,3 +202,6 @@ Initial kernel work.
 - Added a public capability catalog with support level, domain, symbolic behavior, approximate behavior, error behavior, and display form for every advertised function.
 - Added `list capabilities` and extended `help FUNCTION` to report capability metadata.
 - Added `docs/functions.md` and a catalog test that keeps the document synchronized with the advertised names.
+- Added example conformance checks for every advertised function, including unchanged-output detection, kernel-to-catalog coverage, and test-reference coverage.
+- Added missing catalog entries for `moebius`, `radical`, and `isSquareFree`.
+- Implemented `map`, `apply`, `fold`, and `nest` for anonymous functions and corrected the language catalog examples.

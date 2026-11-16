@@ -118,6 +118,18 @@ impl<'a> Evaluator<'a> {
         if head == self.heads.complex {
             return self.eval_complex(args.as_slice());
         }
+        if head == self.heads.map {
+            return self.eval_map(head, args.as_slice());
+        }
+        if head == self.heads.apply {
+            return self.eval_apply(head, args.as_slice());
+        }
+        if head == self.heads.fold {
+            return self.eval_fold(head, args.as_slice());
+        }
+        if head == self.heads.nest {
+            return self.eval_nest(head, args.as_slice());
+        }
         if head == self.heads.set {
             return self.eval_definition(args.as_slice(), false);
         }

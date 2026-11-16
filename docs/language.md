@@ -78,6 +78,19 @@ let y=square(x+1)
 
 `let` evaluates its expression immediately and binds the result in the current block. Bindings are lexical. A binding inside `if` or `match` does not escape that block.
 
+## Higher-order list forms
+
+`fn(params)=>body` creates an anonymous function. Higher-order list forms accept that function value:
+
+```text
+map([1,2,3],fn(x)=>x^2)        -> [1,4,9]
+apply(fn(x,y)=>x+y,[3,4])      -> 7
+fold(fn(x,y)=>x+y,0,[1,2,3])   -> 6
+nest(fn(x)=>x+1,0,5)           -> 5
+```
+
+`map` applies one argument to each list item. `apply` passes the list items as call arguments. `fold` carries an accumulator from left to right. `nest` repeats a unary function a fixed number of times.
+
 ## Conditionals
 
 ```text

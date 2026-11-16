@@ -196,6 +196,101 @@ impl<'a> Evaluator<'a> {
         Ok(Some(self.arena.intern_call(self.heads.list, &results)))
     }
 
+    pub(super) fn eval_map(&mut self, head: ExprId, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.len() != 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "map expects a list and a function",
+            ));
+        }
+        let Some(items) = self.list_items(args[0]).map(<[ExprId]>::to_vec) else {
+            return Ok(self.arena.intern_call(head, args));
+        };
+        let mut results = Vec::with_capacity(items.len());
+        for item in items {
+            results.push(self.call_function(args[1], &[item])?);
+        }
+        Ok(self.arena.intern_call(self.heads.list, &results))
+    }
+
+    pub(super) fn eval_apply(
+        &mut self,
+        head: ExprId,
+        args: &[ExprId],
+    ) -> Result<ExprId, Diagnostic> {
+        if args.len() != 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "apply expects a function and a list",
+            ));
+        }
+        let Some(items) = self.list_items(args[1]).map(<[ExprId]>::to_vec) else {
+            return Ok(self.arena.intern_call(head, args));
+        };
+        self.call_function(args[0], &items)
+    }
+
+    pub(super) fn eval_fold(
+        &mut self,
+        head: ExprId,
+        args: &[ExprId],
+    ) -> Result<ExprId, Diagnostic> {
+        if args.len() != 3 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "fold expects a function, an initial value, and a list",
+            ));
+        }
+        let Some(items) = self.list_items(args[2]).map(<[ExprId]>::to_vec) else {
+            return Ok(self.arena.intern_call(head, args));
+        };
+        let mut accumulator = self.eval(args[1])?;
+        for item in items {
+            accumulator = self.call_function(args[0], &[accumulator, item])?;
+        }
+        Ok(accumulator)
+    }
+
+    pub(super) fn eval_nest(
+        &mut self,
+        head: ExprId,
+        args: &[ExprId],
+    ) -> Result<ExprId, Diagnostic> {
+        if args.len() != 3 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "nest expects a function, an initial value, and a count",
+            ));
+        }
+        let Some(count) = nonnegative_integer(self.arena, args[2]) else {
+            return Ok(self.arena.intern_call(head, args));
+        };
+        if count > 10_000 {
+            return Ok(self.arena.intern_call(head, args));
+        }
+        let mut value = self.eval(args[1])?;
+        for _ in 0..count {
+            value = self.call_function(args[0], &[value])?;
+        }
+        Ok(value)
+    }
+
+    pub(super) fn call_function(
+        &mut self,
+        function: ExprId,
+        arguments: &[ExprId],
+    ) -> Result<ExprId, Diagnostic> {
+        let function = self.eval(function)?;
+        if let Node::Call { head, args } = self.arena.node(function)
+            && *head == self.heads.closure
+        {
+            let closure = args.to_vec();
+            return self.apply_closure(&closure, arguments);
+        }
+        let call = self.arena.intern_call(function, arguments);
+        self.eval(call)
+    }
+
     pub(super) fn list_items(&self, expression: ExprId) -> Option<&[ExprId]> {
         match self.arena.node(expression) {
             Node::Call { head, args } if *head == self.heads.list => Some(args),
