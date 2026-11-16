@@ -1,0 +1,63 @@
+use mithqal::Session;
+
+fn text(source: &str) -> String {
+    let mut session = Session::new();
+    let value = session.eval_statement(source).unwrap();
+    session.format_infix(value).unwrap()
+}
+
+#[test]
+fn gamma_exact_integers() {
+    assert_eq!(text("gamma(1)"), "1");
+    assert_eq!(text("gamma(2)"), "1");
+    assert_eq!(text("gamma(4)"), "6");
+    assert_eq!(text("gamma(5)"), "24");
+    assert_eq!(text("gamma(10)"), "362880");
+}
+
+#[test]
+fn gamma_exact_half_integers() {
+    assert_eq!(text("gamma(1/2)"), "sqrt(pi)");
+    assert_eq!(text("gamma(3/2)"), "(1/2)*sqrt(pi)");
+    assert_eq!(text("gamma(5/2)"), "(3/4)*sqrt(pi)");
+    assert_eq!(text("gamma(-1/2)"), "-(2*sqrt(pi))");
+    assert_eq!(text("gamma(-3/2)"), "(4/3)*sqrt(pi)");
+    assert_eq!(text("gamma(-5/2)"), "-((8/15)*sqrt(pi))");
+}
+
+#[test]
+fn gamma_poles_are_undefined() {
+    assert_eq!(text("gamma(0)"), "undefined");
+    assert_eq!(text("gamma(-1)"), "undefined");
+    assert_eq!(text("gamma(-8)"), "undefined");
+    assert_eq!(text("lgamma(0)"), "undefined");
+    assert_eq!(text("lgamma(-1)"), "undefined");
+}
+
+#[test]
+fn gamma_symbolic_arguments_remain_symbolic() {
+    assert_eq!(text("gamma(x)"), "gamma(x)");
+    assert_eq!(text("gamma(x^2)"), "gamma(x^2)");
+    assert_eq!(text("lgamma(x)"), "lgamma(x)");
+    assert_eq!(text("lgamma(x^2)"), "lgamma(x^2)");
+}
+
+#[test]
+fn lgamma_exact_values() {
+    assert_eq!(text("lgamma(2)"), "0");
+    assert_eq!(text("lgamma(5)"), "ln(24)");
+    assert_eq!(text("lgamma(2+3)"), "ln(24)");
+    assert_eq!(text("lgamma(1/2)"), "ln(sqrt(pi))");
+    assert_eq!(text("lgamma(-1/2)"), "ln(2*sqrt(pi))");
+}
+
+#[test]
+fn gamma_approximation_still_works() {
+    let mut session = Session::new();
+    let value = session.eval_statement("approx(gamma(5),30)").unwrap();
+    let text = session.format_infix(value).unwrap();
+    assert!(text.starts_with("24."), "{text}");
+    let value = session.eval_statement("approx(gamma(1/2),30)").unwrap();
+    let text = session.format_infix(value).unwrap();
+    assert!(text.starts_with("1.772"), "{text}");
+}

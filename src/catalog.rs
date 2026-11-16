@@ -1151,20 +1151,28 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         category: "numeric",
         signature: "gamma(expr)",
         summary: "Gamma function.",
-        example: "approx(gamma(5),30)",
-        example_kind: ExampleKind::Approximate,
-        capability: Capability::approximate("real and complex values under approx")
-            .errors("Poles at non-positive integers; invalid inputs return a diagnostic."),
+        example: "gamma(5)",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact(
+            "positive integers, half-integers, and symbolic complex arguments",
+        )
+        .symbolic_text("General complex arguments remain symbolic.")
+        .approximate_text("Numeric evaluation is available under approx.")
+        .errors("Non-positive integers return undefined."),
     },
     FunctionInfo {
         name: "lgamma",
         category: "numeric",
         signature: "lgamma(expr)",
         summary: "Log gamma function.",
-        example: "approx(lgamma(5),30)",
-        example_kind: ExampleKind::Approximate,
-        capability: Capability::approximate("real and complex values under approx")
-            .errors("Poles at non-positive integers; invalid inputs return a diagnostic."),
+        example: "lgamma(5)",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact(
+            "positive integers, half-integers, and symbolic complex arguments",
+        )
+        .symbolic_text("General complex arguments remain symbolic.")
+        .approximate_text("Numeric evaluation is available under approx.")
+        .errors("Non-positive integers return undefined."),
     },
     FunctionInfo {
         name: "erf",
@@ -1319,8 +1327,8 @@ mod tests {
     #[test]
     fn capability_matrix_is_classified() {
         let gamma = find("gamma").unwrap().capability;
-        assert_eq!(gamma.support, Support::Approximate);
-        assert!(gamma.domain.contains("approx"));
+        assert_eq!(gamma.support, Support::Exact);
+        assert!(gamma.domain.contains("half-integers"));
         let det = find("det").unwrap().capability;
         assert_eq!(det.support, Support::Exact);
         let series = find("series").unwrap().capability;

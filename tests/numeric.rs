@@ -362,8 +362,8 @@ fn special_functions() {
 
 #[test]
 fn special_function_domains() {
-    let (session, value) = evaluated("approx(gamma(0),30)");
+    let (session, value) = evaluated("approx(gamma(x),30)");
     assert!(session.format_infix(value).unwrap().contains("approx"));
-    let (session, value) = evaluated("approx(gamma(-1),30)");
+    let (session, value) = evaluated("approx(lgamma(x),30)");
     assert!(session.format_infix(value).unwrap().contains("approx"));
 }

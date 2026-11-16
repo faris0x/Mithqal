@@ -169,6 +169,8 @@ pub(crate) enum ExactNumericHead {
     Floor,
     Ceil,
     Round,
+    Gamma,
+    Lgamma,
 }
 
 impl ExactNumericHead {
@@ -181,6 +183,8 @@ impl ExactNumericHead {
             "floor" => Self::Floor,
             "ceil" => Self::Ceil,
             "round" => Self::Round,
+            "gamma" => Self::Gamma,
+            "lgamma" => Self::Lgamma,
             _ => return None,
         })
     }

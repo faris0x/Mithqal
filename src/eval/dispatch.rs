@@ -758,7 +758,11 @@ impl<'a> Evaluator<'a> {
             }
             ExactNumericHead::Factorial => 1,
             ExactNumericHead::Binomial => 2,
-            ExactNumericHead::Floor | ExactNumericHead::Ceil | ExactNumericHead::Round => 1,
+            ExactNumericHead::Floor
+            | ExactNumericHead::Ceil
+            | ExactNumericHead::Round
+            | ExactNumericHead::Gamma
+            | ExactNumericHead::Lgamma => 1,
         };
         if args.len() != arity {
             return Err(Diagnostic::eval(
@@ -767,6 +771,50 @@ impl<'a> Evaluator<'a> {
             ));
         }
         Ok(self.apply_simple_numeric(function, args))
+    }
+
+    fn exact_gamma(&mut self, argument: ExprId) -> Option<ExprId> {
+        let value = exact_rational(self.arena, argument)?;
+        let numerator = value.num().to_i64()?;
+        let denominator = value.den().to_i64()?;
+        if denominator == 1 {
+            if numerator <= 0 {
+                return Some(self.heads.undefined);
+            }
+            if numerator > 10_001 {
+                return None;
+            }
+            return Some(self.arena.intern_int(integer_factorial(numerator - 1)?));
+        }
+        if denominator != 2 || numerator % 2 == 0 {
+            return None;
+        }
+        let index = (numerator - 1) / 2;
+        if index.unsigned_abs() > 1_000 {
+            return None;
+        }
+        let coefficient = half_integer_gamma_coefficient(index)?;
+        let sqrt_pi = self.arena.intern_call(self.heads.sqrt, &[self.heads.pi]);
+        if coefficient.is_one() {
+            return Some(sqrt_pi);
+        }
+        if coefficient.neg().is_one() {
+            return Some(self.arena.intern_call(self.heads.negate, &[sqrt_pi]));
+        }
+        let coefficient = self.rat_expression(&coefficient);
+        Some(
+            self.arena
+                .intern_call(self.heads.times, &[coefficient, sqrt_pi]),
+        )
+    }
+
+    fn exact_lgamma(&mut self, argument: ExprId) -> Option<ExprId> {
+        let gamma = self.exact_gamma(argument)?;
+        if gamma == self.heads.undefined {
+            return Some(gamma);
+        }
+        let absolute = self.arena.intern_call(self.heads.abs, &[gamma]);
+        Some(self.arena.intern_call(self.heads.ln, &[absolute]))
     }
 
     pub(super) fn apply_fold_integer(
@@ -807,6 +855,8 @@ impl<'a> Evaluator<'a> {
                 }
                 Some(self.arena.intern_int(integer_binomial(n, k)?))
             }
+            ExactNumericHead::Gamma => self.exact_gamma(args[0]),
+            ExactNumericHead::Lgamma => self.exact_lgamma(args[0]),
             ExactNumericHead::Floor | ExactNumericHead::Ceil | ExactNumericHead::Round => {
                 if let Node::Real(value) = self.arena.node(args[0]) {
                     let result = match function {
@@ -865,5 +915,23 @@ impl<'a> Evaluator<'a> {
             };
         }
         Ok(None)
+    }
+}
+
+fn half_integer_gamma_coefficient(index: i64) -> Option<Rat> {
+    if index >= 0 {
+        let index = index as u32;
+        let numerator = integer_factorial((2 * index) as i64)?;
+        let denominator = Int::from_i64(4)
+            .pow_u32(index)
+            .mul(&integer_factorial(index as i64)?);
+        Rat::from_ints(numerator, denominator).ok()
+    } else {
+        let index = index.unsigned_abs() as u32;
+        let numerator = Int::from_i64(-4)
+            .pow_u32(index)
+            .mul(&integer_factorial(index as i64)?);
+        let denominator = integer_factorial((2 * index) as i64)?;
+        Rat::from_ints(numerator, denominator).ok()
     }
 }

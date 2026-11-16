@@ -71,9 +71,9 @@ fn capability_listing_exposes_support_metadata() {
     let output = run_stdin("list capabilities gamma\nquit\n");
     assert!(output.status.success());
     let text = stdout(&output);
-    assert!(text.contains("gamma [approx]"), "{text}");
+    assert!(text.contains("gamma [exact]"), "{text}");
     assert!(
-        text.contains("domain: real and complex values under approx"),
+        text.contains("domain: positive integers, half-integers, and symbolic complex arguments"),
         "{text}"
     );
     assert!(text.contains("display: infix"), "{text}");

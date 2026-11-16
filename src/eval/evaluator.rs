@@ -271,7 +271,14 @@ impl<'a> Evaluator<'a> {
                     .map(|symbol| self.arena.symbol_name(symbol))?;
                 match name {
                     "negate" if args.len() == 1 => self.expression_sign(args[0]).map(flip_sign),
-                    "abs" | "sqrt" if args.len() == 1 => Some(Sign::NonNegative),
+                    "abs" if args.len() == 1 => Some(Sign::NonNegative),
+                    "sqrt" if args.len() == 1 => {
+                        if self.expression_sign(args[0]) == Some(Sign::Positive) {
+                            Some(Sign::Positive)
+                        } else {
+                            Some(Sign::NonNegative)
+                        }
+                    }
                     "exp" if args.len() == 1 => Some(Sign::Positive),
                     "times" => {
                         let mut exact = Sign::Positive;
