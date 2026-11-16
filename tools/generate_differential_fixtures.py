@@ -235,7 +235,7 @@ failures = [
     ("unevaluated", "integrate(tan(x),x,0,2)", "integrate"),
     ("unevaluated", "assume(x>1,abs(x))", "assume"),
     ("diagnostic", "differentiate(2)", "TGN-EVAL-0013"),
-    ("diagnostic", "integrate(x,x,x)", "TGN-EVAL-0013"),
+    ("diagnostic", "integrate(x,x,x,x,x)", "TGN-EVAL-0013"),
     ("diagnostic", "det=1", "TGN-EVAL-0011"),
     ("diagnostic", "2[1,2]", "TGN-PARSE-0007"),
     ("unchanged", "factor(x^2+y^2+1)", "x^2+y^2+1"),

@@ -7,7 +7,13 @@ license = "GPL-3.0-or-later"
 description = "A symbolic math engine"
 publish = false
 
+[features]
+default = ["cli"]
+cli = ["dep:rustyline"]
+gui = []
+
 [dependencies]
+rustyline = { version = "19", optional = true }
 
 [profile.release]
 opt-level = 3

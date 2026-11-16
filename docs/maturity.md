@@ -16,6 +16,7 @@ This document records the support level of each public area. Stable areas follow
 | Assumptions | Partial | Local sign facts and conjunctions against zero. |
 | Surface language, IR, VM, collector | Experimental | Internal surfaces may change while the language design settles. |
 | Arena internals | Experimental | Hidden from public documentation and not part of the stable contract. |
+| Command line frontend | Stable | REPL evaluation, assignments, commands, completion, history, and license reporting. |
 
 ## Process gates
 

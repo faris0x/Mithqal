@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 600 source test functions and 1627 assertion sites, with 695 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 609 source test functions and 1662 assertion sites, with 704 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -194,3 +194,8 @@ Initial kernel work.
 - Added single-variable inference for `differentiate`, `integrate`, `limit`, `series`, `converges`, and `solve`, with diagnostics for ambiguous or variable-free expressions.
 - Added inference and ambiguity regression tests for calculus and solving.
 - Disabled autotools maintainer mode for vendored builds so clean clones do not regenerate vendored files.
+- Added the three-argument `integrate(expr,lower,upper)` form with an inferred variable.
+- Extended inferred-variable normalization across `differentiate`, `integrate`, `limit`, `series`, and `converges`, with ambiguity diagnostics and differential fixture updates.
+- Modularized the expression printer, session API, evaluator heads, calculus, algebra, linear algebra, and IR into focused submodules.
+- Added a feature-gated `cli` module and `mithqal` binary with a readline-style REPL, assignments, commands, completion, history, and one-shot evaluation.
+- Added license reporting, dependency license texts, and `license/LICENSES.md`.

@@ -233,7 +233,7 @@ The algebra layer rejects exponents above 4096, expanded forms above 20000 terms
 
 ## Symbolic calculus
 
-The calculus layer provides `differentiate`, `integrate`, `limit`, `series`, and `converges`. Differentiation, integration, and limits take an expression and a variable. `integrate` accepts two optional bound arguments, and `limit` accepts an optional side argument.
+The calculus layer provides `differentiate`, `integrate`, `limit`, `series`, and `converges`. Differentiation, integration, and limits take an expression and a variable. `integrate` accepts either a variable plus two bounds or two bounds with an inferred variable. `limit`, `series`, and `converges` also infer a variable when the variable argument is omitted, and `limit` accepts an optional side argument.
 
 `differentiate` applies exact differentiation rules for sums, products, powers, the elementary functions, and the inverse trigonometric and hyperbolic functions. Unknown function calls remain unevaluated. A symbol other than the differentiation variable is treated as a constant. `differentiate`, `integrate`, `limit`, `series`, `converges`, and `solve` accept an omitted variable when the expression has exactly one free symbol. An ambiguous expression produces an arity diagnostic.
 

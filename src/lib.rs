@@ -12,6 +12,8 @@ mod algebra;
 pub mod api;
 pub mod builtins;
 mod calculus;
+#[cfg(feature = "cli")]
+pub mod cli;
 pub mod config;
 pub mod diag;
 pub mod eval;

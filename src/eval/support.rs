@@ -385,6 +385,16 @@ pub(super) fn rat_pow(base: &Rat, power: i64) -> Result<Rat, ()> {
 }
 
 impl<'a> Evaluator<'a> {
+    pub(super) fn is_inference_variable(&self, expression: ExprId) -> bool {
+        let Some(symbol) = self.arena.symbol_id(expression) else {
+            return false;
+        };
+        !self
+            .arena
+            .symbol_attributes(symbol)
+            .has(Attributes::CONSTANT)
+    }
+
     pub(super) fn infer_variable(&self, expression: ExprId) -> Result<ExprId, Diagnostic> {
         fn collect(arena: &Arena, expression: ExprId, variables: &mut Vec<ExprId>) {
             match arena.node(expression) {

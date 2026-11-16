@@ -50,7 +50,7 @@ check_absent \
 check_absent \
     'stale collection roots' \
     'definitions, the last result, or the supplied roots' \
-    src/api.rs
+    src/api
 check_absent \
     'stale fixture extension claim' \
     'Fixtures use the .expr extension' \

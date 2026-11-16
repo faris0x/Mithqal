@@ -105,7 +105,7 @@ fn calculus_arity_errors() {
         "differentiate(2)",
         "differentiate(x,x,x)",
         "integrate(2)",
-        "integrate(x,x,x)",
+        "integrate(x,x,x,x,x)",
     ] {
         let mut session = Session::new();
         let error = session.eval_statement(source).unwrap_err();
@@ -285,5 +285,38 @@ fn calculus_inference_rejects_ambiguous_or_empty_expressions() {
         let mut session = Session::new();
         let error = session.eval_statement(source).unwrap_err();
         assert_eq!(error.code, ErrorCode::EvalArity, "source {source}");
+    }
+}
+
+#[test]
+fn calculus_accepts_inferred_variables() {
+    assert_eq!(text("differentiate(x^2)"), "2*x");
+    assert_eq!(text("integrate(x^2)"), "(1/3)*x^3");
+    assert_eq!(text("integrate(x^2,0,5)"), "125/3");
+    assert_eq!(text("integrate(x,0,1)"), "1/2");
+    assert_eq!(text("integrate(exp(-x),0,inf)"), "1");
+    assert_eq!(text("limit(x^2+1,2)"), "5");
+    assert_eq!(text("limit(x^2,inf)"), "inf");
+    assert_eq!(text("limit(abs(x)/x,0,right)"), "1");
+    assert_eq!(text("converges(1/x^2,inf)"), "true");
+    assert_eq!(text("series(exp(x),0,2)"), "1+x+(1/2)*x^2");
+}
+
+#[test]
+fn inferred_calculus_reports_ambiguous_variables() {
+    for source in [
+        "differentiate(x*y)",
+        "integrate(x*y,0,1)",
+        "limit(x*y,0)",
+        "series(x*y,0,2)",
+        "converges(x*y,inf)",
+    ] {
+        let mut session = Session::new();
+        let error = session.eval_statement(source).unwrap_err();
+        assert_eq!(error.code, ErrorCode::EvalArity, "source {source}");
+        assert!(
+            error.to_string().contains("several candidates"),
+            "source {source}"
+        );
     }
 }

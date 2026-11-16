@@ -1,0 +1,394 @@
+//! Kernel head enums and name lookup.
+
+use super::*;
+
+pub(crate) enum Numeric {
+    Real(Real),
+    Complex(Real, Real),
+    Error(ExprId),
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum NumericHead {
+    Plus,
+    Times,
+    Negate,
+    Power,
+    Complex,
+    Abs,
+    Sqrt,
+    Exp,
+    Ln,
+    Sin,
+    Cos,
+    Tan,
+    Asin,
+    Acos,
+    Atan,
+    Sinh,
+    Cosh,
+    Tanh,
+    Asinh,
+    Acosh,
+    Atanh,
+    Floor,
+    Ceil,
+    Round,
+    Gamma,
+    Lgamma,
+    Erf,
+    Erfc,
+}
+
+impl NumericHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "plus" => Self::Plus,
+            "times" => Self::Times,
+            "negate" => Self::Negate,
+            "power" => Self::Power,
+            "complex" => Self::Complex,
+            "abs" => Self::Abs,
+            "sqrt" => Self::Sqrt,
+            "exp" => Self::Exp,
+            "ln" => Self::Ln,
+            "sin" => Self::Sin,
+            "cos" => Self::Cos,
+            "tan" => Self::Tan,
+            "asin" => Self::Asin,
+            "acos" => Self::Acos,
+            "atan" => Self::Atan,
+            "sinh" => Self::Sinh,
+            "cosh" => Self::Cosh,
+            "tanh" => Self::Tanh,
+            "asinh" => Self::Asinh,
+            "acosh" => Self::Acosh,
+            "atanh" => Self::Atanh,
+            "floor" => Self::Floor,
+            "ceil" => Self::Ceil,
+            "round" => Self::Round,
+            "gamma" => Self::Gamma,
+            "lgamma" => Self::Lgamma,
+            "erf" => Self::Erf,
+            "erfc" => Self::Erfc,
+            _ => return None,
+        })
+    }
+
+    pub(super) fn is_unary(self) -> bool {
+        matches!(
+            self,
+            Self::Sqrt
+                | Self::Exp
+                | Self::Ln
+                | Self::Sin
+                | Self::Cos
+                | Self::Tan
+                | Self::Asin
+                | Self::Acos
+                | Self::Atan
+                | Self::Sinh
+                | Self::Cosh
+                | Self::Tanh
+                | Self::Asinh
+                | Self::Acosh
+                | Self::Atanh
+                | Self::Floor
+                | Self::Ceil
+                | Self::Round
+                | Self::Gamma
+                | Self::Lgamma
+                | Self::Erf
+                | Self::Erfc
+        )
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum AlgebraHead {
+    Expand,
+    Factor,
+    Together,
+    Cancel,
+    PolynomialGcd,
+    Resultant,
+    Solve,
+    Degree,
+    Coefficient,
+    PolynomialDivide,
+    Discriminant,
+}
+
+impl AlgebraHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "expand" => Self::Expand,
+            "factor" => Self::Factor,
+            "together" => Self::Together,
+            "cancel" => Self::Cancel,
+            "polynomialGcd" => Self::PolynomialGcd,
+            "resultant" => Self::Resultant,
+            "solve" => Self::Solve,
+            "degree" => Self::Degree,
+            "coefficient" => Self::Coefficient,
+            "polynomialDivide" => Self::PolynomialDivide,
+            "discriminant" => Self::Discriminant,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum CalculusHead {
+    Differentiate,
+    Integrate,
+    Limit,
+    Series,
+    Converges,
+}
+
+impl CalculusHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "differentiate" => Self::Differentiate,
+            "integrate" => Self::Integrate,
+            "limit" => Self::Limit,
+            "series" => Self::Series,
+            "converges" => Self::Converges,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum ExactNumericHead {
+    Gcd,
+    Lcm,
+    Factorial,
+    Binomial,
+    Floor,
+    Ceil,
+    Round,
+}
+
+impl ExactNumericHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "gcd" => Self::Gcd,
+            "lcm" => Self::Lcm,
+            "factorial" => Self::Factorial,
+            "binomial" => Self::Binomial,
+            "floor" => Self::Floor,
+            "ceil" => Self::Ceil,
+            "round" => Self::Round,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum LinearHead {
+    Determinant,
+    Rank,
+    Transpose,
+    Inverse,
+    Rref,
+    Trace,
+    Matmul,
+    Identity,
+    SolveLinear,
+    Dot,
+    Cross,
+    Plu,
+    Charpoly,
+    Eigenvalues,
+    Nullspace,
+    Eigenvectors,
+    Qr,
+}
+impl LinearHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "det" => Self::Determinant,
+            "rank" => Self::Rank,
+            "transpose" => Self::Transpose,
+            "inverse" => Self::Inverse,
+            "rref" => Self::Rref,
+            "trace" => Self::Trace,
+            "matmul" => Self::Matmul,
+            "identity" => Self::Identity,
+            "solveLinear" => Self::SolveLinear,
+            "dot" => Self::Dot,
+            "cross" => Self::Cross,
+            "plu" => Self::Plu,
+            "charpoly" => Self::Charpoly,
+            "eigenvalues" => Self::Eigenvalues,
+            "nullspace" | "kernel" => Self::Nullspace,
+            "eigenvectors" => Self::Eigenvectors,
+            "qr" => Self::Qr,
+            _ => return None,
+        })
+    }
+
+    pub(super) fn arity(self) -> usize {
+        match self {
+            Self::Matmul | Self::SolveLinear | Self::Dot | Self::Cross => 2,
+            _ => 1,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum NumberTheoryHead {
+    IsPrime,
+    NextPrime,
+    FactorInteger,
+    Divisors,
+    Totient,
+    Sigma,
+    IsEven,
+    IsOdd,
+    Divides,
+    Modulo,
+    PowerMod,
+    PreviousPrime,
+    DivisorCount,
+    Moebius,
+    Radical,
+    IsSquareFree,
+    PrimeCount,
+    Fibonacci,
+    IsPerfectSquare,
+    ModInverse,
+    Jacobi,
+}
+
+impl NumberTheoryHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "isPrime" => Self::IsPrime,
+            "nextPrime" => Self::NextPrime,
+            "factorInteger" => Self::FactorInteger,
+            "divisors" => Self::Divisors,
+            "totient" => Self::Totient,
+            "sigma" => Self::Sigma,
+            "isEven" => Self::IsEven,
+            "isOdd" => Self::IsOdd,
+            "divides" => Self::Divides,
+            "mod" => Self::Modulo,
+            "powerMod" => Self::PowerMod,
+            "previousPrime" => Self::PreviousPrime,
+            "divisorCount" => Self::DivisorCount,
+            "moebius" => Self::Moebius,
+            "radical" => Self::Radical,
+            "isSquareFree" => Self::IsSquareFree,
+            "primeCount" => Self::PrimeCount,
+            "fibonacci" => Self::Fibonacci,
+            "isPerfectSquare" => Self::IsPerfectSquare,
+            "modInverse" => Self::ModInverse,
+            "jacobi" => Self::Jacobi,
+            _ => return None,
+        })
+    }
+
+    pub(super) fn arity(self) -> usize {
+        match self {
+            Self::Divides | Self::Modulo | Self::ModInverse | Self::Jacobi => 2,
+            Self::PowerMod => 3,
+            _ => 1,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum LogicHead {
+    Xor,
+    Implies,
+    All,
+    Any,
+}
+
+impl LogicHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "xor" => Self::Xor,
+            "implies" => Self::Implies,
+            "all" => Self::All,
+            "any" => Self::Any,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum StatisticsHead {
+    Mean,
+    Median,
+    Minimum,
+    Maximum,
+    Range,
+    Total,
+    Count,
+    Variance,
+    SampleVariance,
+    StandardDeviation,
+    SampleStandardDeviation,
+    Frequency,
+    Mode,
+}
+
+impl StatisticsHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "mean" => Self::Mean,
+            "median" => Self::Median,
+            "minimum" => Self::Minimum,
+            "maximum" => Self::Maximum,
+            "range" => Self::Range,
+            "total" => Self::Total,
+            "count" => Self::Count,
+            "variance" => Self::Variance,
+            "sampleVariance" => Self::SampleVariance,
+            "standardDeviation" => Self::StandardDeviation,
+            "sampleStandardDeviation" => Self::SampleStandardDeviation,
+            "frequency" => Self::Frequency,
+            "mode" => Self::Mode,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum KernelFunction {
+    Algebra(AlgebraHead),
+    Calculus(CalculusHead),
+    Numeric(ExactNumericHead),
+    Linear(LinearHead),
+    NumberTheory(NumberTheoryHead),
+    Logic(LogicHead),
+    Statistics(StatisticsHead),
+}
+
+impl KernelFunction {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        if let Some(function) = AlgebraHead::from_name(name) {
+            return Some(Self::Algebra(function));
+        }
+        if let Some(function) = CalculusHead::from_name(name) {
+            return Some(Self::Calculus(function));
+        }
+        if let Some(function) = ExactNumericHead::from_name(name) {
+            return Some(Self::Numeric(function));
+        }
+        if let Some(function) = LinearHead::from_name(name) {
+            return Some(Self::Linear(function));
+        }
+        if let Some(function) = NumberTheoryHead::from_name(name) {
+            return Some(Self::NumberTheory(function));
+        }
+        if let Some(function) = LogicHead::from_name(name) {
+            return Some(Self::Logic(function));
+        }
+        StatisticsHead::from_name(name).map(Self::Statistics)
+    }
+}

@@ -14,7 +14,7 @@ fn methods(source: &str) -> BTreeSet<&str> {
 
 #[test]
 fn every_public_session_method_is_documented() {
-    let source = methods(include_str!("../src/api.rs"));
+    let source = methods(include_str!("../src/api/session.rs"));
     let documentation = methods(include_str!("../docs/api.md"));
     let undocumented = source
         .difference(&documentation)

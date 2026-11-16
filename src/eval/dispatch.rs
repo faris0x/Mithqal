@@ -303,8 +303,26 @@ impl<'a> Evaluator<'a> {
             (CalculusHead::Integrate, [expression]) => {
                 vec![*expression, self.infer_variable(*expression)?]
             }
+            (CalculusHead::Integrate, [expression, lower, upper]) => {
+                vec![
+                    *expression,
+                    self.infer_variable(*expression)?,
+                    *lower,
+                    *upper,
+                ]
+            }
             (CalculusHead::Limit, [expression, point]) => {
                 vec![*expression, self.infer_variable(*expression)?, *point]
+            }
+            (CalculusHead::Limit, [expression, point, side])
+                if !self.is_inference_variable(*point) =>
+            {
+                vec![
+                    *expression,
+                    self.infer_variable(*expression)?,
+                    *point,
+                    *side,
+                ]
             }
             (CalculusHead::Series, [expression, point, order]) => {
                 vec![

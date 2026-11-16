@@ -37,13 +37,13 @@ Included:
 - Explicit mark and sweep garbage collection.
 - Structured diagnostics with stable codes and source spans.
 - Public library API and documentation.
+- A feature-gated command line frontend with a persistent session, assignments, commands, completion, and history.
 
 Excluded:
 
 - Full multivariate factorization beyond the staged coverage and interpolation above eight variables.
 - Further matrix decompositions and wider assumption domains.
 - Strings, files, and sets beyond `emptyset`.
-- A command line interface.
 - Unicode source and LaTeX rendering.
 - Parallel evaluation and a JIT.
 - Windows and macOS builds.
@@ -80,15 +80,15 @@ The test suite covers these areas:
 
 ## Remaining work
 
-Remaining work includes broader improper integration, general multivariate factorization beyond the staged bounds, further matrix decompositions, and wider assumption domains. A command line interface and a graphical interface follow once the library surface is stable.
+Remaining work includes broader improper integration, general multivariate factorization beyond the staged bounds, further matrix decompositions, and wider assumption domains. A graphical interface follows once the library surface is stable.
 
-The project remains a library at its core. Front ends are consumers of the public API.
+The engine remains a library at its core. Frontends are feature-gated modules that consume the public API.
 
 ## Constraints
 
 - Target Linux on x86 64 for the current version.
 - Link GMP from vendored source.
-- Avoid external Rust crates.
+- Keep the engine core free of external Rust crates. Frontends may use optional crates behind Cargo features.
 - Keep `unsafe` inside the FFI layer and arena internals.
 - Keep evaluation deterministic.
 - Document every public item.
