@@ -12,6 +12,7 @@ mod algebra;
 pub mod api;
 pub mod builtins;
 mod calculus;
+pub mod catalog;
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod config;

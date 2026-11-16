@@ -28,6 +28,7 @@ The first build compiles the vendored numeric libraries and can take several min
 
 - [Language](docs/language.md)
 - [Command line interface](docs/cli.md)
+- [Function capabilities](docs/functions.md)
 - [Algebra](docs/algebra.md)
 - [Assumptions](docs/assumptions.md)
 - [Limits and series](docs/limits.md)

@@ -6,7 +6,7 @@ use rustyline::hint::Hinter;
 use rustyline::validate::Validator;
 use rustyline::{Context, Helper, Result};
 
-use super::catalog;
+use crate::catalog;
 
 pub(super) struct CliHelper;
 

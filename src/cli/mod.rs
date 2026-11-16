@@ -1,7 +1,6 @@
 //! Command line frontend.
 
 mod args;
-mod catalog;
 mod commands;
 mod completion;
 mod license;

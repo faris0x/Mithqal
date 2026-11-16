@@ -35,6 +35,7 @@ mithqal --version
 help
 help FUNCTION
 list functions [TEXT]
+list capabilities [TEXT]
 license
 quit
 ```
@@ -52,7 +53,7 @@ The REPL keeps one session for the whole run, so definitions remain available. E
 
 ## Completion and history
 
-Tab completes command names and built-in function names. History is stored in `$XDG_DATA_HOME/mithqal/history` or `$HOME/.local/share/mithqal/history`. Ctrl-C clears the current line. Ctrl-D exits.
+`list capabilities` prints the support matrix for the advertised functions. `help FUNCTION` prints the same metadata for one function. Tab completes command names and built-in function names. History is stored in `$XDG_DATA_HOME/mithqal/history` or `$HOME/.local/share/mithqal/history`. Ctrl-C clears the current line. Ctrl-D exits.
 
 ## Licensing
 

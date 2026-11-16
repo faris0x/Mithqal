@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 609 source test functions and 1662 assertion sites, with 704 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 613 source test functions and 1684 assertion sites, with 708 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -199,3 +199,6 @@ Initial kernel work.
 - Modularized the expression printer, session API, evaluator heads, calculus, algebra, linear algebra, and IR into focused submodules.
 - Added a feature-gated `cli` module and `mithqal` binary with a readline-style REPL, assignments, commands, completion, history, and one-shot evaluation.
 - Added license reporting, dependency license texts, and `license/LICENSES.md`.
+- Added a public capability catalog with support level, domain, symbolic behavior, approximate behavior, error behavior, and display form for every advertised function.
+- Added `list capabilities` and extended `help FUNCTION` to report capability metadata.
+- Added `docs/functions.md` and a catalog test that keeps the document synchronized with the advertised names.

@@ -32,6 +32,12 @@ use support::*;
 
 pub(crate) use definitions::Definitions as SessionDefinitions;
 
+/// Report whether a name has a kernel dispatch entry.
+#[cfg(test)]
+pub(crate) fn has_kernel_function(name: &str) -> bool {
+    KernelFunction::from_name(name).is_some()
+}
+
 /// Evaluate an expression to a normal form.
 pub fn evaluate(arena: &mut Arena, id: ExprId) -> Result<ExprId, Diagnostic> {
     let mut definitions = Definitions::new();
