@@ -71,24 +71,38 @@ Expressions with unknown heads remain unevaluated because continuity is unknown.
 
 ## Series
 
-`series(expr,var,point,order)` returns the Taylor polynomial through the requested degree. Coefficients come from repeated exact differentiation evaluated at the point.
+`series(expr,var,point,order)` returns the Taylor polynomial through the requested degree. Coefficients come from repeated exact differentiation evaluated at the point. The variable may be omitted when the expression has one free symbol.
 
 ```text
-series(exp(x),x,0,3)              -> 1+x+(1/2)*x^2+(1/6)*x^3
-series(sin(x),x,0,5)              -> x-(1/6)*x^3+(1/120)*x^5
-series(cos(x),x,0,4)              -> 1-(1/2)*x^2+(1/24)*x^4
-series(ln(1+x),x,0,3)             -> x-(1/2)*x^2+(1/3)*x^3
+series(exp(x),x,0,3)              -> 1+x+x^2/2!+x^3/3!
+series(sin(x),x,0,5)              -> x-x^3/3!+x^5/5!
+series(cos(x),x,0,4)              -> 1-x^2/2!+x^4/4!
+series(ln(1+x),x,0,3)             -> x-x^2/2!+2*x^3/3!
 series(1/(1-x),x,0,3)             -> 1+x+x^2+x^3
 ```
 
-The point may be nonzero. Terms then use powers of `x-a`. The canonical printer may reorder the terms.
+Terms are returned in degree order. The optional Boolean argument controls whether factorials are evaluated. The default keeps factorials.
+
+```text
+series(exp(x),0,4)                -> 1+x+x^2/2!+x^3/3!+x^4/4!
+series(exp(x),0,4,true)           -> 1+x+(1/2)*x^2+(1/6)*x^3+(1/24)*x^4
+```
+
+Series results work in further algebra. Arithmetic operands and `expand` convert the ordered display form into a normal sum.
+
+```text
+expand(series(exp(x),0,2))        -> 1+x+(1/2)*x^2
+differentiate(series(exp(x),0,2),x) -> 1+x
+```
+
+The point may be nonzero. Terms then use powers of `x-a`.
 
 ```text
 series(exp(x),x,1,1)              -> exp(1)+exp(1)*(-1+x)
 series(x^2,x,1,2)                 -> 1+2*(-1+x)+(-1+x)^2
 ```
 
-The order must be a nonnegative integer no greater than 20. Unsupported derivatives, singular points, and negative or oversized orders leave the call unevaluated.
+The order must be a nonnegative integer no greater than 20. Unsupported derivatives, singular points, negative or oversized orders, and invalid Boolean flags produce a diagnostic or leave the call unevaluated.
 
 ## Convergence
 

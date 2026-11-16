@@ -144,7 +144,9 @@ fn numeric_division_folds() {
     let (arena, id) = parse_one("0/0");
     assert_eq!(head_name(&arena, id), "times");
     let (arena, id) = parse_one("1/0");
-    assert_eq!(head_name(&arena, id), "times");
+    assert_eq!(head_name(&arena, id), "power");
+    let (arena, id) = parse_one("1/x");
+    assert_eq!(head_name(&arena, id), "power");
 }
 
 #[test]

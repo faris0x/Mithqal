@@ -107,21 +107,40 @@ fn two_sided_mismatch_stays_unevaluated() {
 
 #[test]
 fn taylor_series() {
-    assert_eq!(text("series(exp(x),x,0,3)"), "1+x+(1/6)*x^3+(1/2)*x^2");
-    assert_eq!(text("series(sin(x),x,0,5)"), "x-(1/6)*x^3+(1/120)*x^5");
-    assert_eq!(text("series(cos(x),x,0,4)"), "1-(1/2)*x^2+(1/24)*x^4");
+    assert_eq!(text("series(exp(x),x,0,3)"), "1+x+x^2/2!+x^3/3!");
+    assert_eq!(text("series(sin(x),x,0,5)"), "x-x^3/3!+x^5/5!");
+    assert_eq!(text("series(cos(x),x,0,4)"), "1-x^2/2!+x^4/4!");
     assert_eq!(text("series(1/(1-x),x,0,3)"), "1+x+x^2+x^3");
-    assert_eq!(text("series(ln(1+x),x,0,3)"), "x-(1/2)*x^2+(1/3)*x^3");
-    assert_eq!(text("series(exp(2*x),x,0,3)"), "1+2*x+2*x^2+(4/3)*x^3");
+    assert_eq!(text("series(ln(1+x),x,0,3)"), "x-x^2/2!+2*x^3/3!");
+    assert_eq!(text("series(exp(2*x),x,0,3)"), "1+2*x+2*x^2+8*x^3/3!");
     assert_eq!(text("series(x^2*exp(x),x,0,3)"), "x^2+x^3");
     assert_eq!(text("series(sin(x),x,0,0)"), "0");
+    assert_eq!(text("series(e^x,0,4)"), text("series(exp(x),0,4)"));
 }
 
 #[test]
 fn taylor_series_around_nonzero_points() {
     assert_eq!(text("series(exp(x),x,1,1)"), "exp(1)+exp(1)*(-1+x)");
-    assert_eq!(text("series(x^2,x,1,2)"), "1+(-1+x)^2+2*(-1+x)");
-    assert_eq!(text("series(x^3+2*x+1,x,0,3)"), "1+x^3+2*x");
+    assert_eq!(text("series(x^2,x,1,2)"), "1+2*(-1+x)+(-1+x)^2");
+    assert_eq!(text("series(x^3+2*x+1,x,0,3)"), "1+2*x+x^3");
+}
+
+#[test]
+fn series_can_evaluate_factorials() {
+    assert_eq!(
+        text("series(exp(x),0,4,true)"),
+        "1+x+(1/2)*x^2+(1/6)*x^3+(1/24)*x^4"
+    );
+    assert_eq!(text("series(exp(x),0,4,false)"), "1+x+x^2/2!+x^3/3!+x^4/4!");
+}
+
+#[test]
+fn series_results_work_in_further_algebra() {
+    assert_eq!(text("expand(series(exp(x),0,2))"), "1+x+(1/2)*x^2");
+    assert_eq!(text("differentiate(series(exp(x),0,2),x)"), "1+x");
+    let value = text("series(exp(x),0,2)+1");
+    assert!(value.contains("2"), "{value}");
+    assert!(value.contains("x"), "{value}");
 }
 
 #[test]

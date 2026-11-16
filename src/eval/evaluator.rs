@@ -162,7 +162,8 @@ impl<'a> Evaluator<'a> {
 
         let mut evaluated = SmallArgs::new();
         for arg in args.as_slice() {
-            evaluated.push(self.eval(*arg)?);
+            let arg = self.expand_series_sums(*arg);
+            evaluated.push(self.eval(arg)?);
         }
 
         if head == self.heads.plus || head == self.heads.times || head == self.heads.negate {
@@ -372,6 +373,32 @@ impl<'a> Evaluator<'a> {
             return Some(self.arena.intern_int(root));
         }
         None
+    }
+
+    pub(super) fn expand_series_sums(&mut self, expression: ExprId) -> ExprId {
+        let Node::Call { head, args } = self.arena.node(expression) else {
+            return expression;
+        };
+        if *head == self.heads.series_sum {
+            let args = args.to_vec();
+            return self.arena.intern_call(self.heads.plus, &args);
+        }
+        let head = *head;
+        let args = args.to_vec();
+        let mut changed = false;
+        let normalized = args
+            .into_iter()
+            .map(|arg| {
+                let value = self.expand_series_sums(arg);
+                changed |= value != arg;
+                value
+            })
+            .collect::<Vec<_>>();
+        if changed {
+            self.arena.intern_call(head, &normalized)
+        } else {
+            expression
+        }
     }
 
     pub(super) fn finish(

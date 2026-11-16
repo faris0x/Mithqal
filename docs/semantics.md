@@ -68,6 +68,7 @@ The constants are `i`, `pi`, `e`, and `inf`.
 
 - `i` has the built in meaning of the imaginary unit while no user definition shadows it.
 - `pi` and `e` are symbolic constants with built in numeric evaluators.
+- `ln(e)` simplifies to `1`.
 - `inf` is a protected constant. It represents positive infinity when an infinite limit is expressed. It is not a number.
 - `i`, `pi`, and `e` can be shadowed by user definitions.
 - `inf` cannot be redefined.

@@ -56,7 +56,7 @@ fn like_terms_and_constants_sort() {
     assert_eq!(ep("x*x"), "x^2");
     assert_eq!(ep("x^2*x^3"), "x^5");
     assert_eq!(ep("x^2/x"), "x");
-    assert_eq!(ep("x*x^-2"), "x^(-1)");
+    assert_eq!(ep("x*x^-2"), "1/x");
     assert_eq!(ep("2*x*3"), "6*x");
     assert_eq!(ep("x*y+y*x"), "2*x*y");
     assert_eq!(ep("x+y-y"), "x");

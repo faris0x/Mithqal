@@ -227,6 +227,9 @@ impl Parser<'_> {
                 };
                 if let Some(value) = quotient {
                     self.arena.intern_rat(value)
+                } else if self.as_rat(left).is_some_and(|value| value.is_one()) {
+                    let minus_one = self.integer(-1);
+                    self.call_name("power", &[right, minus_one])
                 } else {
                     let minus_one = self.integer(-1);
                     let inverse = self.call_name("power", &[right, minus_one]);

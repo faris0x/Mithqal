@@ -36,6 +36,19 @@ impl<'a> Evaluator<'a> {
         if order > 20 {
             return Ok(original);
         }
+        let evaluate_factorials = if args.len() == 5 {
+            match self.boolean_value(args[4]) {
+                Some(value) => value,
+                None => {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalArity,
+                        "series expects a boolean factorial flag",
+                    ));
+                }
+            }
+        } else {
+            false
+        };
         let variable = args[1];
         let point = args[2];
         let mut current = args[0];
@@ -48,8 +61,11 @@ impl<'a> Evaluator<'a> {
                 Ok(value) if !self.is_invalid_finite_value(value) => value,
                 _ => return Ok(original),
             };
-            let term = self.series_term(coefficient, delta, degree, &factorial);
-            terms.push(term);
+            if !is_zero_value(self.arena, coefficient) {
+                let term =
+                    self.series_term(coefficient, delta, degree, &factorial, evaluate_factorials);
+                terms.push(term);
+            }
             if degree < order {
                 let Some(derivative) = crate::calculus::differentiate(
                     self.arena,
@@ -63,12 +79,10 @@ impl<'a> Evaluator<'a> {
                 factorial = factorial.mul(&Int::from_i64(degree as i64 + 1));
             }
         }
-        let sum = match terms.len() {
-            0 => self.arena.intern_int(Int::zero()),
-            1 => terms[0],
-            _ => self.arena.intern_call(self.heads.plus, &terms),
-        };
-        Ok(self.eval(sum).unwrap_or(original))
+        if terms.is_empty() {
+            return Ok(self.arena.intern_int(Int::zero()));
+        }
+        Ok(self.arena.intern_call(self.heads.series_sum, &terms))
     }
 
     pub(super) fn series_term(
@@ -77,9 +91,38 @@ impl<'a> Evaluator<'a> {
         delta: ExprId,
         degree: u32,
         factorial: &Int,
+        evaluate_factorials: bool,
     ) -> ExprId {
+        let negative = self.expression_sign(coefficient) == Some(Sign::Negative);
+        let coefficient = if negative {
+            let negated = self.arena.intern_call(self.heads.negate, &[coefficient]);
+            self.eval(negated).unwrap_or(coefficient)
+        } else {
+            coefficient
+        };
+        let mut coefficient_factor = Some(coefficient);
+        let mut include_factorial = false;
+        if degree > 1 {
+            if evaluate_factorials {
+                coefficient_factor = None;
+            } else if let Some(value) = exact_rational(self.arena, coefficient) {
+                let factorial_value = Rat::from_ints(factorial.clone(), Int::one()).ok();
+                if let Some(factorial_value) = factorial_value
+                    && let Ok(ratio) = value.div(&factorial_value)
+                    && ratio.den().is_one()
+                {
+                    coefficient_factor = Some(self.rat_expression(&ratio));
+                } else {
+                    include_factorial = true;
+                }
+            } else {
+                include_factorial = true;
+            }
+        }
         let mut factors = Vec::with_capacity(3);
-        if !is_one_value(self.arena, coefficient) {
+        if let Some(coefficient) = coefficient_factor
+            && !is_one_value(self.arena, coefficient)
+        {
             factors.push(coefficient);
         }
         if degree > 0 {
@@ -91,17 +134,32 @@ impl<'a> Evaluator<'a> {
             };
             factors.push(power);
         }
-        let factorial = Rat::from_ints(factorial.clone(), Int::one()).ok();
-        if let Some(factorial) = factorial
-            && let Ok(reciprocal) = Rat::one().div(&factorial)
-            && !reciprocal.is_one()
-        {
-            factors.push(self.rat_expression(&reciprocal));
+        if evaluate_factorials && degree > 1 {
+            let factorial = Rat::from_ints(factorial.clone(), Int::one()).ok();
+            if let Some(factorial) = factorial
+                && let Ok(reciprocal) = Rat::one().div(&factorial)
+                && !reciprocal.is_one()
+            {
+                factors.push(self.rat_expression(&reciprocal));
+            }
+        } else if include_factorial {
+            let value = self.arena.intern_int(Int::from_i64(degree as i64));
+            let factorial = self.arena.intern_call(self.heads.factorial, &[value]);
+            let exponent = self.arena.intern_int(Int::from_i64(-1));
+            factors.push(
+                self.arena
+                    .intern_call(self.heads.power, &[factorial, exponent]),
+            );
         }
-        match factors.len() {
+        let term = match factors.len() {
             0 => self.arena.intern_int(Int::one()),
             1 => factors[0],
             _ => self.arena.intern_call(self.heads.times, &factors),
+        };
+        if negative {
+            self.arena.intern_call(self.heads.negate, &[term])
+        } else {
+            term
         }
     }
 

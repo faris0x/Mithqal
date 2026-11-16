@@ -39,7 +39,7 @@ fn infix_parenthesizes_negative_bases() {
     let (arena, id) = parsed("(-2)^2");
     assert_eq!(infix(&arena, id), "(-2)^2");
     let (arena, id) = parsed("x^-1");
-    assert_eq!(infix(&arena, id), "x^(-1)");
+    assert_eq!(infix(&arena, id), "1/x");
 }
 
 #[test]

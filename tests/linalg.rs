@@ -208,13 +208,13 @@ fn symbolic_transposes_traces_and_products() {
 
 #[test]
 fn symbolic_inverses() {
-    assert_eq!(text("inverse([[a]])"), "[[a^(-1)]]");
+    assert_eq!(text("inverse([[a]])"), "[[1/a]]");
     assert_eq!(
         text("inverse([[a,b],[c,d]])"),
-        "[[d*(-b*c+a*d)^(-1),-(b*(-b*c+a*d)^(-1))],[-(c*(-b*c+a*d)^(-1)),a*(-b*c+a*d)^(-1)]]"
+        "[[d/(-b*c+a*d),-(b/(-b*c+a*d))],[-(c/(-b*c+a*d)),a/(-b*c+a*d)]]"
     );
-    assert!(text("inverse([[1,2],[3,x]])").contains("(-6+x)^(-1)"));
-    assert!(text("inverse([[1,2,3],[4,5,6],[7,8,x]])").contains("^(-1)"));
+    assert!(text("inverse([[1,2],[3,x]])").contains("x/(-6+x)"));
+    assert!(text("inverse([[1,2,3],[4,5,6],[7,8,x]])").contains("/("));
 }
 
 #[test]

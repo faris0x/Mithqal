@@ -61,3 +61,8 @@ fn gamma_approximation_still_works() {
     let text = session.format_infix(value).unwrap();
     assert!(text.starts_with("1.772"), "{text}");
 }
+
+#[test]
+fn natural_log_of_e_is_exact() {
+    assert_eq!(text("ln(e)"), "1");
+}

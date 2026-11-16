@@ -78,12 +78,12 @@ eval_case!(case_resultant_1, "resultant(x^2-1,x-2,x)", "3");
 eval_case!(case_solve_1, "solve(x^2-4,x)", "[-2,2]");
 eval_case!(case_solve_2, "solve(x^2+1,x)", "[-i,i]");
 eval_case!(case_cancel_1, "cancel((x^2-1)/(x+1))", "-1+x");
-eval_case!(case_together_1, "together(1/x+1/y)", "(x+y)*(x*y)^(-1)");
+eval_case!(case_together_1, "together(1/x+1/y)", "(x+y)/(x*y)");
 
 eval_case!(case_diff_1, "differentiate(x^3,x)", "3*x^2");
 eval_case!(case_diff_2, "differentiate(sin(x),x)", "cos(x)");
 eval_case!(case_diff_3, "differentiate(exp(2*x),x)", "2*exp(2*x)");
-eval_case!(case_diff_4, "differentiate(ln(x),x)", "x^(-1)");
+eval_case!(case_diff_4, "differentiate(ln(x),x)", "1/x");
 eval_case!(case_int_1, "integrate(x^2,x)", "(1/3)*x^3");
 eval_case!(case_int_2, "integrate(sin(x),x)", "-cos(x)");
 eval_case!(case_int_3, "integrate(1/x,x)", "ln(abs(x))");

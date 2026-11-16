@@ -13,6 +13,7 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         "plus" | "times" => A::arithmetic().with(A::LISTABLE).with(A::PROTECTED),
         "power" | "negate" => A::new().with(A::LISTABLE).with(A::PROTECTED),
         "list" => A::new().with(A::PROTECTED),
+        "seriesSum" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "set" | "setDelayed" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "if" => A::new().with(A::HOLD_REST).with(A::PROTECTED),
         "and" | "or" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),

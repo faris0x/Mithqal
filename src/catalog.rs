@@ -399,13 +399,13 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
     FunctionInfo {
         name: "series",
         category: "calculus",
-        signature: "series(expr[,var],point,order)",
+        signature: "series(expr[,var],point,order[,evaluateFactorials])",
         summary: "Truncated Taylor series.",
-        example: "series(sin(x),0,5)",
+        example: "series(exp(x),0,4)",
         example_kind: ExampleKind::Evaluates,
         capability: Capability::symbolic("analytic expressions with supported derivatives")
             .display(DisplayForm::OrderedSeries)
-            .errors("Unsupported forms remain unevaluated."),
+            .errors("Unsupported forms remain unevaluated; an invalid factorial flag returns a diagnostic."),
     },
     FunctionInfo {
         name: "converges",

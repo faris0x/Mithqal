@@ -100,15 +100,15 @@ fn resultant_values() {
 
 #[test]
 fn together_combines_fractions() {
-    assert_eq!(text("together(1/x+1/y)"), "(x+y)*(x*y)^(-1)");
-    assert_eq!(text("together(1/(x+1)+1/(x-1))"), "2*x*(-1+x^2)^(-1)");
+    assert_eq!(text("together(1/x+1/y)"), "(x+y)/(x*y)");
+    assert_eq!(text("together(1/(x+1)+1/(x-1))"), "2*x/(-1+x^2)");
     assert_eq!(text("together(x/x)"), "1");
 }
 
 #[test]
 fn cancel_removes_common_factors() {
     assert_eq!(text("cancel((x^2-1)/(x+1))"), "-1+x");
-    assert_eq!(text("cancel((x^2-1)/(x^2-2*x+1))"), "(1+x)*(-1+x)^(-1)");
+    assert_eq!(text("cancel((x^2-1)/(x^2-2*x+1))"), "(1+x)/(-1+x)");
     assert_eq!(text("cancel((x*y+x)/(x))"), "1+y");
 }
 
@@ -196,8 +196,8 @@ fn algebra_size_limits_leave_inputs_unevaluated() {
 
 #[test]
 fn cancel_multivariate_monomial_content() {
-    assert_eq!(text("cancel((x^2*y+x)/(x*y))"), "(1+x*y)*y^(-1)");
-    assert_eq!(text("together(x/y+z/y)"), "(x+z)*y^(-1)");
+    assert_eq!(text("cancel((x^2*y+x)/(x*y))"), "(1+x*y)/y");
+    assert_eq!(text("together(x/y+z/y)"), "(x+z)/y");
 }
 
 #[test]
@@ -227,7 +227,7 @@ fn factor_handles_degenerate_constants() {
     assert_eq!(text("factor(5)"), "5");
     assert_eq!(text("expand(-(x+1))"), "-1-x");
     assert_eq!(text("together(x)"), "x");
-    assert_eq!(text("cancel(1/x)"), "x^(-1)");
+    assert_eq!(text("cancel(1/x)"), "1/x");
 }
 
 #[test]

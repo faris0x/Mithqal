@@ -60,9 +60,10 @@ fn precedence(arena: &Arena, id: ExprId) -> u8 {
             Some("and") => P_AND,
             Some("equal") | Some("notEqual") | Some("same") | Some("less") | Some("lessEqual")
             | Some("greater") | Some("greaterEqual") => P_COMPARE,
-            Some("plus") => P_ADD,
+            Some("plus") | Some("seriesSum") => P_ADD,
             Some("times") => P_MUL,
             Some("negate") | Some("not") => P_UNARY,
+            Some("factorial") => P_UNARY,
             Some("power") => P_POWER,
             _ => P_ATOM,
         },
@@ -96,7 +97,7 @@ fn write_infix_inner(arena: &Arena, id: ExprId, out: &mut String) {
         }
         Node::Call { args, .. } => match head_name(arena, id) {
             Some("plus") => write_sum(arena, args, P_ADD, P_ADD + 1, out),
-            Some("times") => write_join(arena, args, "*", P_MUL, P_MUL + 1, out),
+            Some("times") => write_product(arena, args, out),
             Some("and") => write_join(arena, args, "&&", P_AND, P_AND + 1, out),
             Some("or") => write_join(arena, args, "||", P_OR, P_OR + 1, out),
             Some("set") => write_binary(arena, args, "=", P_SET, P_SET + 1, P_SET, out),
@@ -179,7 +180,10 @@ fn write_infix_inner(arena: &Arena, id: ExprId, out: &mut String) {
                 }
             }
             Some("power") => {
-                if args.len() == 2 {
+                if args.len() == 2 && is_negative_one(arena, args[1]) {
+                    out.push_str("1/");
+                    write_infix(arena, args[0], P_MUL + 1, out);
+                } else if args.len() == 2 {
                     write_infix(arena, args[0], P_POWER + 1, out);
                     out.push('^');
                     write_infix(arena, args[1], P_POWER, out);
@@ -191,6 +195,15 @@ fn write_infix_inner(arena: &Arena, id: ExprId, out: &mut String) {
                 out.push('[');
                 write_args(arena, args, out);
                 out.push(']');
+            }
+            Some("seriesSum") => write_sum(arena, args, P_ADD, P_ADD + 1, out),
+            Some("factorial") => {
+                if let Some(arg) = args.first() {
+                    write_infix(arena, *arg, P_UNARY, out);
+                    out.push('!');
+                } else {
+                    out.push_str("factorial()");
+                }
             }
             Some("pattern") => write_pattern(arena, args, out),
             Some("blank") => out.push('_'),
@@ -237,6 +250,68 @@ fn write_sum(arena: &Arena, args: &[ExprId], prec: u8, child: u8, out: &mut Stri
         }
     }
     let _ = prec;
+}
+
+fn is_negative_one(arena: &Arena, expression: ExprId) -> bool {
+    match arena.node(expression) {
+        Node::Int(value) => value.to_i64() == Some(-1),
+        Node::Rat(value) => value.num().to_i64() == Some(-1) && value.den().is_one(),
+        Node::Call { head, args } => {
+            args.len() == 1
+                && head_name(arena, *head) == Some("negate")
+                && matches!(arena.node(args[0]), Node::Int(value) if value.is_one())
+        }
+        _ => false,
+    }
+}
+
+fn negative_one_power(arena: &Arena, expression: ExprId) -> Option<ExprId> {
+    let Node::Call { head, args } = arena.node(expression) else {
+        return None;
+    };
+    if head_name(arena, *head) != Some("power") || args.len() != 2 {
+        return None;
+    }
+    is_negative_one(arena, args[1]).then_some(args[0])
+}
+
+fn write_product(arena: &Arena, args: &[ExprId], out: &mut String) {
+    let mut numerator = Vec::new();
+    let mut denominator = Vec::new();
+    for arg in args {
+        if let Some(base) = negative_one_power(arena, *arg) {
+            denominator.push(base);
+        } else {
+            numerator.push(*arg);
+        }
+    }
+    if denominator.is_empty() {
+        write_join(arena, args, "*", P_MUL, P_MUL + 1, out);
+        return;
+    }
+    if numerator.is_empty() {
+        out.push('1');
+    } else {
+        for (index, factor) in numerator.iter().enumerate() {
+            if index > 0 {
+                out.push('*');
+            }
+            write_infix(arena, *factor, P_MUL + 1, out);
+        }
+    }
+    out.push('/');
+    if denominator.len() > 1 {
+        out.push('(');
+    }
+    for (index, factor) in denominator.iter().enumerate() {
+        if index > 0 {
+            out.push('*');
+        }
+        write_infix(arena, *factor, P_MUL + 1, out);
+    }
+    if denominator.len() > 1 {
+        out.push(')');
+    }
 }
 
 fn write_join(

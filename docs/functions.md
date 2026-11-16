@@ -29,7 +29,7 @@ Support values: `exact`, `symbolic`, `approx`, `language`. Example values descri
 | `differentiate` | calculus | symbolic | `differentiate(expr[,var])` | supported expressions in the documented domain | infix | `differentiate(sin(x))` | evaluates |
 | `integrate` | calculus | symbolic | `integrate(expr[,var]) | integrate(expr,a,b) | integrate(expr,var,a,b)` | supported expressions in the documented domain | infix | `integrate(x^2*exp(x))` | evaluates |
 | `limit` | calculus | symbolic | `limit(expr[,var],point[,side])` | supported expressions in the documented domain | infix | `limit(sin(x)/x,0)` | evaluates |
-| `series` | calculus | symbolic | `series(expr[,var],point,order)` | analytic expressions with supported derivatives | ordered series | `series(sin(x),0,5)` | evaluates |
+| `series` | calculus | symbolic | `series(expr[,var],point,order[,evaluateFactorials])` | analytic expressions with supported derivatives | ordered series | `series(exp(x),0,4)` | evaluates |
 | `converges` | calculus | symbolic | `converges(expr[,var],point)` | supported expressions in the documented domain | infix | `converges(1/x,inf)` | evaluates |
 | `assume` | calculus | language | `assume(fact,expr)` | language forms | infix | `assume(x>0,abs(x))` | symbolic |
 | `assuming` | calculus | language | `assuming(fact,expr)` | language forms | infix | `assuming(x<0,sqrt(x^2))` | symbolic |

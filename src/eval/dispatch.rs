@@ -63,6 +63,14 @@ impl<'a> Evaluator<'a> {
             {
                 return Ok(result);
             }
+            if head == self.heads.ln
+                && matches!(
+                    self.arena.node(args[0]),
+                    Node::Symbol(symbol) if self.arena.symbol_name(*symbol) == "e"
+                )
+            {
+                return Ok(self.arena.intern_int(Int::one()));
+            }
             if let Some(value) = self.exact_constant_value(args[0]) {
                 if head == self.heads.exp && value.is_zero() {
                     return Ok(self.arena.intern_int(Int::one()));
@@ -330,6 +338,27 @@ impl<'a> Evaluator<'a> {
                     self.infer_variable(*expression)?,
                     *point,
                     *order,
+                    self.heads.false_value,
+                ]
+            }
+            (CalculusHead::Series, [expression, point, order, evaluate])
+                if !self.is_inference_variable(*point) =>
+            {
+                vec![
+                    *expression,
+                    self.infer_variable(*expression)?,
+                    *point,
+                    *order,
+                    *evaluate,
+                ]
+            }
+            (CalculusHead::Series, [expression, variable, point, order]) => {
+                vec![
+                    *expression,
+                    *variable,
+                    *point,
+                    *order,
+                    self.heads.false_value,
                 ]
             }
             (CalculusHead::Converges, [expression, point]) => {
@@ -343,7 +372,7 @@ impl<'a> Evaluator<'a> {
             (CalculusHead::Differentiate, 2)
                 | (CalculusHead::Integrate, 2 | 4)
                 | (CalculusHead::Limit, 3 | 4)
-                | (CalculusHead::Series, 4)
+                | (CalculusHead::Series, 5)
                 | (CalculusHead::Converges, 3)
         );
         if !valid {

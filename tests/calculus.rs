@@ -30,9 +30,9 @@ fn differentiate_elementary_functions() {
     assert_eq!(text("differentiate(sin(x),x)"), "cos(x)");
     assert_eq!(text("differentiate(cos(x^2),x)"), "-(2*x*sin(x^2))");
     assert_eq!(text("differentiate(exp(2*x),x)"), "2*exp(2*x)");
-    assert_eq!(text("differentiate(ln(x),x)"), "x^(-1)");
+    assert_eq!(text("differentiate(ln(x),x)"), "1/x");
     assert_eq!(text("differentiate(tan(x),x)"), "cos(x)^(-2)");
-    assert_eq!(text("differentiate(sqrt(x),x)"), "(2*sqrt(x))^(-1)");
+    assert_eq!(text("differentiate(sqrt(x),x)"), "1/(2*sqrt(x))");
     assert_eq!(text("differentiate(x^x,x)"), "(1+ln(x))*x^x");
 }
 
@@ -40,15 +40,15 @@ fn differentiate_elementary_functions() {
 fn differentiate_inverse_functions() {
     assert_eq!(text("differentiate(asin(x),x)"), "(1-x^2)^(-1/2)");
     assert_eq!(text("differentiate(acos(x),x)"), "-(1-x^2)^(-1/2)");
-    assert_eq!(text("differentiate(atan(x),x)"), "(1+x^2)^(-1)");
+    assert_eq!(text("differentiate(atan(x),x)"), "1/(1+x^2)");
     assert_eq!(text("differentiate(asinh(x),x)"), "(1+x^2)^(-1/2)");
-    assert_eq!(text("differentiate(atanh(x),x)"), "-(-1+x^2)^(-1)");
+    assert_eq!(text("differentiate(atanh(x),x)"), "-1/(-1+x^2)");
 }
 
 #[test]
 fn differentiate_products_and_quotients() {
     assert_eq!(text("differentiate(sin(x)*cos(x),x)"), "-sin(x)^2+cos(x)^2");
-    assert_eq!(text("differentiate(x/(x+1),x)"), "(1+x^2+2*x)^(-1)");
+    assert_eq!(text("differentiate(x/(x+1),x)"), "1/(1+x^2+2*x)");
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn integrate_elementary_functions() {
     assert_eq!(text("integrate(exp(3*x),x)"), "(1/3)*exp(3*x)");
     assert_eq!(text("integrate(ln(x),x)"), "-x+x*ln(x)");
     assert_eq!(text("integrate(x^(-1/2),x)"), "2*x^(1/2)");
-    assert_eq!(text("integrate(x^-2,x)"), "-x^(-1)");
+    assert_eq!(text("integrate(x^-2,x)"), "-1/x");
     assert_eq!(text("integrate(1/x,x)"), "ln(abs(x))");
 }
 
@@ -299,7 +299,7 @@ fn calculus_accepts_inferred_variables() {
     assert_eq!(text("limit(x^2,inf)"), "inf");
     assert_eq!(text("limit(abs(x)/x,0,right)"), "1");
     assert_eq!(text("converges(1/x^2,inf)"), "true");
-    assert_eq!(text("series(exp(x),0,2)"), "1+x+(1/2)*x^2");
+    assert_eq!(text("series(exp(x),0,2)"), "1+x+x^2/2!");
 }
 
 #[test]
