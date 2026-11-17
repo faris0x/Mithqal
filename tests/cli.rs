@@ -73,9 +73,7 @@ fn capability_listing_exposes_support_metadata() {
     let text = stdout(&output);
     assert!(text.contains("gamma [exact]"), "{text}");
     assert!(
-        text.contains(
-            "domain: positive integers, half-integers, and complex numeric values under approx"
-        ),
+        text.contains("domain: all numeric arguments, with exact integer and half-integer values"),
         "{text}"
     );
     assert!(text.contains("display: infix"), "{text}");

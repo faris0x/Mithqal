@@ -111,8 +111,8 @@ Support values: `exact`, `symbolic`, `approx`, `language`. Example values descri
 | `asinh` | numeric | exact | `asinh(expr)` | supported exact numeric inputs | infix | `asinh(x)` | symbolic |
 | `acosh` | numeric | exact | `acosh(expr)` | supported exact numeric inputs | infix | `acosh(x)` | symbolic |
 | `atanh` | numeric | exact | `atanh(expr)` | supported exact numeric inputs | infix | `atanh(x)` | symbolic |
-| `gamma` | numeric | exact | `gamma(expr)` | positive integers, half-integers, and complex numeric values under approx | infix | `gamma(5)` | evaluates |
-| `lgamma` | numeric | exact | `lgamma(expr)` | positive integers, half-integers, and complex numeric values under approx | infix | `lgamma(5)` | evaluates |
+| `gamma` | numeric | exact | `gamma(expr)` | all numeric arguments, with exact integer and half-integer values | infix | `gamma(5)` | evaluates |
+| `lgamma` | numeric | exact | `lgamma(expr)` | all numeric arguments, with exact integer and half-integer values | infix | `lgamma(5)` | evaluates |
 | `erf` | numeric | approx | `erf(expr)` | supported numeric values under approx | infix | `approx(erf(1),30)` | approximate |
 | `erfc` | numeric | approx | `erfc(expr)` | supported numeric values under approx | infix | `approx(erfc(1),30)` | approximate |
 | `set` | language | language | `set(symbol,value)` | language forms | infix | `set(f,3)` | language |

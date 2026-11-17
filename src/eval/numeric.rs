@@ -417,7 +417,11 @@ impl<'a> Evaluator<'a> {
                 "approx digit count must be between 1 and 10000",
             ));
         }
-        let expression = self.eval(args[0])?;
+        let previous = self.approximation_digits;
+        self.approximation_digits = Some(digits as u32);
+        let expression = self.eval(args[0]);
+        self.approximation_digits = previous;
+        let expression = expression?;
         if let Some(value) = self.approximate(expression, digits as u32)? {
             return Ok(self.numeric_expr(value));
         }

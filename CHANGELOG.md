@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 634 source test functions and 1744 assertion sites, with 729 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 635 source test functions and 1748 assertion sites, with 730 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -216,3 +216,4 @@ Initial kernel work.
 - Suppressed `null` results for definitions in the CLI.
 - Simplified `sqrt(x^2)` to `abs(x)` when the sign of `x` is unknown.
 - Added arbitrary precision complex gamma and lgamma through the approximate complex path, including reflection for the left half plane and principal branch log gamma.
+- Added automatic numeric gamma and lgamma evaluation for non-special real and complex arguments, with the approximation digit context carried into nested `approx` calls.

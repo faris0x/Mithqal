@@ -1154,10 +1154,10 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         example: "gamma(5)",
         example_kind: ExampleKind::Evaluates,
         capability: Capability::exact(
-            "positive integers, half-integers, and complex numeric values under approx",
+            "all numeric arguments, with exact integer and half-integer values",
         )
-        .symbolic_text("General symbolic complex arguments remain symbolic.")
-        .approximate_text("Real and complex numeric evaluation is available under approx.")
+        .symbolic_text("General symbolic arguments remain symbolic.")
+        .approximate_text("Numeric arguments evaluate at the current precision.")
         .errors("Non-positive integers return undefined."),
     },
     FunctionInfo {
@@ -1168,10 +1168,10 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         example: "lgamma(5)",
         example_kind: ExampleKind::Evaluates,
         capability: Capability::exact(
-            "positive integers, half-integers, and complex numeric values under approx",
+            "all numeric arguments, with exact integer and half-integer values",
         )
-        .symbolic_text("General symbolic complex arguments remain symbolic.")
-        .approximate_text("Real and complex numeric evaluation is available under approx.")
+        .symbolic_text("General symbolic arguments remain symbolic.")
+        .approximate_text("Numeric arguments evaluate at the current precision.")
         .errors("Non-positive integers return undefined."),
     },
     FunctionInfo {
@@ -1328,7 +1328,7 @@ mod tests {
     fn capability_matrix_is_classified() {
         let gamma = find("gamma").unwrap().capability;
         assert_eq!(gamma.support, Support::Exact);
-        assert!(gamma.domain.contains("half-integers"));
+        assert!(gamma.domain.contains("half-integer"));
         let det = find("det").unwrap().capability;
         assert_eq!(det.support, Support::Exact);
         let series = find("series").unwrap().capability;

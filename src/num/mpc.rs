@@ -197,7 +197,7 @@ impl Complex {
 
     pub(crate) fn lgamma(&self, digits: u32) -> Option<Complex> {
         let gamma = self.gamma_value(digits)?;
-        wrap_complex(gamma.log()?)
+        Some(set_gamma_error(wrap_complex(gamma.log()?)?, digits))
     }
 
     fn gamma_value(&self, digits: u32) -> Option<Complex> {

@@ -12,6 +12,7 @@ pub(crate) struct Evaluator<'a> {
     pub(super) max_steps: u64,
     pub(super) depth: u32,
     pub(super) max_depth: u32,
+    pub(super) approximation_digits: Option<u32>,
 }
 
 impl<'a> Evaluator<'a> {
@@ -27,6 +28,7 @@ impl<'a> Evaluator<'a> {
             max_steps: 1_000_000,
             depth: 0,
             max_depth: 2048,
+            approximation_digits: None,
         }
     }
 

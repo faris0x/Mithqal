@@ -30,7 +30,7 @@ The current version supports exact integers and exact rationals.
 
 Approximate values are `Real` atoms backed by MPFR. Each value carries an absolute error estimate in addition to its binary precision.
 
-`gamma` and `lgamma` evaluate exactly for positive integers and half-integers. `gamma(5)` is `24`, `gamma(1/2)` is `sqrt(pi)`, and `lgamma(5)` is `ln(24)`. Non-positive integers are poles and return `undefined`. General symbolic arguments remain symbolic. Real and complex numeric arguments are evaluated through `approx`, including the principal complex branch.
+`gamma` and `lgamma` evaluate exactly for positive integers and half-integers. `gamma(5)` is `24`, `gamma(1/2)` is `sqrt(pi)`, and `lgamma(5)` is `ln(24)`. Other numeric arguments evaluate at the current precision, including complex values and the principal log gamma branch. Non-positive integers are poles and return `undefined`. General symbolic arguments remain symbolic.
 
 `approx(expression,digits)` is the numeric boundary. It evaluates its argument exactly first, then converts numeric subexpressions to `Real` values. The digit count defaults to 16 when omitted.
 

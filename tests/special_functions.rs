@@ -66,3 +66,15 @@ fn gamma_approximation_still_works() {
 fn natural_log_of_e_is_exact() {
     assert_eq!(text("ln(e)"), "1");
 }
+
+#[test]
+fn gamma_numeric_arguments_are_defined() {
+    let value = text("gamma(1/3)");
+    assert!(value.starts_with("2.678938"), "{value}");
+    let value = text("gamma(2+3*i)");
+    assert!(value.starts_with("complex("), "{value}");
+    let value = text("lgamma(2+3*i)");
+    assert!(value.starts_with("complex("), "{value}");
+    let value = text("lgamma(1/3)");
+    assert!(value.starts_with("0.985420"), "{value}");
+}
