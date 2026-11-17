@@ -1154,10 +1154,10 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         example: "gamma(5)",
         example_kind: ExampleKind::Evaluates,
         capability: Capability::exact(
-            "positive integers, half-integers, and symbolic complex arguments",
+            "positive integers, half-integers, and complex numeric values under approx",
         )
-        .symbolic_text("General complex arguments remain symbolic.")
-        .approximate_text("Numeric evaluation is available under approx.")
+        .symbolic_text("General symbolic complex arguments remain symbolic.")
+        .approximate_text("Real and complex numeric evaluation is available under approx.")
         .errors("Non-positive integers return undefined."),
     },
     FunctionInfo {
@@ -1168,10 +1168,10 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         example: "lgamma(5)",
         example_kind: ExampleKind::Evaluates,
         capability: Capability::exact(
-            "positive integers, half-integers, and symbolic complex arguments",
+            "positive integers, half-integers, and complex numeric values under approx",
         )
-        .symbolic_text("General complex arguments remain symbolic.")
-        .approximate_text("Numeric evaluation is available under approx.")
+        .symbolic_text("General symbolic complex arguments remain symbolic.")
+        .approximate_text("Real and complex numeric evaluation is available under approx.")
         .errors("Non-positive integers return undefined."),
     },
     FunctionInfo {

@@ -396,3 +396,36 @@ fn approximate_complex_absolute_value_is_stable() {
         _ => panic!("expected a real"),
     }
 }
+
+#[test]
+fn complex_gamma_values() {
+    check(
+        "approx(gamma(1+i),30)",
+        0.498015668118356,
+        -0.1549498283018107,
+    );
+    check(
+        "approx(gamma(1/2+1/2*i),30)",
+        0.8181639995417473,
+        -0.7633138287139826,
+    );
+    check(
+        "approx(gamma(-1/2+1/2*i),30)",
+        -1.58147782825573,
+        -0.0548501708277648,
+    );
+    check(
+        "approx(gamma(2+3*i),30)",
+        -0.0823952726656119,
+        0.0917742874352593,
+    );
+}
+
+#[test]
+fn complex_log_gamma_values() {
+    check(
+        "approx(lgamma(1+i),30)",
+        -0.6509231993018563,
+        -0.3016403204675332,
+    );
+}

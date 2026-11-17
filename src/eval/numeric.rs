@@ -614,6 +614,9 @@ impl<'a> Evaluator<'a> {
             return Self::complex_atanh(real, imaginary);
         }
         let complex = ComplexMpc::from_parts(real, imaginary)?;
+        let digits =
+            ((real.bits.max(imaginary.bits) as f64 * core::f64::consts::LOG10_2).ceil() as u32 + 4)
+                .max(16);
         match function {
             NumericHead::Sqrt => complex.sqrt(),
             NumericHead::Exp => complex.exp(),
@@ -630,6 +633,8 @@ impl<'a> Evaluator<'a> {
             NumericHead::Asinh => complex.asinh(),
             NumericHead::Acosh => complex.acosh(),
             NumericHead::Atanh => None,
+            NumericHead::Gamma => complex.gamma(digits).and_then(|value| value.parts()),
+            NumericHead::Lgamma => complex.lgamma(digits).and_then(|value| value.parts()),
             _ => None,
         }
     }

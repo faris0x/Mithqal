@@ -147,6 +147,133 @@ impl Complex {
         Some(out)
     }
 
+    pub(crate) fn from_real(value: &Real) -> Option<Self> {
+        let digits = ((value.bits as f64 * core::f64::consts::LOG10_2).ceil() as u32 + 4).max(16);
+        let zero = Real::zero(digits).ok()?;
+        Self::from_parts(value, &zero)
+    }
+
+    pub(crate) fn add(&self, other: &Complex) -> Option<Complex> {
+        self.binary(other, ffi_mpc::mpc_add, 1.0)
+    }
+
+    pub(crate) fn sub(&self, other: &Complex) -> Option<Complex> {
+        self.binary(other, ffi_mpc::mpc_sub, 1.0)
+    }
+
+    pub(crate) fn mul(&self, other: &Complex) -> Option<Complex> {
+        let factor = self.abs_value() + other.abs_value();
+        self.binary(other, ffi_mpc::mpc_mul, factor.max(1.0))
+    }
+
+    pub(crate) fn div(&self, other: &Complex) -> Option<Complex> {
+        let denominator = other.abs_value();
+        if denominator == 0.0 {
+            return None;
+        }
+        self.binary(
+            other,
+            ffi_mpc::mpc_div,
+            (self.abs_value() / denominator).max(1.0),
+        )
+    }
+
+    pub(crate) fn neg(&self) -> Option<Complex> {
+        let digits = ((self.bits as f64 * core::f64::consts::LOG10_2).ceil() as u32 + 4).max(16);
+        let zero = Complex::from_real(&Real::zero(digits).ok()?)?;
+        zero.sub(self)
+    }
+
+    pub(crate) fn parts(&self) -> Option<(Real, Real)> {
+        Some((
+            Real::from_mpfr_ref(&self.inner.real, self.bits, self.real_error),
+            Real::from_mpfr_ref(&self.inner.imaginary, self.bits, self.imaginary_error),
+        ))
+    }
+
+    pub(crate) fn gamma(&self, digits: u32) -> Option<Complex> {
+        self.gamma_value(digits)
+    }
+
+    pub(crate) fn lgamma(&self, digits: u32) -> Option<Complex> {
+        let gamma = self.gamma_value(digits)?;
+        wrap_complex(gamma.log()?)
+    }
+
+    fn gamma_value(&self, digits: u32) -> Option<Complex> {
+        let digits = digits.max(16);
+        let one = Complex::from_real(&Real::one(digits).ok()?)?;
+        let w = self.sub(&one)?;
+        if self.real_value() < 0.5 {
+            let reflected = one.sub(self)?.gamma_value(digits)?;
+            let pi = Real::pi(digits).ok()?;
+            let pi = Complex::from_real(&pi)?;
+            let sine = wrap_complex(self.mul(&pi)?.sin()?)?;
+            let denominator = sine.mul(&reflected)?;
+            return Some(set_gamma_error(pi.div(&denominator)?, digits));
+        }
+        let a = ((digits as f64 * 2.0).ceil() as i64 + 10).clamp(24, 512);
+        let offset = Complex::from_real(&Real::from_i64(a, digits).ok()?)?;
+        let z = w.add(&offset)?;
+        let half = Real::from_i64(1, digits)
+            .ok()?
+            .div(&Real::from_i64(2, digits).ok()?)
+            .ok()?;
+        let exponent = w.add(&Complex::from_real(&half)?)?;
+        let power = wrap_complex(z.pow(&exponent)?)?;
+        let exponential = wrap_complex(z.neg()?.exp()?)?;
+        let mut sum = Complex::from_real(&spouge_c0(digits)?)?;
+        for k in 1..a {
+            let coefficient = spouge_ck(k, a, digits)?;
+            let denominator = w.add(&Complex::from_real(&Real::from_i64(k, digits).ok()?)?)?;
+            let term = Complex::from_real(&coefficient)?.div(&denominator)?;
+            sum = sum.add(&term)?;
+        }
+        Some(set_gamma_error(power.mul(&exponential)?.mul(&sum)?, digits))
+    }
+
+    fn abs_value(&self) -> f64 {
+        (self.real_value().powi(2) + self.imaginary_value().powi(2)).sqrt()
+    }
+
+    fn binary(
+        &self,
+        other: &Complex,
+        operation: unsafe extern "C" fn(
+            *mut Mpc,
+            *const Mpc,
+            *const Mpc,
+            core::ffi::c_int,
+        ) -> core::ffi::c_int,
+        factor: f64,
+    ) -> Option<Complex> {
+        let bits = self.bits.max(other.bits);
+        let mut output = empty_mpc();
+        // SAFETY: the output structure is initialized.
+        unsafe { ffi_mpc::mpc_init2(&mut output, bits as core::ffi::c_long) };
+        // SAFETY: all structures are initialized.
+        unsafe { operation(&mut output, &self.inner, &other.inner, MPFR_RNDN) };
+        let mut real = Real::from_mpfr_ref(&output.real, bits, 0.0);
+        let mut imaginary = Real::from_mpfr_ref(&output.imaginary, bits, 0.0);
+        // SAFETY: the output is initialized and cleared once.
+        unsafe { ffi_mpc::mpc_clear(&mut output) };
+        if !real.is_finite() || !imaginary.is_finite() {
+            return None;
+        }
+        apply_error(
+            &mut real,
+            &mut imaginary,
+            bits,
+            factor,
+            self.real_error + self.imaginary_error + other.real_error + other.imaginary_error,
+        );
+        let mut value = Complex::from_parts(&real, &imaginary)?;
+        value.bits = bits;
+        value.real_error = real.error;
+        value.imaginary_error = imaginary.error;
+        Some(value)
+    }
+
     pub(crate) fn pow(&self, exponent: &Complex) -> Option<(Real, Real)> {
         let bits = self.bits.max(exponent.bits);
         let mut output = empty_mpc();
@@ -221,6 +348,44 @@ impl Drop for Complex {
     fn drop(&mut self) {
         // SAFETY: the value was initialized and is cleared exactly once.
         unsafe { ffi_mpc::mpc_clear(&mut self.inner) };
+    }
+}
+
+fn set_gamma_error(mut value: Complex, digits: u32) -> Complex {
+    let magnitude = value.abs_value().max(1.0);
+    let error = magnitude * 10f64.powi(-(digits as i32 - 2));
+    value.real_error = error;
+    value.imaginary_error = error;
+    value
+}
+
+fn wrap_complex(result: (Real, Real)) -> Option<Complex> {
+    Complex::from_parts(&result.0, &result.1)
+}
+
+fn spouge_c0(digits: u32) -> Option<Real> {
+    let two = Real::from_i64(2, digits).ok()?;
+    let pi = Real::pi(digits).ok()?;
+    two.mul(&pi).ok()?.sqrt().ok()
+}
+
+fn spouge_ck(k: i64, a: i64, digits: u32) -> Option<Real> {
+    let mut factorial = Real::one(digits).ok()?;
+    for value in 1..k {
+        factorial = factorial.mul(&Real::from_i64(value, digits).ok()?).ok()?;
+    }
+    let difference = Real::from_i64(a - k, digits).ok()?;
+    let exponent = Real::from_i64(2 * k - 1, digits)
+        .ok()?
+        .div(&Real::from_i64(2, digits).ok()?)
+        .ok()?;
+    let power = difference.pow(&exponent).ok()?;
+    let exponential = Real::e(digits).ok()?.pow(&difference).ok()?;
+    let magnitude = power.mul(&exponential).ok()?.div(&factorial).ok()?;
+    if k % 2 == 1 {
+        Some(magnitude)
+    } else {
+        magnitude.neg().ok()
     }
 }
 
