@@ -1,6 +1,6 @@
 //! Argument handling for the command line frontend.
 
-use crate::Session;
+use crate::{ExprView, Session};
 
 use super::{format, license, repl};
 
@@ -60,7 +60,9 @@ fn evaluate(source: &str) -> i32 {
             for line in session.take_output() {
                 println!("{line}");
             }
-            println!("{}", format::value(&session, source, value));
+            if !matches!(session.view(value), Ok(ExprView::Symbol("null"))) {
+                println!("{}", format::value(&session, source, value));
+            }
             0
         }
         Err(error) => {

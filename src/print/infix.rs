@@ -221,6 +221,7 @@ fn write_infix_inner(arena: &Arena, id: ExprId, out: &mut String) {
                 }
             }
             Some("function") => write_function(arena, args, out),
+            Some("closure") if args.len() == 3 => write_function(arena, &args[..2], out),
             _ => write_call(arena, id, args, out),
         },
     }

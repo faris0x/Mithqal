@@ -21,7 +21,7 @@ fn positive_and_negative_square_roots() {
     assert_eq!(text("assume(x<0,sqrt(x^2))"), "-x");
     assert_eq!(text("assume(x>=0,sqrt(x^2))"), "x");
     assert_eq!(text("assume(x<=0,sqrt(x^2))"), "-x");
-    assert_eq!(text("sqrt(x^2)"), "sqrt(x^2)");
+    assert_eq!(text("sqrt(x^2)"), "abs(x)");
 }
 
 #[test]

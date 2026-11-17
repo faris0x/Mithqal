@@ -84,3 +84,29 @@ fn every_non_language_function_has_a_test_reference() {
         "catalog functions without test references: {missing:?}"
     );
 }
+
+#[test]
+fn documented_examples_do_not_leak_internal_forms() {
+    for function in catalog::FUNCTIONS {
+        let mut session = Session::new();
+        let value = session.eval_source(function.example).unwrap();
+        let text = session.format_infix(value).unwrap();
+        assert!(
+            !text.contains("closure("),
+            "{} leaks a closure: {text}",
+            function.name
+        );
+        assert!(
+            !text.contains("function("),
+            "{} leaks a function head: {text}",
+            function.name
+        );
+    }
+}
+
+#[test]
+fn anonymous_functions_format_as_fn_syntax() {
+    let mut session = Session::new();
+    let value = session.eval_statement("fn(x)=>x^2").unwrap();
+    assert_eq!(session.format_infix(value).unwrap(), "fn(x)=>x^2");
+}

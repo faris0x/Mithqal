@@ -100,3 +100,12 @@ fn settings_control_timing_and_pretty_output() {
     assert!(text.contains("timing on"), "{text}");
     assert!(text.contains("pretty off"), "{text}");
 }
+
+#[test]
+fn definitions_do_not_print_null_results() {
+    let output = run_stdin("setDelayed(f(x_),x^2)\nf(3)\nquit\n");
+    assert!(output.status.success());
+    let text = stdout(&output);
+    assert!(text.contains("9"), "{text}");
+    assert!(!text.contains("null"), "{text}");
+}

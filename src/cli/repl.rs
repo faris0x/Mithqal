@@ -7,7 +7,7 @@ use rustyline::error::ReadlineError;
 use rustyline::history::DefaultHistory;
 use rustyline::{Config, Editor};
 
-use crate::Session;
+use crate::{ExprView, Session};
 
 use super::commands;
 use super::completion::CliHelper;
@@ -99,6 +99,9 @@ pub(super) fn run() -> i32 {
                     Ok(value) => {
                         for line in session.take_output() {
                             println!("{line}");
+                        }
+                        if matches!(session.view(value), Ok(ExprView::Symbol("null"))) {
+                            continue;
                         }
                         let text = if settings.pretty {
                             format::value(&session, &source, value)

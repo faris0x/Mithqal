@@ -39,7 +39,7 @@ The assumption parser accepts a symbol compared against zero, and conjunctions o
 Assumptions affect:
 
 - `abs` of symbols, products, powers, negations, and sums with known sign.
-- `sqrt(x^2)` under a known sign for `x`.
+- `sqrt(x^2)` to `x`, `-x`, or `abs(x)` depending on the known sign for `x`.
 - Constant simplifications for `exp(0)`, `ln(1)`, `sin(0)`, `cos(0)`, `tan(0)`, and `atan(0)`.
 
 Scope ends when the assumption form returns.

@@ -112,7 +112,7 @@ Initial kernel work.
 - Added boolean `xor`, `implies`, `all`, and `any` with predicate composition.
 - Added approximate `gamma`, `lgamma`, `erf`, and `erfc` functions through MPFR.
 - Added a fast whitespace-free atom parser, two-integer operation parser, integer list evaluation shortcut, integer statistics paths, tiered Miller-Rabin, unified kernel dispatch, top-level integer arithmetic folding, and arena-cached kernel head handles.
-- Expanded the suite to 629 source test functions and 1738 assertion sites, with 724 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
+- Expanded the suite to 632 source test functions and 1744 assertion sites, with 727 macro-expanded runtime test cases, plus generated arithmetic, parser, numeric, language, linear algebra, number theory, statistics, logic, factorisation, and property corpora.
 - Extended generic sparse interpolation to two through eight variables under a 160 monomial budget, with a combinatorial precheck that avoids allocating oversized monomial sets.
 - Raised bivariate Hensel coverage to total degree sixteen, variable degree eight, and eight specialization factors.
 - Added an early rational-slice check to the bivariate root-lift stage so failing lifts stop before repeated sampling.
@@ -212,3 +212,6 @@ Initial kernel work.
 - Updated series tests and documentation for the new representation.
 - Added a CLI display formatter for prime products and `set` settings for timing and pretty output.
 - Added CLI tests for factorInteger display and the settings layer.
+- Added catalog audit tests for internal-form leakage and anonymous function display.
+- Suppressed `null` results for definitions in the CLI.
+- Simplified `sqrt(x^2)` to `abs(x)` when the sign of `x` is unknown.

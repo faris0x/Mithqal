@@ -364,7 +364,7 @@ impl<'a> Evaluator<'a> {
                 Some(Sign::NonPositive) | Some(Sign::Negative) => {
                     Some(self.arena.intern_call(self.heads.negate, &[base]))
                 }
-                None => None,
+                None => Some(self.arena.intern_call(self.heads.abs, &[base])),
             };
         }
         if let Node::Int(value) = self.arena.node(argument)
