@@ -1,10 +1,12 @@
 # Mithqal Language
 
 > Status: Experimental. See [Maturity](maturity.md).
+>
+> This page teaches the language. The normative definition is in `spec/`.
 
 The Mithqal language is a line based surface language with lowercase keywords. It is not Mathematica compatible.
 
-The first version provides modules, single-line definitions, bindings, conditionals, print statements, comments, and a strict whitespace rule for expressions.
+The language provides modules with exports and imports, definitions with single-line or block bodies, local definitions, lexical bindings, conditionals, match blocks, canonical binders, structure and instance declarations, print statements, comments, and a strict whitespace rule for expressions.
 
 ## Keywords
 
@@ -46,16 +48,42 @@ def add(x,y)=x+y
 def value()=42
 ```
 
-A definition has a name, a parameter list, and one expression after `=`. Parameter lists contain no whitespace. The body is evaluated when the function is called.
+A definition has a name, a parameter list, and a body. Parameter lists contain no whitespace. The body is evaluated when the function is called.
 
-Parameters can be plain names or literal patterns.
+A body is either one expression on the definition line or a block terminated by `end`:
+
+```text
+def variance(xs)=
+let n=length(xs)
+let s=total(xs)
+let q=total(map(xs,fn(x)=>x*x))
+(n*q-s*s)/(n*n)
+end
+```
+
+A block body contains local `def` statements, `let` bindings, `if` statements, and one final expression. The final expression supplies the value. An `if` statement may stand in final position; otherwise it must be the last statement. `prt`, `match`, `export`, `import`, `structure`, and `instance` are not allowed in a body in this version.
+
+Local definitions must appear before the body's other statements. Definitions with the same name are mutually recursive and are tried in source order. A local definition is visible only inside its body, shadows a global definition of the same name for that body, and cannot shadow a protected symbol. It captures the enclosing parameters lexically.
+
+```text
+def factorial(n)=
+def loop(0,acc)=acc
+def loop(k,acc)=loop(k-1,acc*k)
+loop(n,1)
+end
+```
+
+Parameters can be names, literal patterns, sequence patterns, or nested constructor patterns.
 
 ```text
 def fact(0)=1
 def fact(n)=n*fact(n-1)
+
+def sum(x__)=fold(fn(a,b)=>a+b,0,list(x))
+def head2([a_,b_])=a
 ```
 
-Literal patterns are more specific than name patterns, so the base case is selected first.
+Literal patterns are not ranked above name patterns. Definitions are tried in source order, so a base case must be defined before a more general rule.
 
 A definition can include a guard after the parameter list.
 
@@ -65,9 +93,30 @@ def sign(x) when x==0=0
 def sign(x)=1
 ```
 
-The guard is a whitespace-free expression. Rules are ordered by specificity, and guards are checked after pattern matching.
+The guard is a whitespace-free expression. Rules are tried in source order, and guards are checked after pattern matching. A rule whose guard does not evaluate to `true` is skipped and the next rule is tried.
 
 Definitions capture the bindings visible at definition time.
+
+Rule bodies are instantiated with capture-avoiding substitution. When a matched value would be captured by a closure parameter, a `let` binding, or a pattern variable of a rule constructed by the body, that binder is renamed. An inner binding shadows a rule variable of the same name.
+
+## Arity
+
+A function whose definitions all have a fixed number of parameters reports an arity diagnostic when it is called with a different number of arguments. A function with a sequence parameter accepts any count in its range and is not arity checked; an unmatched call stays unevaluated.
+
+
+## Binders
+
+Three expression forms bind a variable:
+
+```text
+forall(x,[1,2,3],x>0)          -> true
+exists(x,[1,2,3],x>2)          -> true
+setBuilder(x,[1,2,3,4],isEven(x)) -> [2,4]
+```
+
+`forall(variable, domain, body)` is true when the body is true for every item of a finite domain. `exists` is true when the body is true for at least one item. `setBuilder` returns the canonical set of items for which the body is true.
+
+An empty domain makes `forall` true, `exists` false, and `setBuilder` empty. A body that is not decidable for some item leaves the binder symbolic. Bindings are lexical and are renamed to a canonical name, so alpha-equivalent binders are the same term.
 
 ## Bindings
 
@@ -212,14 +261,87 @@ end
 end
 ```
 
+## Modules
+
+Every source is one module. A module can export names and import other modules.
+
+```text
+mod statistics
+
+export mean,median,frequency
+import list
+
+def mean(xs)=sum(xs)/count(xs)
+def sum(xs)=fold(fn(a,b)=>a+b,0,xs)
+end
+```
+
+A module with at least one `export` statement is **strict**. Exported definitions keep their source names and are protected. Every other definition is private to the module: it is installed under a deterministic internal name, so two modules can use the same helper name without colliding. A module without an `export` statement keeps every definition visible, which is the compatibility behavior for small snippets.
+
+`import` declares a dependency on another bundled module. Modules load in dependency order; an unknown module or an import cycle is rejected. Imported names are not gated per module yet: every exported name from every loaded module is visible. Qualified access such as `module::name` is future work.
+
+Exporting a name that the module does not define is an error. Two modules cannot export the same name; the second definition reports a protected-symbol diagnostic.
+
+
+## Structures and instances
+
+A structure declares a carrier, its fields, and named laws. An instance supplies the fields and checks the laws.
+
+```text
+structure monoid
+field carrier
+field op
+field identity
+law associative: forall(a,carrier,forall(b,carrier,forall(c,carrier,same(op(op(a,b),c),op(a,op(b,c))))))
+law neutral: forall(a,carrier,same(op(a,identity),a))
+end
+
+instance cyclic : monoid
+carrier = [0,1,2]
+op = fn(a,b)=>mod(a+b,3)
+identity = 0
+end
+```
+
+A structure declaration defines a constructor with the structure name, an accessor for each field, and a law checker. For the example, these are `monoid`, `monoidCarrier`, `monoidOp`, `monoidIdentity`, and `monoidHolds`. Accessor names are the structure name followed by the capitalized field name.
+
+An instance evaluates its field values, builds the structure dictionary, and checks the laws over the carrier. A false law rejects the instance. An undecidable law rejects the instance unless the declaration uses `assumed`.
+
+```text
+instance symbolic : monoid assumed
+carrier = y
+op = fn(a,b)=>a+b
+identity = 0
+end
+```
+
+Structure and instance declarations appear at module level. Generated names participate in module exports and privacy like other definitions.
+
+## Standard library
+
+The engine bundles a standard library written in the surface language. A session loads every module when it is constructed, so library definitions are available to ordinary statements without an explicit import.
+
+```text
+prt mean([1,2,3,4])
+```
+
+The first module is `statistics`, which defines `mean`, `median`, `minimum`, `maximum`, `range`, `total`, `count`, `variance`, `sampleVariance`, `standardDeviation`, `sampleStandardDeviation`, `frequency`, and `mode`. Library symbols are protected, and a library function declares a fixed arity: calling one with the wrong number of arguments reports an arity diagnostic.
+
+Library modules are part of the crate source and are not user editable at run time.
+
 ## Current limits
 
 - One module per source.
-- Definition parameters support names and literal patterns.
+- Definition parameters support names, literal patterns, sequence patterns, and nested constructor patterns.
 - Guards are single expressions.
 - Match patterns support literals and binding names.
 - `prt` is the only output statement.
-- List patterns, sequence patterns, and nested constructor patterns are future work.
+- Definition bodies support local `def`, `let`, `if`, and one final expression.
+- Local definitions are lexically scoped, mutually recursive, and cannot shadow protected symbols.
+- Strict modules export a declared set of names and keep the rest private.
+- Imports declare bundled-module dependencies and are resolved in dependency order.
+- Qualified names such as `module::name` are future work.
+- Structure laws must decide to `true` or `false` over the carrier, or the instance must be declared `assumed`.
 
 ## Session entry points
 

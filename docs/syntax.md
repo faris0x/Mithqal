@@ -325,4 +325,4 @@ error TGN-PARSE-0002: comments must occupy their own lines
 
 ## File fixtures
 
-The library has no file reader, and source files are not part of the current surface.
+The expression reader has no file interface of its own. Library modules are bundled into the binary and loaded by the session; user supplied source files are not part of the current surface.

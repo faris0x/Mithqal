@@ -1,0 +1,27 @@
+// Generic list helpers used by the definitional modules.
+
+mod lists
+
+export append,concat,contains,unique,filter,rangeList
+
+def append(xs,ys) when length(xs)==0=ys
+def append(xs,ys)=cons(first(xs),append(rest(xs),ys))
+
+def concat(xss)=fold(fn(acc,xs)=>append(acc,xs),[],xss)
+
+def contains(xs,value)=fold(fn(acc,item)=>acc||same(item,value),false,xs)
+
+def filter(xs,predicate) when length(xs)==0=[]
+def filter(xs,predicate)=if(predicate(first(xs)),cons(first(xs),filter(rest(xs),predicate)),filter(rest(xs),predicate))
+
+def dedupe(xs) when length(xs)==0=[]
+def dedupe(xs) when length(xs)==1=xs
+def dedupe(xs) when same(first(xs),first(rest(xs)))=dedupe(rest(xs))
+def dedupe(xs)=cons(first(xs),dedupe(rest(xs)))
+
+def unique(xs)=dedupe(sort(xs))
+
+def rangeList(n) when n<1=[]
+def rangeList(n)=append(rangeList(n-1),[n-1])
+
+end

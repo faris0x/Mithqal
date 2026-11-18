@@ -1,0 +1,44 @@
+// Finite decision problems with exact rational probabilities and utilities.
+
+mod decision
+
+import lists
+import logic
+import sets
+import statistics
+
+export expectedUtility,bestActions,decisionValue,expectedRegret,minimaxRegretActions
+
+def expectedUtility(distribution,action,utility)=
+fold(fn(acc,pair)=>acc+nth(pair,1)*utility(action,nth(pair,0)),0,distribution)
+end
+
+def utilities(distribution,actions,utility)=
+map(actions,fn(action)=>[action,expectedUtility(distribution,action,utility)])
+end
+
+def decisionValue(distribution,actions,utility)=
+maximum(map(actions,fn(action)=>expectedUtility(distribution,action,utility)))
+end
+
+def bestActions(distribution,actions,utility)=
+let values=utilities(distribution,actions,utility)
+let best=maximum(map(values,fn(pair)=>nth(pair,1)))
+map(filter(values,fn(pair)=>same(nth(pair,1),best)),fn(pair)=>nth(pair,0))
+end
+
+def stateBest(actions,state,utility)=
+maximum(map(actions,fn(action)=>utility(action,state)))
+end
+
+def expectedRegret(distribution,action,actions,utility)=
+fold(fn(acc,pair)=>acc+nth(pair,1)*(stateBest(actions,nth(pair,0),utility)-utility(action,nth(pair,0))),0,distribution)
+end
+
+def minimaxRegretActions(distribution,actions,utility)=
+let regrets=map(actions,fn(action)=>[action,expectedRegret(distribution,action,actions,utility)])
+let best=minimum(map(regrets,fn(pair)=>nth(pair,1)))
+map(filter(regrets,fn(pair)=>same(nth(pair,1),best)),fn(pair)=>nth(pair,0))
+end
+
+end

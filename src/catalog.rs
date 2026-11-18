@@ -270,6 +270,79 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         capability: Capability::exact("documented integer and rational inputs"),
     },
     FunctionInfo {
+        name: "length",
+        category: "core",
+        signature: "length(list)",
+        summary: "Number of items in a list.",
+        example: "length([1,2,3])",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("a list argument"),
+    },
+    FunctionInfo {
+        name: "sort",
+        category: "core",
+        signature: "sort(list)",
+        summary: "Order items by numeric then canonical order.",
+        example: "sort([3,1,2])",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("a list argument"),
+    },
+    FunctionInfo {
+        name: "first",
+        category: "core",
+        signature: "first(list)",
+        summary: "First item of a nonempty list.",
+        example: "first([1,2,3])",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("a nonempty list argument"),
+    },
+    FunctionInfo {
+        name: "rest",
+        category: "core",
+        signature: "rest(list)",
+        summary: "List without its first item.",
+        example: "rest([1,2,3])",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("a list argument"),
+    },
+    FunctionInfo {
+        name: "cons",
+        category: "core",
+        signature: "cons(item,list)",
+        summary: "Prepend an item to a list.",
+        example: "cons(0,[1,2])",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("an item and a list"),
+    },
+    FunctionInfo {
+        name: "nth",
+        category: "core",
+        signature: "nth(list,index)",
+        summary: "Zero based list index.",
+        example: "nth([4,5,6],1)",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("a list and an in range integer index"),
+    },
+    FunctionInfo {
+        name: "reverse",
+        category: "core",
+        signature: "reverse(list)",
+        summary: "Reverse a list.",
+        example: "reverse([1,2,3])",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("a list argument"),
+    },
+    FunctionInfo {
+        name: "isNumber",
+        category: "core",
+        signature: "isNumber(value)",
+        summary: "Test whether a value is a number.",
+        example: "isNumber(3)",
+        example_kind: ExampleKind::Evaluates,
+        capability: Capability::exact("any value")
+            .display(DisplayForm::Boolean),
+    },
+    FunctionInfo {
         name: "expand",
         category: "algebra",
         signature: "expand(expr)",
@@ -1384,10 +1457,24 @@ mod tests {
         for function in FUNCTIONS {
             assert!(
                 crate::eval::has_kernel_function(function.name)
+                    || crate::stdlib::is_library_function(function.name)
                     || function.capability.support == Support::Approximate
                     || special.contains(&function.name),
                 "catalog entry {} has no evaluator path",
                 function.name
+            );
+        }
+    }
+
+    #[test]
+    fn library_exports_are_documented() {
+        let documentation = include_str!("../docs/modules.md");
+        for (module, name) in crate::stdlib::exports() {
+            assert!(
+                find(&name).is_some()
+                    || documentation.contains(&format!("`{name}("))
+                    || documentation.contains(&format!("`{name}`")),
+                "library export {module}.{name} is missing from the documentation"
             );
         }
     }

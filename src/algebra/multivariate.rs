@@ -142,7 +142,7 @@ impl<'a> MultivariateFactorizer<'a> {
     }
 
     fn factor_binary_quadratic(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
-        let quadratic = BivariateQuadratic::from_poly(polynomial)?;
+        let quadratic = BivariateQuadratic::from_poly(self.arena, polynomial)?;
         if !quadratic.is_homogeneous() {
             return None;
         }
@@ -217,7 +217,7 @@ impl<'a> MultivariateFactorizer<'a> {
     }
 
     fn factor_recursive_quadratic(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
-        let quadratic = BivariateQuadratic::from_poly(polynomial)?;
+        let quadratic = BivariateQuadratic::from_poly(self.arena, polynomial)?;
         if quadratic.is_homogeneous() {
             return None;
         }
@@ -309,7 +309,7 @@ impl<'a> MultivariateFactorizer<'a> {
     }
 
     fn factor_bivariate_root_lift(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
-        let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        let (horizontal, vertical) = bivariate_variables(self.arena, polynomial)?;
         if let Some(factors) =
             self.factor_bivariate_root_lift_orientation(polynomial, horizontal, vertical)
         {
@@ -414,7 +414,7 @@ impl<'a> MultivariateFactorizer<'a> {
     }
 
     fn factor_bivariate_content(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
-        let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        let (horizontal, vertical) = bivariate_variables(self.arena, polynomial)?;
         let mut coefficients: Vec<Poly> = Vec::new();
         for (monomial, coefficient) in &polynomial.terms {
             let horizontal_power = monomial.degree_in(horizontal) as usize;
@@ -472,14 +472,22 @@ impl<'a> MultivariateFactorizer<'a> {
         if common.mul(&quotient) != *polynomial {
             return None;
         }
-        Some(vec![
-            expression_from_poly(self.arena, &common, &self.context),
-            expression_from_poly(self.arena, &quotient, &self.context),
-        ])
+        let mut factors = Vec::new();
+        for part in [&common, &quotient] {
+            if part == polynomial {
+                factors.push(expression_from_poly(self.arena, part, &self.context));
+                continue;
+            }
+            match self.factor(part) {
+                Some(inner) => factors.extend(inner),
+                None => factors.push(expression_from_poly(self.arena, part, &self.context)),
+            }
+        }
+        Some(factors)
     }
 
     fn factor_polynomial_leading_quadratic(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
-        let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        let (horizontal, vertical) = bivariate_variables(self.arena, polynomial)?;
         if let Some(factors) =
             self.factor_polynomial_leading_quadratic_orientation(polynomial, horizontal, vertical)
         {
@@ -561,7 +569,7 @@ impl<'a> MultivariateFactorizer<'a> {
     }
 
     fn factor_square_free_stage(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
-        let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        let (horizontal, vertical) = bivariate_variables(self.arena, polynomial)?;
         if let Some(factors) = self.factor_power_orientation(polynomial, horizontal, vertical) {
             return Some(factors);
         }
@@ -676,7 +684,7 @@ impl<'a> MultivariateFactorizer<'a> {
         if !(2..=self.limits.max_variables).contains(&variables.len()) {
             return None;
         }
-        let variables: Vec<SymbolId> = variables.into_iter().collect();
+        let variables: Vec<SymbolId> = ordered_variables(self.arena, polynomial);
         for horizontal in &variables {
             let others: Vec<SymbolId> = variables
                 .iter()
@@ -1105,7 +1113,7 @@ impl<'a> MultivariateFactorizer<'a> {
     }
 
     fn factor_hensel_stage(&mut self, polynomial: &Poly) -> Option<Vec<ExprId>> {
-        let (horizontal, vertical) = bivariate_variables(polynomial)?;
+        let (horizontal, vertical) = bivariate_variables(self.arena, polynomial)?;
         if let Some(factors) = self.factor_hensel_orientation(polynomial, horizontal, vertical) {
             return Some(factors);
         }
@@ -1220,14 +1228,13 @@ struct BivariateQuadratic {
 }
 
 impl BivariateQuadratic {
-    fn from_poly(polynomial: &Poly) -> Option<Self> {
-        let variables = polynomial.variables();
+    fn from_poly(arena: &Arena, polynomial: &Poly) -> Option<Self> {
+        let variables = ordered_variables(arena, polynomial);
         if variables.len() != 2 {
             return None;
         }
-        let mut symbols = variables.into_iter();
-        let horizontal = symbols.next()?;
-        let vertical = symbols.next()?;
+        let horizontal = variables[0];
+        let vertical = variables[1];
         let mut quadratic = BivariateQuadratic {
             horizontal,
             vertical,

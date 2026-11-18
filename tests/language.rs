@@ -195,7 +195,7 @@ fn missing_end_is_an_error() {
     let mut session = Session::new();
     let error = session.eval_source(source).unwrap_err();
     assert_eq!(error.code, ErrorCode::ParseUnexpectedToken);
-    assert_eq!(error.span.unwrap().line, 2);
+    assert_eq!(error.span.as_deref().unwrap().line, 2);
 }
 
 #[test]
@@ -204,7 +204,7 @@ fn statements_after_module_end_are_rejected() {
     let mut session = Session::new();
     let error = session.eval_source(source).unwrap_err();
     assert_eq!(error.code, ErrorCode::ParseUnexpectedToken);
-    assert_eq!(error.span.unwrap().line, 4);
+    assert_eq!(error.span.as_deref().unwrap().line, 4);
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn missing_then_is_rejected() {
     let mut session = Session::new();
     let error = session.eval_source(source).unwrap_err();
     assert_eq!(error.code, ErrorCode::ParseUnexpectedToken);
-    assert_eq!(error.span.unwrap().line, 2);
+    assert_eq!(error.span.as_deref().unwrap().line, 2);
 }
 
 #[test]
@@ -248,7 +248,7 @@ fn whitespace_inside_expressions_is_rejected() {
     for (source, line, column) in cases {
         let mut session = Session::new();
         let error = session.eval_source(source).unwrap_err();
-        let span = error.span.unwrap();
+        let span = error.span.as_deref().unwrap();
         assert_eq!(span.line, line, "{source}");
         assert_eq!(span.column, column, "{source}");
     }
@@ -265,7 +265,7 @@ fn expression_parse_errors_keep_source_lines() {
     let source = "mod errors\nlet x=1+\nend";
     let mut session = Session::new();
     let error = session.eval_source(source).unwrap_err();
-    assert_eq!(error.span.unwrap().line, 2);
+    assert_eq!(error.span.as_deref().unwrap().line, 2);
 }
 
 #[test]
@@ -526,7 +526,7 @@ fn guard_expression_is_whitespace_free() {
     let source = "mod m\ndef f(x) when x > 0=x\nend";
     let mut session = Session::new();
     let error = session.eval_source(source).unwrap_err();
-    assert_eq!(error.code, ErrorCode::ParseUnexpectedToken);
+    assert_eq!(error.code, ErrorCode::ParseWhitespace);
 }
 
 #[test]

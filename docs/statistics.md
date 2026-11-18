@@ -4,6 +4,8 @@
 
 The statistics layer operates on nonempty lists of exact integers and rationals. Results stay exact.
 
+Statistics is implemented in the Mithqal standard library at `lib/statistics.mith`. The session loads it at construction, so these functions are ordinary Mithqal definitions rather than kernel heads. The module is strict: the public functions are exported and protected, while the helpers (`numeric`, `sum`, `squares`, `runs`, `maxCount`, `pick`) are private to the module. The kernel supplies only the generic list primitives they are built from: `length`, `sort`, `first`, `rest`, `cons`, `nth`, `reverse`, and `isNumber`.
+
 ## Functions
 
 | Function | Meaning |
@@ -48,4 +50,5 @@ Empty lists, lists containing symbols, and sample statistics with fewer than two
 
 - Exact integer and rational entries only.
 - Population and sample variance are separate functions.
+- The functions are Mithqal definitions; their helpers are private module definitions.
 - No distributions, regression, or inferential statistics yet.

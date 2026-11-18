@@ -1,0 +1,53 @@
+// Finite probability spaces over exact rational probabilities.
+//
+// A distribution is a canonical set of outcome and probability pairs. Each
+// outcome occurs once and the probabilities sum to one.
+
+mod probability
+
+import lists
+import logic
+import sets
+import relations
+import statistics
+
+export distribution,isDistribution,uniform,support,probabilityOf,expectation,varianceOf,conditional,productDistribution
+
+def distribution(pairs)=setOf(pairs)
+
+def isDistribution(distribution)=
+let probabilities=map(distribution,fn(pair)=>nth(pair,1))
+isFunction(distribution)&&allOf(probabilities,fn(p)=>isNumber(p)&&p>0)&&same(total(probabilities),1)
+end
+
+def uniform(items)=
+let outcomes=setOf(items)
+let probability=1/length(outcomes)
+setOf(map(outcomes,fn(item)=>[item,probability]))
+end
+
+def support(distribution)=setOf(map(distribution,fn(pair)=>nth(pair,0)))
+
+def probabilityOf(distribution,event)=
+fold(fn(acc,pair)=>if(member(event,nth(pair,0)),acc+nth(pair,1),acc),0,distribution)
+end
+
+def expectation(distribution,observable)=
+fold(fn(acc,pair)=>acc+nth(pair,1)*observable(nth(pair,0)),0,distribution)
+end
+
+def varianceOf(distribution,observable)=
+expectation(distribution,fn(x)=>observable(x)*observable(x))-expectation(distribution,observable)*expectation(distribution,observable)
+end
+
+def conditional(distribution,event)=
+let probability=probabilityOf(distribution,event)
+if(same(probability,0),undefined,setOf(map(filter(distribution,fn(pair)=>member(event,nth(pair,0))),fn(pair)=>[nth(pair,0),nth(pair,1)/probability])))
+end
+
+def productDistribution(left,right)=
+let outcomes=cartesian(support(left),support(right))
+setOf(map(outcomes,fn(pair)=>[pair,applyRelation(left,nth(pair,0))*applyRelation(right,nth(pair,1))]))
+end
+
+end

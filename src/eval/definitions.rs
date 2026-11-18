@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::diag::{Diagnostic, ErrorCode};
+use crate::diag::{Diagnostic, ErrorCode, Span};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
 
 /// An own value attached to a symbol.
@@ -11,14 +11,20 @@ pub(crate) struct OwnValue {
     pub(crate) value: ExprId,
 }
 
+/// The source location of a definition.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct DefinitionSite {
+    pub(crate) span: Span,
+    pub(crate) source: u32,
+}
+
 /// A down value rule.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Rule {
     pub(crate) lhs: ExprId,
     pub(crate) rhs: ExprId,
     pub(crate) delayed: bool,
-    pub(crate) specificity: u32,
-    pub(crate) order: u64,
+    pub(crate) site: Option<DefinitionSite>,
 }
 
 /// Session definitions.
@@ -26,7 +32,8 @@ pub(crate) struct Rule {
 pub(crate) struct Definitions {
     own: HashMap<SymbolId, OwnValue>,
     down: HashMap<SymbolId, Vec<Rule>>,
-    next_order: u64,
+    local: Vec<HashMap<SymbolId, Vec<Rule>>>,
+    sources: Vec<String>,
     version: u64,
 }
 
@@ -39,12 +46,118 @@ impl Definitions {
         self.own.get(&symbol).copied()
     }
 
-    pub(crate) fn rules(&self, symbol: SymbolId) -> &[Rule] {
-        self.down.get(&symbol).map(Vec::as_slice).unwrap_or(&[])
+    /// The rules for a symbol. The innermost local frame shadows outer frames
+    /// and the global definitions entirely.
+    pub(crate) fn rules(&self, symbol: SymbolId) -> Vec<Rule> {
+        for frame in self.local.iter().rev() {
+            if let Some(rules) = frame.get(&symbol) {
+                return rules.clone();
+            }
+        }
+        self.down.get(&symbol).cloned().unwrap_or_default()
     }
 
     pub(crate) fn version(&self) -> u64 {
         self.version
+    }
+
+    /// Intern a source name and return its identifier.
+    pub(crate) fn intern_source(&mut self, name: &str) -> u32 {
+        if let Some(index) = self.sources.iter().position(|source| source == name) {
+            return index as u32;
+        }
+        self.sources.push(name.to_string());
+        (self.sources.len() - 1) as u32
+    }
+
+    /// The name of an interned source.
+    pub(crate) fn source_name(&self, id: u32) -> &str {
+        &self.sources[id as usize]
+    }
+
+    /// Attach a source location to the most recent rule for a symbol.
+    pub(crate) fn annotate_last(
+        &mut self,
+        arena: &Arena,
+        lhs: ExprId,
+        local: bool,
+        site: DefinitionSite,
+    ) {
+        let Some(symbol) = target_symbol(arena, lhs) else {
+            return;
+        };
+        let rules = if local {
+            self.local
+                .last_mut()
+                .and_then(|frame| frame.get_mut(&symbol))
+        } else {
+            self.down.get_mut(&symbol)
+        };
+        if let Some(rule) = rules.and_then(|rules| rules.last_mut()) {
+            rule.site = Some(site);
+        }
+    }
+
+    /// Enter a lexical definition scope.
+    pub(crate) fn push_scope(&mut self) {
+        self.local.push(HashMap::new());
+    }
+
+    /// Leave the innermost lexical definition scope.
+    pub(crate) fn pop_scope(&mut self) {
+        if let Some(frame) = self.local.pop()
+            && !frame.is_empty()
+        {
+            self.version = self.version.wrapping_add(1);
+        }
+    }
+
+    /// True when the rules for a symbol accept the argument count.
+    ///
+    /// A function with any sequence parameter is variadic and is not checked.
+    /// A symbol with no rules is not checked.
+    pub(crate) fn accepts_arity(&self, arena: &Arena, symbol: SymbolId, arity: usize) -> bool {
+        let rules = self.rules(symbol);
+        if rules.is_empty() {
+            return true;
+        }
+        let mut fixed = Vec::new();
+        for rule in &rules {
+            match fixed_arity(arena, rule.lhs) {
+                Some(count) => {
+                    if !fixed.contains(&count) {
+                        fixed.push(count);
+                    }
+                }
+                None => return true,
+            }
+        }
+        fixed.contains(&arity)
+    }
+
+    /// Remove and return the global rules for a symbol.
+    pub(crate) fn take_rules(&mut self, symbol: SymbolId) -> Vec<Rule> {
+        self.down.remove(&symbol).unwrap_or_default()
+    }
+
+    /// Install global rules for a symbol.
+    pub(crate) fn install_rules(&mut self, symbol: SymbolId, rules: Vec<Rule>) {
+        if rules.is_empty() {
+            return;
+        }
+        self.down.entry(symbol).or_default().extend(rules);
+        self.version = self.version.wrapping_add(1);
+    }
+
+    /// Remove and return the own value for a symbol.
+    pub(crate) fn take_own(&mut self, symbol: SymbolId) -> Option<OwnValue> {
+        self.own.remove(&symbol)
+    }
+
+    /// Install an own value for a symbol.
+    pub(crate) fn install_own(&mut self, symbol: SymbolId, value: OwnValue) {
+        self.own.insert(symbol, value);
+        self.version = self.version.wrapping_add(1);
     }
 
     pub(crate) fn roots(&self, roots: &mut Vec<ExprId>) {
@@ -55,6 +168,14 @@ impl Definitions {
             for rule in rules {
                 roots.push(rule.lhs);
                 roots.push(rule.rhs);
+            }
+        }
+        for frame in &self.local {
+            for rules in frame.values() {
+                for rule in rules {
+                    roots.push(rule.lhs);
+                    roots.push(rule.rhs);
+                }
             }
         }
     }
@@ -73,23 +194,8 @@ impl Definitions {
                 self.version = self.version.wrapping_add(1);
                 Ok(())
             }
-            Node::Call { head, args } => {
-                let target_head = if arena
-                    .symbol_id(*head)
-                    .map(|symbol| arena.symbol_name(symbol))
-                    == Some("condition")
-                {
-                    if let Some(Node::Call { head: inner, .. }) =
-                        args.first().map(|argument| arena.node(*argument))
-                    {
-                        *inner
-                    } else {
-                        *head
-                    }
-                } else {
-                    *head
-                };
-                let symbol = arena.symbol_id(target_head).ok_or_else(|| {
+            Node::Call { .. } => {
+                let symbol = target_symbol(arena, lhs).ok_or_else(|| {
                     Diagnostic::eval(
                         ErrorCode::EvalDefinition,
                         "a definition head must be a symbol",
@@ -100,18 +206,9 @@ impl Definitions {
                     lhs,
                     rhs,
                     delayed,
-                    specificity: specificity(arena, lhs),
-                    order: self.next_order,
+                    site: None,
                 };
-                self.next_order += 1;
-                let rules = self.down.entry(symbol).or_default();
-                rules.push(rule);
-                rules.sort_by(|left, right| {
-                    right
-                        .specificity
-                        .cmp(&left.specificity)
-                        .then(left.order.cmp(&right.order))
-                });
+                self.down.entry(symbol).or_default().push(rule);
                 self.version = self.version.wrapping_add(1);
                 Ok(())
             }
@@ -122,11 +219,44 @@ impl Definitions {
         }
     }
 
+    /// Install a delayed rule in the innermost lexical scope.
+    pub(crate) fn define_local(
+        &mut self,
+        arena: &Arena,
+        lhs: ExprId,
+        rhs: ExprId,
+    ) -> Result<(), Diagnostic> {
+        let symbol = target_symbol(arena, lhs).ok_or_else(|| {
+            Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                "a local definition must define a function",
+            )
+        })?;
+        self.check_protected(arena, symbol)?;
+        let Some(frame) = self.local.last_mut() else {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                "a local definition requires an enclosing scope",
+            ));
+        };
+        frame.entry(symbol).or_default().push(Rule {
+            lhs,
+            rhs,
+            delayed: true,
+            site: None,
+        });
+        self.version = self.version.wrapping_add(1);
+        Ok(())
+    }
+
     fn check_protected(&self, arena: &Arena, symbol: SymbolId) -> Result<(), Diagnostic> {
-        if arena.symbol_attributes(symbol).has(Attributes::PROTECTED) {
+        let name = arena.symbol_name(symbol);
+        if arena.symbol_attributes(symbol).has(Attributes::PROTECTED)
+            || crate::eval::is_kernel_head(name)
+        {
             Err(Diagnostic::eval(
                 ErrorCode::EvalProtected,
-                format!("symbol {} is protected", arena.symbol_name(symbol)),
+                format!("symbol {name} is protected"),
             ))
         } else {
             Ok(())
@@ -134,30 +264,60 @@ impl Definitions {
     }
 }
 
-fn specificity(arena: &Arena, pattern: ExprId) -> u32 {
-    match arena.node(pattern) {
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) => 1000,
-        Node::Symbol(_) => 1000,
-        Node::Call { head, args } => {
-            let name = arena
-                .symbol_id(*head)
-                .map(|symbol| arena.symbol_name(symbol));
-            match name {
-                Some("blank") => 1,
-                Some("blankSequence") | Some("blankNullSequence") => 0,
-                Some("pattern") => {
-                    let inner = args.get(1).copied().unwrap_or(pattern);
-                    20 + specificity(arena, inner)
-                }
-                Some("condition") => {
-                    let inner = args.first().copied().unwrap_or(pattern);
-                    2 + specificity(arena, inner)
-                }
-                _ => {
-                    let child: u32 = args.iter().map(|arg| specificity(arena, *arg)).sum();
-                    100 + child
-                }
-            }
+fn target_symbol(arena: &Arena, lhs: ExprId) -> Option<SymbolId> {
+    let Node::Call { head, args } = arena.node(lhs) else {
+        return None;
+    };
+    let target = if arena
+        .symbol_id(*head)
+        .map(|symbol| arena.symbol_name(symbol))
+        == Some("condition")
+    {
+        match args.first().map(|argument| arena.node(*argument)) {
+            Some(Node::Call { head: inner, .. }) => *inner,
+            _ => *head,
         }
+    } else {
+        *head
+    };
+    arena.symbol_id(target)
+}
+
+fn fixed_arity(arena: &Arena, lhs: ExprId) -> Option<usize> {
+    let lhs = match arena.node(lhs) {
+        Node::Call { head, args }
+            if args.len() == 2
+                && arena
+                    .symbol_id(*head)
+                    .map(|symbol| arena.symbol_name(symbol))
+                    == Some("condition") =>
+        {
+            args[0]
+        }
+        _ => lhs,
+    };
+    let Node::Call { args, .. } = arena.node(lhs) else {
+        return None;
+    };
+    if args
+        .iter()
+        .any(|argument| is_sequence_pattern(arena, *argument))
+    {
+        return None;
+    }
+    Some(args.len())
+}
+
+fn is_sequence_pattern(arena: &Arena, pattern: ExprId) -> bool {
+    let Node::Call { head, args } = arena.node(pattern) else {
+        return false;
+    };
+    match arena
+        .symbol_id(*head)
+        .map(|symbol| arena.symbol_name(symbol))
+    {
+        Some("blankSequence") | Some("blankNullSequence") => true,
+        Some("pattern") if args.len() == 2 => is_sequence_pattern(arena, args[1]),
+        _ => false,
     }
 }

@@ -217,3 +217,59 @@ Initial kernel work.
 - Simplified `sqrt(x^2)` to `abs(x)` when the sign of `x` is unknown.
 - Added arbitrary precision complex gamma and lgamma through the approximate complex path, including reflection for the left half plane and principal branch log gamma.
 - Added automatic numeric gamma and lgamma evaluation for non-special real and complex arguments, with the approximation digit context carried into nested `approx` calls.
+- Added a standard library written in the Mithqal surface language and loaded when a session is constructed.
+- Moved exact descriptive statistics from the Rust kernel into `lib/statistics.mith` and removed the native statistics module.
+- Added generic list primitives `length`, `sort`, `first`, `rest`, `cons`, `nth`, `reverse`, and `isNumber`.
+- `map`, `apply`, `fold`, and `nest` now evaluate their list and count arguments, so computed lists can be passed directly.
+- Added declared arities for library functions, with arity diagnostics for mismatched calls.
+- Ordered polynomial variables by name and recursively factored content and quotient results, so factorisation no longer depends on symbol creation order.
+- Down values are now tried in definition order; the internal specificity ranking is removed.
+- Rule bodies use capture-avoiding substitution, renaming closure parameters and `let` bindings when an inserted value would otherwise be captured.
+- Added deterministic fresh symbol generation for hygienic renaming.
+- Definitions can use multi-line bodies with `let` bindings, `if` statements, and one final expression.
+- Definition parameters accept sequence patterns and nested constructor patterns; parameter splitting respects brackets.
+- Arity is inferred from each definition: fixed-arity functions report arity diagnostics and variadic functions stay unchecked.
+- Capture-avoiding substitution now covers `rule`, `ruleDelayed`, `condition`, and `pattern` binders in rule-constructing bodies.
+- Added lexically scoped local `def` statements inside language blocks and definition bodies.
+- Local definitions support mutual recursion, shadow global definitions only for their scope, and reject protected symbols.
+- Definition rules now resolve from the innermost local scope, then the global table; arity is derived from the visible rules.
+- Added `export` and `import` module statements.
+- Strict modules export a declared set of names and install non-exported definitions under deterministic private names.
+- Bundled modules load in import-declared dependency order, with unknown-module and cycle diagnostics.
+- Exported names are protected; private helpers from different modules no longer collide.
+- Rewrote the statistics library as a strict module with private helpers.
+- Added a normative language specification under `spec/`, with profiles, versioning, and a conformance corpus per profile.
+- Added a corpus runner in `tests/conformance.rs` with value, output, parse, diagnostic, trace, and round-trip case kinds.
+- Added `Session::eval_named_source` and `Session::eval_file`, which attach a source name to diagnostics.
+- Added `Diagnostic::source` and `Frame::source`, and language statement trace frames with source locations.
+- Added the `lists`, `logic`, `sets`, `relations`, `structures`, and `foundations` standard library modules.
+- Finite sets are canonical sorted lists, and relations are sets of pairs.
+- Structure dictionaries carry algebraic data and finite law checks over a carrier.
+- Added a Peano interface over native integers and von Neumann numerals as finite sets.
+- Added documentation for the definitional modules in `docs/modules.md`.
+- Added the `combinatorics` module with exact counts and finite enumerations.
+- Added the `probability` module with exact finite distributions, conditioning, expectation, variance, and independent products.
+- Added `docs/modules.md` entries and conformance cases for both modules.
+- Added the `decision` module with expected utility, best actions, decision value, and minimax regret.
+- Added the `games` module with finite normal form games, best responses, pure Nash equilibria, dominant strategies, zero-sum detection, and Pareto outcomes.
+- Added `docs/modules.md` entries and conformance cases for both modules.
+- Added the `graphs` module with directed and undirected graphs, adjacency, reachability, components, trees, complete graphs, and acyclicity.
+- Added `docs/modules.md` entries and conformance cases for graph theory.
+- Rejected definitions whose head name is a kernel head, which closes a silent shadowing gap for heads such as `degree`.
+- Renamed the graph degree accessor to `degreeOf`.
+- Added the `information` module with log2, entropy, joint entropy, marginals, conditional entropy, mutual information, and divergences.
+- Added an AI declaration to the README.
+- Added `docs/modules.md` entries and conformance cases for information theory.
+- Added the `calculus` module with Mithqal differentiation and integration rules over the native kernels.
+- Fixed definition parameter parsing for nested call patterns.
+- Added `docs/modules.md` entries and conformance cases for the calculus rule layer.
+- Added the Qur'an 99:7 verse, the Hilali and Khan translation, and the IPA transcription to the README.
+- Normalized README links to explicit relative paths and corrected the status line to x86-64.
+- Recorded the AI use declaration in the first person.
+- Added canonical `forall`, `exists`, and `setBuilder` binders with finite-domain evaluation and symbolic results.
+- Added binder documentation to the language reference and the specification.
+- Added binder conformance cases.
+- Added canonical `forall`, `exists`, and `setBuilder` binders with finite-domain evaluation and alpha equivalence.
+- Added `structure` and `instance` declarations with generated constructors, accessors, law checkers, and finite law validation.
+- Added `assumed` instances for laws that cannot be decided over the carrier.
+- Added binder and structure documentation, conformance cases, and tests.

@@ -324,41 +324,39 @@ impl LogicHead {
     }
 }
 
+/// Generic list primitives available to library code.
 #[derive(Copy, Clone)]
-pub(crate) enum StatisticsHead {
-    Mean,
-    Median,
-    Minimum,
-    Maximum,
-    Range,
-    Total,
-    Count,
-    Variance,
-    SampleVariance,
-    StandardDeviation,
-    SampleStandardDeviation,
-    Frequency,
-    Mode,
+pub(crate) enum ListHead {
+    Length,
+    Sort,
+    First,
+    Rest,
+    Cons,
+    Nth,
+    Reverse,
+    IsNumber,
 }
 
-impl StatisticsHead {
+impl ListHead {
     pub(super) fn from_name(name: &str) -> Option<Self> {
         Some(match name {
-            "mean" => Self::Mean,
-            "median" => Self::Median,
-            "minimum" => Self::Minimum,
-            "maximum" => Self::Maximum,
-            "range" => Self::Range,
-            "total" => Self::Total,
-            "count" => Self::Count,
-            "variance" => Self::Variance,
-            "sampleVariance" => Self::SampleVariance,
-            "standardDeviation" => Self::StandardDeviation,
-            "sampleStandardDeviation" => Self::SampleStandardDeviation,
-            "frequency" => Self::Frequency,
-            "mode" => Self::Mode,
+            "length" => Self::Length,
+            "sort" => Self::Sort,
+            "first" => Self::First,
+            "rest" => Self::Rest,
+            "cons" => Self::Cons,
+            "nth" => Self::Nth,
+            "reverse" => Self::Reverse,
+            "isNumber" => Self::IsNumber,
             _ => return None,
         })
+    }
+
+    pub(super) fn arity(self) -> usize {
+        match self {
+            Self::Cons | Self::Nth => 2,
+            _ => 1,
+        }
     }
 }
 
@@ -370,7 +368,7 @@ pub(crate) enum KernelFunction {
     Linear(LinearHead),
     NumberTheory(NumberTheoryHead),
     Logic(LogicHead),
-    Statistics(StatisticsHead),
+    List(ListHead),
 }
 
 impl KernelFunction {
@@ -393,6 +391,6 @@ impl KernelFunction {
         if let Some(function) = LogicHead::from_name(name) {
             return Some(Self::Logic(function));
         }
-        StatisticsHead::from_name(name).map(Self::Statistics)
+        ListHead::from_name(name).map(Self::List)
     }
 }

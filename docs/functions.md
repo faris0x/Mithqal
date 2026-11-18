@@ -6,6 +6,8 @@ This table is the capability matrix for the advertised function surface. `list c
 
 Support values: `exact`, `symbolic`, `approx`, `language`. Example values describe the expected documented example behavior.
 
+Functions implemented by the bundled Mithqal standard library rather than the Rust kernel are marked here the same way as kernel functions. This matrix covers the core surface; the definitional modules are documented in [Library modules](modules.md).
+
 | Function | Category | Support | Signature | Domain | Display | Example | Example behavior |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `gcd` | core | exact | `gcd(a,b,...)` | documented integer and rational inputs | infix | `gcd(84,30)` | evaluates |
@@ -15,6 +17,14 @@ Support values: `exact`, `symbolic`, `approx`, `language`. Example values descri
 | `floor` | core | exact | `floor(value)` | documented integer and rational inputs | infix | `floor(7/2)` | evaluates |
 | `ceil` | core | exact | `ceil(value)` | documented integer and rational inputs | infix | `ceil(7/2)` | evaluates |
 | `round` | core | exact | `round(value)` | documented integer and rational inputs | infix | `round(7/2)` | evaluates |
+| `length` | core | exact | `length(list)` | a list argument | infix | `length([1,2,3])` | evaluates |
+| `sort` | core | exact | `sort(list)` | a list argument | infix | `sort([3,1,2])` | evaluates |
+| `first` | core | exact | `first(list)` | a nonempty list argument | infix | `first([1,2,3])` | evaluates |
+| `rest` | core | exact | `rest(list)` | a list argument | infix | `rest([1,2,3])` | evaluates |
+| `cons` | core | exact | `cons(item,list)` | an item and a list | infix | `cons(0,[1,2])` | evaluates |
+| `nth` | core | exact | `nth(list,index)` | a list and an in range integer index | infix | `nth([4,5,6],1)` | evaluates |
+| `reverse` | core | exact | `reverse(list)` | a list argument | infix | `reverse([1,2,3])` | evaluates |
+| `isNumber` | core | exact | `isNumber(value)` | any value | boolean | `isNumber(3)` | evaluates |
 | `expand` | algebra | symbolic | `expand(expr)` | supported expressions in the documented domain | infix | `expand((x+y)^3)` | evaluates |
 | `factor` | algebra | symbolic | `factor(expr)` | supported expressions in the documented domain | infix | `factor(x^6-1)` | evaluates |
 | `together` | algebra | symbolic | `together(expr)` | supported expressions in the documented domain | infix | `together(1/x+1/(x+1))` | evaluates |

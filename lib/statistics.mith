@@ -1,0 +1,70 @@
+// Exact descriptive statistics.
+//
+// This module is part of the Mithqal standard library. It is written in the
+// Mithqal language and is loaded when a session is created. Only the exported
+// names are visible outside the module; the helpers below are private.
+
+mod statistics
+
+export mean,median,minimum,maximum,range,total,count,variance,sampleVariance,standardDeviation,sampleStandardDeviation,frequency,mode
+
+// Internal helpers.
+
+def numeric(xs)=length(xs)>0&&all(map(xs,fn(x)=>isNumber(x)))
+def sum(xs)=fold(fn(a,b)=>a+b,0,xs)
+def squares(xs)=fold(fn(a,b)=>a+b,0,map(xs,fn(x)=>x*x))
+
+def runs(xs,value,count,acc) when length(xs)==0=reverse(cons([value,count],acc))
+def runs(xs,value,count,acc) when first(xs)==value=runs(rest(xs),value,count+1,acc)
+def runs(xs,value,count,acc)=runs(rest(xs),first(xs),1,cons([value,count],acc))
+
+def maxCount(xs,best) when length(xs)==0=best
+def maxCount(xs,best)=maxCount(rest(xs),if(nth(first(xs),1)>best,nth(first(xs),1),best))
+
+def pick(xs,best) when length(xs)==0=[]
+def pick(xs,best) when nth(first(xs),1)==best=cons(nth(first(xs),0),pick(rest(xs),best))
+def pick(xs,best)=pick(rest(xs),best)
+
+// Public functions.
+
+def total(xs) when numeric(xs)=sum(xs)
+def count(xs) when numeric(xs)=length(xs)
+def mean(xs) when numeric(xs)=sum(xs)/length(xs)
+def minimum(xs) when numeric(xs)=fold(fn(a,b)=>if(a<b,a,b),first(xs),rest(xs))
+def maximum(xs) when numeric(xs)=fold(fn(a,b)=>if(a>b,a,b),first(xs),rest(xs))
+def range(xs) when numeric(xs)=maximum(xs)-minimum(xs)
+
+def median(xs) when numeric(xs)=
+let ys=sort(xs)
+let n=length(xs)
+if(isEven(n),(nth(ys,n/2-1)+nth(ys,n/2))/2,nth(ys,floor(n/2)))
+end
+
+def variance(xs) when numeric(xs)=
+let n=length(xs)
+let s=sum(xs)
+let q=squares(xs)
+(n*q-s*s)/(n*n)
+end
+
+def sampleVariance(xs) when numeric(xs)&&length(xs)>1=
+let n=length(xs)
+let s=sum(xs)
+let q=squares(xs)
+(n*q-s*s)/(n*(n-1))
+end
+
+def standardDeviation(xs) when numeric(xs)=sqrt(variance(xs))
+def sampleStandardDeviation(xs) when numeric(xs)&&length(xs)>1=sqrt(sampleVariance(xs))
+
+def frequency(xs) when numeric(xs)=
+let ys=sort(xs)
+runs(rest(ys),first(ys),1,[])
+end
+
+def mode(xs) when numeric(xs)=
+let fs=frequency(xs)
+pick(fs,maxCount(fs,0))
+end
+
+end

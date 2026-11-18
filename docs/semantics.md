@@ -90,7 +90,7 @@ Attributes used in the current version:
 
 Protected symbols in the current version:
 
-- All kernel heads: `plus`, `times`, `power`, `negate`, `list`, `set`, `setDelayed`, `if`, `and`, `or`, `not`, `map`, `apply`, `fold`, `nest`, `function`, `let`, `pattern`, `blank`, `blankSequence`, `blankNullSequence`, `condition`, `rule`, `ruleDelayed`.
+- All kernel heads: `plus`, `times`, `power`, `negate`, `list`, `set`, `setDelayed`, `if`, `and`, `or`, `not`, `map`, `apply`, `fold`, `nest`, `function`, `let`, `forall`, `exists`, `setBuilder`, `pattern`, `blank`, `blankSequence`, `blankNullSequence`, `condition`, `rule`, `ruleDelayed`.
 - Truth values: `true`, `false`.
 - Structural constants: `emptyset`, `inf`.
 - Error values: `undefined`, `indeterminate`, `failed`.
@@ -236,6 +236,8 @@ The algebra layer rejects exponents above 4096, expanded forms above 20000 terms
 
 ## Symbolic calculus
 
+The bundled standard library also provides `derive` and `antiderivative`, which express the elementary rules in Mithqal and fall back to `differentiate` and `integrate` for forms they do not cover. See [Library modules](modules.md).
+
 The calculus layer provides `differentiate`, `integrate`, `limit`, `series`, and `converges`. Differentiation, integration, and limits take an expression and a variable. `integrate` accepts either a variable plus two bounds or two bounds with an inferred variable. `limit`, `series`, and `converges` also infer a variable when the variable argument is omitted, and `limit` accepts an optional side argument.
 
 `differentiate` applies exact differentiation rules for sums, products, powers, the elementary functions, and the inverse trigonometric and hyperbolic functions. Unknown function calls remain unevaluated. A symbol other than the differentiation variable is treated as a constant. `differentiate`, `integrate`, `limit`, `series`, `converges`, and `solve` accept an omitted variable when the expression has exactly one free symbol. An ambiguous expression produces an arity diagnostic.
@@ -280,7 +282,22 @@ Number theory functions accept exact integers. Primality, next prime, factorizat
 
 Broader number theory adds previous primes, prime counting through a sieve, divisor counts, Moebius values, radicals, square-free tests, Fibonacci numbers, perfect square tests, modular inverses, and Jacobi symbols.
 
-Descriptive statistics operate on nonempty numeric lists. `mean`, `median`, `minimum`, `maximum`, `range`, `total`, `count`, `variance`, `sampleVariance`, `standardDeviation`, `sampleStandardDeviation`, `frequency`, and `mode` keep exact rational results. Standard deviations simplify exact rational squares and otherwise remain exact square root expressions.
+Descriptive statistics operate on nonempty numeric lists. `mean`, `median`, `minimum`, `maximum`, `range`, `total`, `count`, `variance`, `sampleVariance`, `standardDeviation`, `sampleStandardDeviation`, `frequency`, and `mode` keep exact rational results. Standard deviations simplify exact rational squares and otherwise remain exact square root expressions. These functions are defined in the Mithqal standard library rather than in the kernel.
+
+## List primitives
+
+The kernel provides generic list primitives that library code is built from:
+
+- `length(list)` returns the item count.
+- `sort(list)` orders items by numeric value, with nonnumeric items after numbers in canonical order.
+- `first(list)` returns the first item of a nonempty list and otherwise remains unevaluated.
+- `rest(list)` returns the list without its first item; `rest([])` is `[]`.
+- `cons(item,list)` prepends an item.
+- `nth(list,index)` returns a zero based item and remains unevaluated out of range.
+- `reverse(list)` reverses a list.
+- `isNumber(value)` returns `true` for integers, rationals, and approximate reals.
+
+These primitives leave a call unevaluated when its list argument is not a list. `map`, `apply`, `fold`, and `nest` evaluate their list and count arguments before use, so a computed list such as `map(...)` can be passed directly.
 
 Logic provides `xor`, `implies`, `all`, and `any` alongside the existing `and`, `or`, and `not`. Predicates compose directly with these forms. Symbolic operands leave a connective unevaluated when the result is undetermined.
 
@@ -338,6 +355,8 @@ When several arguments are lists, their lengths must agree. A length mismatch pr
 
 A left hand side that is a symbol installs an own value. A left hand side that is a call installs a down value for its head. Arguments in the left hand side are patterns when they use pattern syntax. A plain symbol argument is a literal symbol.
 
+A protected symbol cannot be redefined. A definition whose head is a kernel head is rejected even when the symbol was interned without attributes.
+
 Example:
 
 ```text
@@ -346,15 +365,13 @@ f(x_):=x^2
 
 defines a down value for `f`. Calling `f(3)` returns `9`.
 
-Down values are tried in this order:
-
-1. Literal arguments.
-2. Named patterns.
-3. Anonymous blanks.
-4. Sequence patterns.
-5. Definition order within the same class.
+Down values are tried in definition order. A more general rule defined first shadows a later literal rule; write specific cases first.
 
 A condition is checked after structural matching. When the condition does not evaluate to `true`, the next definition is tried.
+
+Rule bodies are instantiated with capture-avoiding substitution. Closure parameters, `let` bindings, and pattern variables of rules constructed by the body are renamed when an inserted value would otherwise be captured. An inner binding shadows a rule variable of the same name. Renaming uses fresh deterministic names derived from the bound name.
+
+A function with a fixed arity reports `EvalArity` when called with a different number of arguments. A definition with a sequence pattern is variadic and is not arity checked. Kernel heads always check their own arity.
 
 ## Patterns
 
@@ -397,13 +414,38 @@ The comparisons `<`, `<=`, `>`, and `>=` accept exact real numbers. They return 
 
 `true` and `false` are protected symbols.
 
+
+## Binders
+
+`forall(variable, domain, body)`, `exists(variable, domain, body)`, and `setBuilder(variable, domain, body)` bind a variable in the body. The domain is evaluated. The body is evaluated once for each item of a finite domain with the variable bound.
+
+`forall` returns `true` when every item satisfies the body and `false` when one item does not. `exists` returns `true` when one item satisfies the body and `false` when none does. `setBuilder` returns the canonical set of satisfying items.
+
+An empty domain gives `true` for `forall`, `false` for `exists`, and the empty set for `setBuilder`. A non-list domain or a body that does not decide to `true` or `false` leaves the binder symbolic.
+
+Bound variables are renamed to a canonical name when the binder is evaluated, so alpha-equivalent binders are structurally equal. The canonical names are `v0`, `v1`, and so on, chosen so that they do not occur in the body.
+
+
+## Structures
+
+A structure declaration introduces a constructor, one accessor per field, and a law checker. The constructor returns a dictionary whose first item is the structure name and whose remaining items are the field values in declaration order. An accessor projects a field by position. The law checker binds the fields from the dictionary and evaluates the conjunction of the declared laws.
+
+An instance evaluates each field value, builds the dictionary in declaration order, and checks the law conjunction. A false result rejects the instance with a definition diagnostic. A result that is not `true` or `false` also rejects the instance unless the declaration is marked `assumed`.
+
+Structure and instance declarations are module level statements. Generated names are ordinary definitions for export and privacy purposes.
+
 ## Scoping
 
 All scoping is lexical.
 
 - `let` creates lexical bindings.
+- A local `def` inside a block creates a lexical function scope. The innermost definition scope shadows outer scopes and global definitions entirely.
+- Mutual recursion is available among definitions in the same local scope.
+- Local definitions cannot shadow protected symbols.
+- A strict module's private definitions are installed under deterministic internal names and are not callable by their source name. Exported names are protected.
 - `fn` creates a closure over the current lexical environment.
 - Pattern variables are lexical within the rule body.
+- Rule bodies are substituted with capture avoidance: a closure parameter or `let` binding is renamed when an inserted value would otherwise be captured.
 - A global definition resolves at application time. A delayed right hand side sees the current global definition of a symbol that is not captured locally.
 - A closure captures local bindings by value.
 - There is no dynamic scoping form.
@@ -419,6 +461,8 @@ The symbols `undefined`, `indeterminate`, and `failed` are expression values.
 A `Diagnostic` is a Rust error. It reports parse failures, protected symbol definitions, budget exhaustion, non callable heads, and internal numeric failures. Domain results such as `undefined` remain ordinary expression values.
 
 Error values propagate through arithmetic and comparisons unless a rule specifies another result.
+
+A diagnostic carries a stable code, an optional source name, an optional span, and a trace. Trace frames point at the statement that failed and at the enclosing statements. The normative diagnostic contract is in `spec/semantics.md`.
 
 ## Determinism
 

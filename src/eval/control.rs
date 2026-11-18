@@ -1,4 +1,4 @@
-//! Definitions, closures, control flow, and list threading.
+//! Definitions, closures, control flow, binders, local definitions, and list threading.
 
 use super::*;
 
@@ -75,6 +75,160 @@ impl<'a> Evaluator<'a> {
         })();
         self.locals.pop();
         result
+    }
+
+    pub(super) fn eval_local_defs(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.len() != 2 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "localDefs expects definitions and a body",
+            ));
+        }
+        let Some(entries) = self.list_items(args[0]).map(<[ExprId]>::to_vec) else {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                "localDefs expects a list of definitions",
+            ));
+        };
+        let mut definitions = Vec::with_capacity(entries.len());
+        for entry in entries {
+            let Node::Call { head, args: parts } = self.arena.node(entry) else {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "each local definition must use the form setDelayed(lhs,rhs)",
+                ));
+            };
+            if parts.len() != 2
+                || self
+                    .arena
+                    .symbol_id(*head)
+                    .map(|symbol| self.arena.symbol_name(symbol))
+                    != Some("setDelayed")
+            {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "each local definition must use the form setDelayed(lhs,rhs)",
+                ));
+            }
+            definitions.push((parts[0], parts[1]));
+        }
+        self.definitions.push_scope();
+        let result = (|| {
+            for (lhs, rhs) in definitions {
+                self.definitions.define_local(self.arena, lhs, rhs)?;
+            }
+            self.eval(args[1])
+        })();
+        self.definitions.pop_scope();
+        result
+    }
+
+    pub(super) fn eval_quantifier(
+        &mut self,
+        head: ExprId,
+        args: &[ExprId],
+    ) -> Result<ExprId, Diagnostic> {
+        if args.len() != 3 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "a binder expects a variable, a domain, and a body",
+            ));
+        }
+        let Some((variable, domain, body, canonical)) = self.canonical_binder(head, args) else {
+            return Ok(self.arena.intern_call(head, args));
+        };
+        let domain = self.eval(domain)?;
+        let Some(items) = self.list_items(domain).map(<[ExprId]>::to_vec) else {
+            return Ok(canonical);
+        };
+        let kind = if head == self.heads.forall {
+            QuantifierKind::Forall
+        } else if head == self.heads.exists {
+            QuantifierKind::Exists
+        } else {
+            QuantifierKind::SetBuilder
+        };
+        let mut selected = Vec::new();
+        let mut decided = true;
+        self.locals.push(HashMap::new());
+        let result = (|| -> Result<Option<bool>, Diagnostic> {
+            for item in items {
+                self.locals
+                    .last_mut()
+                    .expect("quantifier frame exists")
+                    .insert(variable, item);
+                let value = self.eval(body)?;
+                match kind {
+                    QuantifierKind::Forall => {
+                        if value == self.heads.false_value {
+                            return Ok(Some(false));
+                        }
+                        if value != self.heads.true_value {
+                            decided = false;
+                        }
+                    }
+                    QuantifierKind::Exists => {
+                        if value == self.heads.true_value {
+                            return Ok(Some(true));
+                        }
+                        if value != self.heads.false_value {
+                            decided = false;
+                        }
+                    }
+                    QuantifierKind::SetBuilder => {
+                        if value == self.heads.true_value {
+                            selected.push(item);
+                        } else if value != self.heads.false_value {
+                            decided = false;
+                        }
+                    }
+                }
+            }
+            Ok(None)
+        })();
+        self.locals.pop();
+        if let Some(value) = result? {
+            return Ok(if value {
+                self.heads.true_value
+            } else {
+                self.heads.false_value
+            });
+        }
+        if !decided {
+            return Ok(canonical);
+        }
+        match kind {
+            QuantifierKind::Forall => Ok(self.heads.true_value),
+            QuantifierKind::Exists => Ok(self.heads.false_value),
+            QuantifierKind::SetBuilder => {
+                selected.sort_by(|left, right| self.arena.canonical_cmp(*left, *right));
+                selected.dedup();
+                Ok(self.arena.intern_call(self.heads.list, &selected))
+            }
+        }
+    }
+
+    fn canonical_binder(
+        &mut self,
+        head: ExprId,
+        args: &[ExprId],
+    ) -> Option<(SymbolId, ExprId, ExprId, ExprId)> {
+        let variable = self.arena.symbol_id(args[0])?;
+        let mut symbols = HashSet::new();
+        all_symbols(self.arena, args[2], &mut symbols);
+        let mut index = 0u32;
+        let canonical = loop {
+            let name = format!("v{index}");
+            let symbol = self.arena.symbol_or_intern(&name);
+            if !symbols.contains(&symbol) {
+                break symbol;
+            }
+            index += 1;
+        };
+        let body = rename_expression(self.arena, args[2], variable, canonical);
+        let variable = self.arena.symbol_expr(canonical);
+        let call = self.arena.intern_call(head, &[variable, args[1], body]);
+        Some((canonical, args[1], body, call))
     }
 
     pub(super) fn eval_if(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
@@ -203,7 +357,8 @@ impl<'a> Evaluator<'a> {
                 "map expects a list and a function",
             ));
         }
-        let Some(items) = self.list_items(args[0]).map(<[ExprId]>::to_vec) else {
+        let list = self.eval(args[0])?;
+        let Some(items) = self.list_items(list).map(<[ExprId]>::to_vec) else {
             return Ok(self.arena.intern_call(head, args));
         };
         let mut results = Vec::with_capacity(items.len());
@@ -224,7 +379,8 @@ impl<'a> Evaluator<'a> {
                 "apply expects a function and a list",
             ));
         }
-        let Some(items) = self.list_items(args[1]).map(<[ExprId]>::to_vec) else {
+        let list = self.eval(args[1])?;
+        let Some(items) = self.list_items(list).map(<[ExprId]>::to_vec) else {
             return Ok(self.arena.intern_call(head, args));
         };
         self.call_function(args[0], &items)
@@ -241,7 +397,8 @@ impl<'a> Evaluator<'a> {
                 "fold expects a function, an initial value, and a list",
             ));
         }
-        let Some(items) = self.list_items(args[2]).map(<[ExprId]>::to_vec) else {
+        let list = self.eval(args[2])?;
+        let Some(items) = self.list_items(list).map(<[ExprId]>::to_vec) else {
             return Ok(self.arena.intern_call(head, args));
         };
         let mut accumulator = self.eval(args[1])?;
@@ -262,7 +419,8 @@ impl<'a> Evaluator<'a> {
                 "nest expects a function, an initial value, and a count",
             ));
         }
-        let Some(count) = nonnegative_integer(self.arena, args[2]) else {
+        let count_value = self.eval(args[2])?;
+        let Some(count) = nonnegative_integer(self.arena, count_value) else {
             return Ok(self.arena.intern_call(head, args));
         };
         if count > 10_000 {
@@ -297,4 +455,11 @@ impl<'a> Evaluator<'a> {
             _ => None,
         }
     }
+}
+
+#[derive(Copy, Clone)]
+enum QuantifierKind {
+    Forall,
+    Exists,
+    SetBuilder,
 }

@@ -22,7 +22,10 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "map" | "apply" | "fold" | "nest" => A::new().with(A::PROTECTED),
-        "function" | "let" | "closure" | "approx" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
+        "function" | "let" | "closure" | "approx" | "localDefs" => {
+            A::new().with(A::HOLD_ALL).with(A::PROTECTED)
+        }
+        "forall" | "exists" | "setBuilder" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "interval" | "complex" => A::new().with(A::PROTECTED),
         "expand" | "factor" | "together" | "cancel" | "polynomialGcd" | "resultant" | "solve"
         | "degree" | "coefficient" | "polynomialDivide" | "discriminant" => {
@@ -44,19 +47,9 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "xor" | "implies" | "all" | "any" => A::new().with(A::PROTECTED),
-        "mean"
-        | "median"
-        | "minimum"
-        | "maximum"
-        | "range"
-        | "total"
-        | "count"
-        | "variance"
-        | "sampleVariance"
-        | "standardDeviation"
-        | "sampleStandardDeviation"
-        | "frequency"
-        | "mode" => A::new().with(A::PROTECTED),
+        "length" | "sort" | "first" | "rest" | "cons" | "nth" | "reverse" | "isNumber" => {
+            A::new().with(A::PROTECTED)
+        }
         "pattern" | "blank" | "blankSequence" | "blankNullSequence" | "condition" => {
             A::new().with(A::PROTECTED)
         }

@@ -2,7 +2,7 @@
 //!
 //! Evaluates canonical expressions through exact arithmetic, listable
 //! threading, comparisons, logic, definitions, closures, control flow,
-//! numeric boundaries, and limit and series dispatch.
+//! binders, quantifiers, numeric boundaries, and limit and series dispatch.
 
 mod arithmetic;
 mod control;
@@ -18,7 +18,7 @@ mod support;
 use core::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
-use crate::diag::{Diagnostic, ErrorCode};
+use crate::diag::{Diagnostic, ErrorCode, Frame};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
 use crate::hash::FnvBuildHasher;
 use crate::kernel::Heads;
@@ -28,13 +28,20 @@ use definitions::{Definitions, Rule};
 pub(crate) use evaluator::{Evaluator, fold_numeric_call};
 pub(crate) use heads::*;
 use pattern::{Bindings, match_pattern, substitute};
+pub(crate) use pattern::{all_symbols, rename_definition, rename_expression};
 use support::*;
 
+pub(crate) use definitions::DefinitionSite;
 pub(crate) use definitions::Definitions as SessionDefinitions;
 
 /// Report whether a name has a kernel dispatch entry.
 #[cfg(test)]
 pub(crate) fn has_kernel_function(name: &str) -> bool {
+    KernelFunction::from_name(name).is_some()
+}
+
+/// Report whether a name is a kernel head.
+pub(crate) fn is_kernel_head(name: &str) -> bool {
     KernelFunction::from_name(name).is_some()
 }
 

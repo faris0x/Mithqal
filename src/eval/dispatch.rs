@@ -131,10 +131,19 @@ impl<'a> Evaluator<'a> {
         if let Some(kernel) = kernel {
             return self.apply_kernel(kernel, head, args);
         }
-        if let Some(symbol) = self.arena.symbol_id(head)
-            && let Some(result) = self.apply_user(symbol, head, args)?
-        {
-            return Ok(result);
+        if let Some(symbol) = self.arena.symbol_id(head) {
+            if let Some(result) = self.apply_user(symbol, head, args)? {
+                return Ok(result);
+            }
+            if !self
+                .definitions
+                .accepts_arity(self.arena, symbol, args.len())
+            {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalArity,
+                    "function received the wrong number of arguments",
+                ));
+            }
         }
         Ok(self.arena.intern_call(head, args))
     }
@@ -188,15 +197,15 @@ impl<'a> Evaluator<'a> {
                 let original = self.arena.intern_call(head, args);
                 Ok(self.apply_logic(function, args).unwrap_or(original))
             }
-            KernelFunction::Statistics(function) => {
-                if args.len() != 1 {
+            KernelFunction::List(function) => {
+                if args.len() != function.arity() {
                     return Err(Diagnostic::eval(
                         ErrorCode::EvalArity,
-                        "statistics function expects one list",
+                        "list function received the wrong number of arguments",
                     ));
                 }
                 let original = self.arena.intern_call(head, args);
-                Ok(self.apply_statistics(function, args[0]).unwrap_or(original))
+                Ok(self.apply_list(function, args).unwrap_or(original))
             }
         }
     }
@@ -613,31 +622,65 @@ impl<'a> Evaluator<'a> {
         self.limit_value(antiderivative, variable, point, side)
     }
 
-    pub(super) fn apply_statistics(
-        &mut self,
-        function: StatisticsHead,
-        expression: ExprId,
-    ) -> Option<ExprId> {
+    pub(super) fn apply_list(&mut self, function: ListHead, args: &[ExprId]) -> Option<ExprId> {
         match function {
-            StatisticsHead::Mean => crate::statistics::mean_stat(self.arena, expression),
-            StatisticsHead::Median => crate::statistics::median(self.arena, expression),
-            StatisticsHead::Minimum => crate::statistics::minimum(self.arena, expression),
-            StatisticsHead::Maximum => crate::statistics::maximum(self.arena, expression),
-            StatisticsHead::Range => crate::statistics::range(self.arena, expression),
-            StatisticsHead::Total => crate::statistics::total(self.arena, expression),
-            StatisticsHead::Count => crate::statistics::count(self.arena, expression),
-            StatisticsHead::Variance => crate::statistics::variance_stat(self.arena, expression),
-            StatisticsHead::SampleVariance => {
-                crate::statistics::sample_variance(self.arena, expression)
+            ListHead::Length => {
+                let items = self.list_items(args[0])?.len();
+                Some(self.arena.intern_int(Int::from_i64(items as i64)))
             }
-            StatisticsHead::StandardDeviation => {
-                crate::statistics::standard_deviation(self.arena, expression)
+            ListHead::First => self.list_items(args[0])?.first().copied(),
+            ListHead::Rest => {
+                let items = self.list_items(args[0])?.to_vec();
+                let rest = &items[items.len().min(1)..];
+                Some(self.arena.intern_call(self.heads.list, rest))
             }
-            StatisticsHead::SampleStandardDeviation => {
-                crate::statistics::sample_standard_deviation(self.arena, expression)
+            ListHead::Cons => {
+                let items = self.list_items(args[1])?.to_vec();
+                let mut values = Vec::with_capacity(items.len() + 1);
+                values.push(args[0]);
+                values.extend_from_slice(&items);
+                Some(self.arena.intern_call(self.heads.list, &values))
             }
-            StatisticsHead::Frequency => crate::statistics::frequency(self.arena, expression),
-            StatisticsHead::Mode => crate::statistics::mode(self.arena, expression),
+            ListHead::Nth => {
+                let Node::Int(index) = self.arena.node(args[1]) else {
+                    return None;
+                };
+                let index = usize::try_from(index.to_i64()?).ok()?;
+                self.list_items(args[0])?.get(index).copied()
+            }
+            ListHead::Reverse => {
+                let mut items = self.list_items(args[0])?.to_vec();
+                items.reverse();
+                Some(self.arena.intern_call(self.heads.list, &items))
+            }
+            ListHead::Sort => {
+                let mut items = self.list_items(args[0])?.to_vec();
+                items.sort_by(|left, right| self.list_order(*left, *right));
+                Some(self.arena.intern_call(self.heads.list, &items))
+            }
+            ListHead::IsNumber => {
+                let numeric = matches!(
+                    self.arena.node(args[0]),
+                    Node::Int(_) | Node::Rat(_) | Node::Real(_)
+                );
+                Some(if numeric {
+                    self.heads.true_value
+                } else {
+                    self.heads.false_value
+                })
+            }
+        }
+    }
+
+    fn list_order(&self, left: ExprId, right: ExprId) -> Ordering {
+        match (
+            exact_rational(self.arena, left),
+            exact_rational(self.arena, right),
+        ) {
+            (Some(left), Some(right)) => left.cmp(&right),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => self.arena.canonical_cmp(left, right),
         }
     }
 
@@ -929,7 +972,7 @@ impl<'a> Evaluator<'a> {
         head: ExprId,
         args: &[ExprId],
     ) -> Result<Option<ExprId>, Diagnostic> {
-        let rules: Vec<Rule> = self.definitions.rules(symbol).to_vec();
+        let rules: Vec<Rule> = self.definitions.rules(symbol);
         if rules.is_empty() {
             return Ok(None);
         }
@@ -953,10 +996,23 @@ impl<'a> Evaluator<'a> {
                 continue;
             }
             let rhs = substitute(self.arena, rule.rhs, &bindings);
-            return if rule.delayed {
-                self.eval(rhs).map(Some)
-            } else {
-                Ok(Some(rhs))
+            if !rule.delayed {
+                return Ok(Some(rhs));
+            }
+            return match self.eval(rhs) {
+                Ok(value) => Ok(Some(value)),
+                Err(mut diagnostic) => {
+                    if let Some(site) = rule.site {
+                        let name = self.arena.symbol_name(symbol).to_string();
+                        diagnostic.trace.push(Frame {
+                            head: Some(name.clone()),
+                            expression: format!("definition of {name}"),
+                            span: Some(site.span),
+                            source: Some(self.definitions.source_name(site.source).to_string()),
+                        });
+                    }
+                    Err(diagnostic)
+                }
             };
         }
         Ok(None)

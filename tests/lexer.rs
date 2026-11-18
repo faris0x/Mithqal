@@ -165,7 +165,7 @@ fn non_ascii_source_is_an_error() {
 fn spans_report_line_and_column() {
     let error = lex("1+2\n3 4\n").unwrap_err();
     assert_eq!(error.code, ErrorCode::ParseWhitespace);
-    let span = error.span.unwrap();
+    let span = error.span.as_deref().unwrap();
     assert_eq!(span.line, 2);
     assert_eq!(span.column, 2);
 }

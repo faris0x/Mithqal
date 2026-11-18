@@ -23,10 +23,11 @@ fn automatic_collection_follows_the_configured_node_threshold() {
         ..Config::default()
     };
     let mut session = Session::with_config(config);
+    let baseline = session.live_expressions();
     for value in 0..200 {
         session.eval_statement(&format!("{value}+1")).unwrap();
     }
-    assert!(session.live_expressions() < 200);
+    assert!(session.live_expressions() < baseline + 200);
 }
 
 #[test]

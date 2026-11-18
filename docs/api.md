@@ -32,6 +32,8 @@ impl Session {
 
     pub fn eval_statement(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval_source(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
+    pub fn eval_named_source(&mut self, name: &str, src: &str) -> Result<ExprId, Diagnostic>;
+    pub fn eval_file(&mut self, path: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval_language(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval(&mut self, expr: ExprId) -> Result<ExprId, Diagnostic>;
     pub fn eval_compiled(&mut self, expr: ExprId) -> Result<ExprId, Diagnostic>;
@@ -53,7 +55,11 @@ impl Session {
 
 `eval_source` dispatches module-shaped source to `eval_language`. Ordinary statement source is parsed and evaluated in order. It stops at the first diagnostic and returns the value of the final statement. `parse_source` returns one handle per statement.
 
-`eval_language` parses and evaluates a surface language module. `output` returns the text collected by `prt` statements, and `take_output` moves that text out of the session.
+`eval_named_source` is `eval_source` with a source name attached to every diagnostic and trace frame. `eval_file` reads a file and calls `eval_named_source` with the path.
+
+`Session::new()` and `Session::with_config` load the bundled standard library before returning. Modules load in dependency order. A strict module, one with an `export` statement, exposes only its exports; other definitions are private and are installed under internal names. Exported names are protected and carry a declared arity. Descriptive statistics is implemented this way; see [Statistics](statistics.md).
+
+`eval_language` parses and evaluates a surface language module, including exports, imports, structure and instance declarations, and local definitions. `output` returns the text collected by `prt` statements, and `take_output` moves that text out of the session.
 
 `format` produces canonical source. The output can be parsed back into an equal expression. `format_infix` produces the human form. It may use operators and implicit multiplication. Both methods return `EvalNotLive` for a stale handle.
 
@@ -122,8 +128,9 @@ Approximate complex values are expressions with the protected `complex(real,imag
 pub struct Diagnostic {
     pub code: ErrorCode,
     pub kind: ErrorKind,
-    pub message: String,
-    pub span: Option<Span>,
+    pub message: Box<str>,
+    pub span: Option<Box<Span>>,
+    pub source: Option<Box<str>>,
     pub trace: Vec<Frame>,
     pub notes: Vec<String>,
 }
@@ -139,6 +146,7 @@ pub struct Frame {
     pub head: Option<String>,
     pub expression: String,
     pub span: Option<Span>,
+    pub source: Option<String>,
 }
 
 #[non_exhaustive]
@@ -165,7 +173,7 @@ error TGN-EVAL-0010: cannot call a non callable value
       2. apply: head evaluated to 3
 ```
 
-Parser diagnostics carry exact spans. Evaluator diagnostics carry a trace of heads and printed expressions. Evaluator frames do not yet carry source spans.
+Parser diagnostics carry exact spans. Language evaluation diagnostics carry a source name and a trace whose frames point at the failing statements. `eval_named_source` and `eval_file` attach the source name to every diagnostic and frame. A frame produced inside a definition carries the definition site, so an error reports the definition line as well as the call site.
 
 ## Configuration
 

@@ -1,0 +1,63 @@
+// Information theory over finite exact distributions.
+//
+// log2 is exact for probabilities that are integer powers of two. Other
+// probabilities remain symbolic through ln.
+
+mod information
+
+import lists
+import sets
+import probability
+import relations
+
+export log2,entropy,jointEntropy,marginal,marginalLeft,marginalRight,conditionalEntropy,mutualInformation,klDivergence,crossEntropy
+
+def positiveLog2(p,k) when same(p,1)=k
+def positiveLog2(p,k) when p<1=undefined
+def positiveLog2(p,k)=positiveLog2(p/2,k+1)
+
+def negativeLog2(p,k) when same(p,1)=-k
+def negativeLog2(p,k) when p>1=undefined
+def negativeLog2(p,k)=negativeLog2(p*2,k+1)
+
+def log2Exact(p) when p<=0=undefined
+def log2Exact(p) when same(p,1)=0
+def log2Exact(p) when p>1=positiveLog2(p,0)
+def log2Exact(p)=negativeLog2(p,0)
+
+def log2(p)=
+let exponent=log2Exact(p)
+if(same(exponent,undefined),ln(p)/ln(2),exponent)
+end
+
+def entropy(distribution)=
+fold(fn(acc,pair)=>let([p=nth(pair,1)],if(same(p,0),acc,acc-p*log2(p))),0,distribution)
+end
+
+def jointEntropy(distribution)=entropy(distribution)
+
+def marginal(distribution,projection)=
+let values=setOf(map(distribution,fn(pair)=>projection(nth(pair,0))))
+setOf(map(values,fn(value)=>[value,fold(fn(acc,pair)=>if(same(projection(nth(pair,0)),value),acc+nth(pair,1),acc),0,distribution)]))
+end
+
+def marginalLeft(distribution)=marginal(distribution,fn(outcome)=>nth(outcome,0))
+def marginalRight(distribution)=marginal(distribution,fn(outcome)=>nth(outcome,1))
+
+def conditionalEntropy(distribution,projection)=
+entropy(distribution)-entropy(marginal(distribution,projection))
+end
+
+def mutualInformation(distribution)=
+entropy(marginalLeft(distribution))+entropy(marginalRight(distribution))-entropy(distribution)
+end
+
+def klDivergence(p,q)=
+fold(fn(acc,pair)=>let([x=nth(pair,0),px=nth(pair,1)],if(same(px,0),acc,let([qx=applyRelation(q,x)],if(same(qx,undefined),undefined,if(same(qx,0),undefined,acc+px*log2(px/qx)))))),0,p)
+end
+
+def crossEntropy(p,q)=
+fold(fn(acc,pair)=>let([x=nth(pair,0),px=nth(pair,1)],if(same(px,0),acc,let([qx=applyRelation(q,x)],if(same(qx,undefined),undefined,if(same(qx,0),undefined,acc-px*log2(qx)))))),0,p)
+end
+
+end

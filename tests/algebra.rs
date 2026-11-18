@@ -696,3 +696,15 @@ fn solve_inference_rejects_ambiguous_variables() {
     let error = session.eval_statement("solve(x*y)").unwrap_err();
     assert_eq!(error.code, ErrorCode::EvalArity);
 }
+
+#[test]
+fn factorisation_is_independent_of_session_history() {
+    let source = "factor((y+1)*(x+y)^2)";
+    let fresh = text(source);
+    let mut session = Session::new();
+    for name in ["alpha", "beta", "delta"] {
+        session.eval_statement(&format!("{name}=1")).unwrap();
+    }
+    let value = session.eval_statement(source).unwrap();
+    assert_eq!(session.format_infix(value).unwrap(), fresh);
+}

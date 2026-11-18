@@ -1,0 +1,7 @@
+# id	profile	kind	expected	source	rationale
+exact.gcd.0001	exact	output	42	mod c\nprt gcd(84,126)\nend	Greatest common divisor.
+exact.factorial.0001	exact	output	3628800	mod c\nprt factorial(10)\nend	Exact factorial.
+exact.binomial.0001	exact	output	184756	mod c\nprt binomial(20,10)\nend	Exact binomial coefficient.
+exact.floor.0001	exact	output	3	mod c\nprt floor(7/2)\nend	Floor of an exact rational.
+exact.mean.0001	exact	output	3/2	mod c\nprt mean([1,2])\nend	The statistics module keeps exact results.
+exact.sqrt.0001	exact	output	sqrt(2)	mod c\nprt sqrt(2)\nend	An irrational square root stays symbolic.

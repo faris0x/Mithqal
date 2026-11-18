@@ -1,0 +1,45 @@
+// Exact combinatorial counts and finite enumerations.
+
+mod combinatorics
+
+import lists
+import sets
+
+export permutationCount,multinomial,catalan,derangementCount,stirlingSecond,permutationsOf,combinationsOf
+
+def permutationCount(n,k)=binomial(n,k)*factorial(k)
+
+def multinomial(counts)=
+let totalCount=fold(fn(acc,n)=>acc+n,0,counts)
+let denominator=fold(fn(acc,n)=>acc*factorial(n),1,counts)
+factorial(totalCount)/denominator
+end
+
+def catalan(n)=binomial(2*n,n)/(n+1)
+
+def derangementCount(n)=
+let terms=map(rangeList(n+1),fn(k)=>if(isEven(k),binomial(n,k)*factorial(n-k),-binomial(n,k)*factorial(n-k)))
+fold(fn(acc,term)=>acc+term,0,terms)
+end
+
+def stirlingSecond(n,k) when n==0&&k==0=1
+def stirlingSecond(n,k) when n==0=0
+def stirlingSecond(n,k) when k==0=0
+def stirlingSecond(n,k) when k>n=0
+def stirlingSecond(n,k)=k*stirlingSecond(n-1,k)+stirlingSecond(n-1,k-1)
+
+def insertions(item,xs)=
+cons(cons(item,xs),if(length(xs)==0,[],map(insertions(item,rest(xs)),fn(ys)=>cons(first(xs),ys))))
+end
+
+def permutationsOf(items) when length(items)==0=[[]]
+def permutationsOf(items)=
+let item=first(items)
+let restItems=rest(items)
+let restPermutations=permutationsOf(restItems)
+concat(map(restPermutations,fn(permutation)=>insertions(item,permutation)))
+end
+
+def combinationsOf(items,k)=filter(powerSet(items),fn(subset)=>length(subset)==k)
+
+end

@@ -1,0 +1,59 @@
+// Calculus rules written in Mithqal over the native kernels.
+//
+// The rules below cover the common elementary forms. Anything they do not
+// handle falls back to the native differentiate and integrate kernels, which
+// also supply polynomial and limit machinery.
+
+mod calculus
+
+export derive,antiderivative
+
+def productOf(items)=fold(fn(acc,item)=>acc*item,1,items)
+
+def d(v_,v_)=1
+def d(plus(a_,b__),x)=d(a,x)+fold(fn(acc,term)=>acc+d(term,x),0,list(b))
+def d(negate(u_),x)=-d(u,x)
+def d(times(a_,b__),x)=let([rest=productOf(list(b))],d(a,x)*rest+a*d(rest,x))
+def d(power(u_,n_),x) when isNumber(n)&&floor(n)==n=n*power(u,n-1)*d(u,x)
+def d(sin(u_),x)=cos(u)*d(u,x)
+def d(cos(u_),x)=-sin(u)*d(u,x)
+def d(tan(u_),x)=d(u,x)/power(cos(u),2)
+def d(exp(u_),x)=exp(u)*d(u,x)
+def d(ln(u_),x)=d(u,x)/u
+def d(sqrt(u_),x)=d(u,x)/(2*sqrt(u))
+def d(asin(u_),x)=d(u,x)/sqrt(1-power(u,2))
+def d(acos(u_),x)=-d(u,x)/sqrt(1-power(u,2))
+def d(atan(u_),x)=d(u,x)/(1+power(u,2))
+def d(sinh(u_),x)=cosh(u)*d(u,x)
+def d(cosh(u_),x)=sinh(u)*d(u,x)
+def d(tanh(u_),x)=d(u,x)/power(cosh(u),2)
+def d(asinh(u_),x)=d(u,x)/sqrt(1+power(u,2))
+def d(acosh(u_),x)=d(u,x)/sqrt(power(u,2)-1)
+def d(atanh(u_),x)=d(u,x)/(1-power(u,2))
+def d(expr,x)=differentiate(expr,x)
+
+def a(v_,v_)=power(v,2)/2
+def a(plus(a_,b__),x)=a(a,x)+fold(fn(acc,term)=>acc+a(term,x),0,list(b))
+def a(negate(u_),x)=-a(u,x)
+def a(times(c_,u__),x) when isNumber(c)=c*a(productOf(list(u)),x)
+def a(power(v_,-1),v_)=ln(v)
+def a(power(v_,n_),v_) when isNumber(n)&&floor(n)==n=power(v,n+1)/(n+1)
+def a(exp(v_),v_)=exp(v)
+def a(sin(v_),v_)=-cos(v)
+def a(cos(v_),v_)=sin(v)
+def a(tan(v_),v_)=-ln(cos(v))
+def a(ln(v_),v_)=v*ln(v)-v
+def a(sqrt(v_),v_)=(2/3)*power(v,3/2)
+def a(asin(v_),v_)=v*asin(v)+sqrt(1-power(v,2))
+def a(acos(v_),v_)=v*acos(v)-sqrt(1-power(v,2))
+def a(atan(v_),v_)=v*atan(v)-ln(1+power(v,2))/2
+def a(expr,x)=integrate(expr,x)
+
+def unwrapCancel(cancel(inner_))=inner
+def unwrapCancel(value_)=value
+def simplify(expression)=unwrapCancel(cancel(expression))
+
+def derive(expression,variable)=simplify(d(expression,variable))
+def antiderivative(expression,variable)=simplify(a(expression,variable))
+
+end

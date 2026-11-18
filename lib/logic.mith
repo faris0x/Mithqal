@@ -1,0 +1,13 @@
+// Finite quantification over lists.
+
+mod logic
+
+import lists
+
+export allOf,exists,countWhere
+
+def allOf(items,predicate)=all(map(items,predicate))
+def exists(items,predicate)=any(map(items,predicate))
+def countWhere(items,predicate)=length(filter(items,predicate))
+
+end

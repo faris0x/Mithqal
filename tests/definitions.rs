@@ -57,16 +57,25 @@ fn recursion_with_literal_base_case() {
 }
 
 #[test]
-fn literal_rules_win_over_patterns() {
+fn rules_are_tried_in_definition_order() {
     let mut session = session();
-    let source = "f(x_):=x^2\nf(0):=100\nf(0)\n";
+    let source = "f(0):=100\nf(x_):=x^2\nf(0)\n";
     let value = session.eval_source(source).unwrap();
     assert_eq!(session.format_infix(value).unwrap(), "100");
     assert_eq!(eval(&mut session, "f(2)"), "4");
 }
 
 #[test]
-fn equal_specificity_keeps_definition_order() {
+fn a_general_rule_shadows_a_later_literal_rule() {
+    let mut session = session();
+    let source = "f(x_):=x^2\nf(0):=100\nf(0)\n";
+    let value = session.eval_source(source).unwrap();
+    assert_eq!(session.format_infix(value).unwrap(), "0");
+    assert_eq!(eval(&mut session, "f(3)"), "9");
+}
+
+#[test]
+fn definition_order_is_preserved() {
     let mut session = session();
     let source = "f(x_):=1\nf(y_):=2\nf(10)\n";
     let value = session.eval_source(source).unwrap();
@@ -249,4 +258,23 @@ fn recursive_definitions_respect_the_budget() {
     session.eval_statement("f(x_):=f(x)").unwrap();
     let error = session.eval_statement("f(1)").unwrap_err();
     assert_eq!(error.code, ErrorCode::EvalBudget);
+}
+
+#[test]
+fn kernel_heads_cannot_be_redefined() {
+    let mut session = Session::new();
+    for source in ["degree(x)=x", "factor(x_):=x", "length(x_):=x"] {
+        let error = session.eval_statement(source).unwrap_err();
+        assert_eq!(error.code, ErrorCode::EvalProtected, "{source}");
+    }
+}
+
+#[test]
+fn nested_call_patterns_in_parameters() {
+    let mut session = Session::new();
+    session
+        .eval_source("mod m\ndef unwrap(g(x_))=x\nend\n")
+        .unwrap();
+    let value = session.eval_statement("unwrap(g(5))").unwrap();
+    assert_eq!(session.format_infix(value).unwrap(), "5");
 }

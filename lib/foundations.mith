@@ -1,0 +1,39 @@
+// A Peano interface over native integers and the von Neumann numerals.
+//
+// The Peano laws are checked over a finite range. The von Neumann numerals are
+// finite sets, so the encoding is inspectable rather than hidden.
+
+mod foundations
+
+import lists
+import logic
+import sets
+
+export peanoZero,peanoSucc,peanoAdd,peanoMul,checkPeano,vonNeumann,checkVonNeumann
+
+def peanoZero()=0
+def peanoSucc(n)=n+1
+def peanoAdd(a,b)=a+b
+def peanoMul(a,b)=a*b
+
+def checkPeano(n)=
+let items=rangeList(n)
+let injective=allOf(items,fn(a)=>allOf(items,fn(b)=>if(same(a,b),true,not(same(peanoSucc(a),peanoSucc(b))))))
+let additive=allOf(items,fn(a)=>same(peanoAdd(a,peanoZero()),a))
+let associative=allOf(items,fn(a)=>allOf(items,fn(b)=>allOf(items,fn(c)=>same(peanoAdd(peanoAdd(a,b),c),peanoAdd(a,peanoAdd(b,c))))))
+let distributive=allOf(items,fn(a)=>allOf(items,fn(b)=>same(peanoMul(a,peanoSucc(b)),peanoAdd(peanoMul(a,b),a))))
+injective&&additive&&associative&&distributive
+end
+
+def vonNeumann(n) when n<0=undefined
+def vonNeumann(n) when n==0=[]
+def vonNeumann(n)=
+let previous=vonNeumann(n-1)
+setOf(append(previous,[previous]))
+end
+
+def checkVonNeumann(n)=
+allOf(rangeList(n+1),fn(k)=>same(length(vonNeumann(k)),k))
+end
+
+end

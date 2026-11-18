@@ -68,6 +68,7 @@ fn interning_still_works_after_collection() {
 #[test]
 fn repeated_collection_keeps_memory_bounded() {
     let mut session = Session::new();
+    let baseline = session.live_expressions();
     for value in 0..2000 {
         session.eval_statement(&format!("{}+1", value)).unwrap();
         if value % 50 == 0 {
@@ -76,7 +77,7 @@ fn repeated_collection_keeps_memory_bounded() {
     }
     session.collect_garbage(&[]);
     assert!(
-        session.live_expressions() < 100,
+        session.live_expressions() < baseline + 100,
         "live expressions {}",
         session.live_expressions()
     );
@@ -108,11 +109,12 @@ fn automatic_collection_keeps_memory_bounded() {
         ..mithqal::Config::default()
     };
     let mut session = Session::with_config(config);
+    let baseline = session.live_expressions();
     for value in 0..500 {
         session.eval_statement(&format!("{}+1", value)).unwrap();
     }
     assert!(
-        session.live_expressions() < 200,
+        session.live_expressions() < baseline + 200,
         "live expressions {}",
         session.live_expressions()
     );
@@ -121,6 +123,8 @@ fn automatic_collection_keeps_memory_bounded() {
 #[test]
 fn collection_of_empty_session_is_safe() {
     let mut session = Session::new();
+    let baseline = session.live_expressions();
     session.collect_garbage(&[]);
-    assert_eq!(session.live_expressions(), 0);
+    assert_eq!(session.live_expressions(), baseline);
+    assert!(baseline > 0, "the standard library is live: {baseline}");
 }

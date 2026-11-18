@@ -343,13 +343,26 @@ pub(super) fn divide_by_linear_root(
     Some(result)
 }
 
-pub(super) fn bivariate_variables(polynomial: &Poly) -> Option<(SymbolId, SymbolId)> {
-    let variables = polynomial.variables();
+pub(super) fn ordered_variables(arena: &Arena, polynomial: &Poly) -> Vec<SymbolId> {
+    let mut variables: Vec<SymbolId> = polynomial.variables().into_iter().collect();
+    variables.sort_by(|left, right| {
+        arena
+            .symbol_name(*left)
+            .cmp(arena.symbol_name(*right))
+            .then(left.cmp(right))
+    });
+    variables
+}
+
+pub(super) fn bivariate_variables(
+    arena: &Arena,
+    polynomial: &Poly,
+) -> Option<(SymbolId, SymbolId)> {
+    let variables = ordered_variables(arena, polynomial);
     if variables.len() != 2 {
         return None;
     }
-    let mut symbols = variables.into_iter();
-    Some((symbols.next()?, symbols.next()?))
+    Some((variables[0], variables[1]))
 }
 
 pub(super) fn x_degree(polynomial: &Poly, horizontal: SymbolId) -> usize {

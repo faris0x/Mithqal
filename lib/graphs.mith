@@ -1,0 +1,75 @@
+// Finite directed and undirected graphs.
+//
+// A graph is a list of kind, vertices, and edges. In an undirected graph an
+// edge is normalized by sorting its endpoints. In a directed graph an edge is
+// an arc from the first endpoint to the second.
+
+mod graphs
+
+import lists
+import logic
+import sets
+import relations
+
+export graph,directedGraph,verticesOf,edgesOf,isDirected,isUndirected,adjacency,neighbors,hasEdge,degreeOf,inDegree,outDegree,reachable,pathExists,isConnected,components,isTree,isComplete,isAcyclic,reachabilityRelation
+
+def graph(vertices,edges)=[undirectedKind,setOf(vertices),setOf(map(edges,fn(edge)=>sort(edge)))]
+def directedGraph(vertices,arcs)=[directedKind,setOf(vertices),setOf(arcs)]
+
+def verticesOf(graph)=nth(graph,1)
+def edgesOf(graph)=nth(graph,2)
+def isDirected(graph)=same(nth(graph,0),directedKind)
+def isUndirected(graph)=same(nth(graph,0),undirectedKind)
+
+def adjacency(graph) when isDirected(graph)=relationOf(edgesOf(graph))
+def adjacency(graph)=
+let pairs=concat(map(edgesOf(graph),fn(edge)=>[[nth(edge,0),nth(edge,1)],[nth(edge,1),nth(edge,0)]]))
+relationOf(pairs)
+end
+
+def neighbors(graph,vertex)=imageOf(adjacency(graph),[vertex])
+def hasEdge(graph,from,to)=member(adjacency(graph),[from,to])
+def degreeOf(graph,vertex)=length(neighbors(graph,vertex))
+def inDegree(graph,vertex)=length(filter(edgesOf(graph),fn(edge)=>same(nth(edge,1),vertex)))
+def outDegree(graph,vertex)=degreeOf(graph,vertex)
+
+def walk(graph,visited,frontier) when length(frontier)==0=visited
+def walk(graph,visited,frontier)=
+let current=first(frontier)
+let remaining=rest(frontier)
+if(member(visited,current),walk(graph,visited,remaining),walk(graph,union(visited,[current]),union(remaining,difference(neighbors(graph,current),visited))))
+end
+
+def reachable(graph,start)=walk(graph,[],[start])
+
+def pathExists(graph,start,target)=member(reachable(graph,start),target)
+
+def isConnected(graph) when length(verticesOf(graph))==0=true
+def isConnected(graph)=same(length(reachable(graph,first(verticesOf(graph)))),length(verticesOf(graph)))
+
+def componentsFrom(graph,remaining,accumulator) when length(remaining)==0=setOf(accumulator)
+def componentsFrom(graph,remaining,accumulator)=
+let vertex=first(remaining)
+let component=reachable(graph,vertex)
+componentsFrom(graph,difference(remaining,component),cons(component,accumulator))
+end
+
+def components(graph)=componentsFrom(graph,verticesOf(graph),[])
+
+def isTree(graph)=isConnected(graph)&&length(edgesOf(graph))==length(verticesOf(graph))-1
+
+def isComplete(graph)=
+let pairs=filter(cartesian(verticesOf(graph),verticesOf(graph)),fn(pair)=>not(same(nth(pair,0),nth(pair,1))))
+allOf(pairs,fn(pair)=>hasEdge(graph,nth(pair,0),nth(pair,1)))
+end
+
+def isAcyclic(graph)=
+allOf(edgesOf(graph),fn(edge)=>not(pathExists(graph,nth(edge,1),nth(edge,0))))
+end
+
+def reachabilityRelation(graph)=
+let pairs=concat(map(verticesOf(graph),fn(vertex)=>map(reachable(graph,vertex),fn(target)=>[vertex,target])))
+setOf(pairs)
+end
+
+end

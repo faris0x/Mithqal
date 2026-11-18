@@ -24,13 +24,31 @@ Included:
 - One-sided endpoint limits for improper integrals, transcendental interior singularity checks, and a staged multivariate factorization pipeline with binary, homogeneous, recursive quadratic, polynomial-leading, content extraction, specialization root lifting, bivariate Hensel lifting, generic multivariate interpolation through eight variables, and power extraction stages. It also includes bounded bivariate Hensel lifting to total degree sixteen.
 - Bounded Hensel lifting for univariate integer polynomials.
 - Local sign assumptions, conjunctive assumptions, and conditional simplification.
-- A line based surface language with modules, definitions, literal patterns, guards, lexical bindings, conditionals, match blocks, and print statements.
+- A line based surface language with modules, exports, imports, definitions with block bodies, local definitions, literal and constructor patterns, guards, lexical bindings, conditionals, match blocks, canonical binders, structure and instance declarations, and print statements.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
 - Exact rational and symbolic matrix linear algebra with determinants, rank, inverses, row reduction, matrix products, PLU factorization, characteristic polynomials, eigenvalues, eigenvectors, null spaces, QR factorization, and linear solving.
 - Broader polynomial algebra with degrees, coefficients, polynomial division, discriminants, and sum or difference of cubes factoring.
 - Exact integer number theory with primality, factorization, divisors, totients, sigma, modular arithmetic, and modular powers.
 - Broader number theory with previous primes, prime counting, divisor counts, Moebius values, radicals, square-free tests, Fibonacci numbers, modular inverses, and Jacobi symbols.
 - Exact descriptive statistics with means, medians, extrema, ranges, totals, variances, deviations, frequencies, and modes.
+- A standard library written in Mithqal and loaded when a session is constructed, covering statistics, finite sets and relations, structures, foundations, combinatorics, probability, decision theory, games, graphs, information theory, and calculus rules.
+- Generic list primitives for library code: length, sort, first, rest, cons, nth, reverse, and a number predicate.
+- Inferred arities for definitions, with arity diagnostics on mismatched fixed-arity calls.
+- Definition bodies that span lines with `let` and `if` statements ending in one expression.
+- Pattern parameters for definitions, including sequence patterns and nested constructor patterns.
+- Arity inferred from each definition; fixed-arity functions report arity diagnostics and variadic functions stay unchecked.
+- Capture-avoiding substitution for rule-constructing bodies, including `rule`, `ruleDelayed`, `condition`, and `pattern` binders.
+- Lexically scoped local definitions inside blocks and definition bodies, with mutual recursion and protected-symbol checks.
+- Strict modules with declared exports, private internal definitions, and import-declared dependency ordering.
+- A definitional library layer with finite sets, relations, finite quantifiers, structure dictionaries with finite law checks, and a Peano and von Neumann foundations module.
+- Exact combinatorics with permutations, combinations, Catalan numbers, derangements, and Stirling numbers.
+- Finite probability with exact rational distributions, conditioning, expectation, variance, and independent products.
+- Exact decision theory with expected utility, best actions, and minimax regret.
+- Finite two player games with pure Nash equilibria, dominant strategies, zero-sum detection, and Pareto optimal outcomes.
+- Finite graph theory with adjacency, reachability, components, trees, complete graphs, and acyclicity.
+- Information theory with entropy, marginals, mutual information, and divergences over exact distributions.
+- A Mithqal calculus rule layer for differentiation and integration, with the native kernels as fallback.
+- Canonical binders and structure and instance declarations with finite law checks.
 - Boolean logic with exclusive or, implication, list quantification, and predicate composition.
 - A versioned structured IR scaffold for a future language frontend.
 - Typed instruction virtual machine and a reference interpreter.
@@ -43,7 +61,7 @@ Excluded:
 
 - Full multivariate factorization beyond the staged coverage and interpolation above eight variables.
 - Further matrix decompositions and wider assumption domains.
-- Strings, files, and sets beyond `emptyset`.
+- Strings, file loading, and infinite sets.
 - Unicode source and LaTeX rendering.
 - Parallel evaluation and a JIT.
 - Windows and macOS builds.
@@ -80,9 +98,9 @@ The test suite covers these areas:
 
 ## Remaining work
 
-Remaining work includes broader improper integration, general multivariate factorization beyond the staged bounds, further matrix decompositions, and wider assumption domains. A graphical interface follows once the library surface is stable.
+Remaining work includes broader improper integration, general multivariate factorization beyond the staged bounds, further matrix decompositions, wider assumption domains, proofs, qualified names, and notation declarations. A graphical interface follows once the language surface is stable.
 
-The engine remains a library at its core. Frontends are feature-gated modules that consume the public API.
+The engine remains a small core. Mathematics lives in Mithqal modules. Frontends consume the public API and the language contract.
 
 ## Constraints
 

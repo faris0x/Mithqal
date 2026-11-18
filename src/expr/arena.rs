@@ -51,6 +51,7 @@ pub struct Arena {
     symbol_names: HashMap<String, SymbolId, FnvBuildHasher>,
     builtin_heads: HashMap<&'static str, ExprId, FnvBuildHasher>,
     heads: Option<crate::kernel::Heads>,
+    fresh: u64,
 }
 
 impl Arena {
@@ -71,6 +72,7 @@ impl Arena {
             symbol_names: HashMap::default(),
             builtin_heads: HashMap::default(),
             heads: None,
+            fresh: 0,
         }
     }
 
@@ -146,6 +148,21 @@ impl Arena {
         });
         self.symbol_names.insert(name.to_string(), id);
         id
+    }
+
+    /// Create a deterministic fresh symbol derived from an existing name.
+    ///
+    /// Names use the base name followed by a counter, so they remain valid
+    /// source identifiers and printed expressions round trip.
+    pub(crate) fn fresh_symbol(&mut self, base: SymbolId) -> SymbolId {
+        let base_name = self.symbols[base as usize].name.clone();
+        loop {
+            self.fresh = self.fresh.wrapping_add(1);
+            let name = format!("{base_name}{}", self.fresh);
+            if !self.symbol_names.contains_key(&name) {
+                return self.intern_symbol(&name, Attributes::new());
+            }
+        }
     }
 
     /// The symbol expression for a symbol table entry.

@@ -141,6 +141,13 @@ impl<'a> Evaluator<'a> {
         if head == self.heads.let_head {
             return self.eval_let(args.as_slice());
         }
+        if head == self.heads.local_defs {
+            return self.eval_local_defs(args.as_slice());
+        }
+        if head == self.heads.forall || head == self.heads.exists || head == self.heads.set_builder
+        {
+            return self.eval_quantifier(head, args.as_slice());
+        }
         if head == self.heads.if_head {
             return self.eval_if(args.as_slice());
         }

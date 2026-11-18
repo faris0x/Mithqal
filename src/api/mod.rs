@@ -3,14 +3,14 @@
 use std::collections::HashMap;
 
 use crate::config::Config;
-use crate::diag::{Diagnostic, ErrorCode, Span};
+use crate::diag::{Diagnostic, ErrorCode, Frame, Span};
 use crate::eval::{SessionDefinitions, evaluate_with_definitions};
 use crate::expr::{Arena, ExprId, Node, SymbolId};
 use crate::hash::FnvBuildHasher;
 use crate::num::{Int, Rat};
 use crate::print;
 use crate::runtime;
-use crate::syntax::{self, Case, ExprSource, PatternSource, Stmt};
+use crate::syntax::{self, Body, BodyStmt, Case, ExprSource, PatternSource, Stmt};
 
 /// A view of an expression.
 #[non_exhaustive]
@@ -48,6 +48,9 @@ pub struct Session {
     compiled_results: HashMap<(ExprId, u64), ExprId, FnvBuildHasher>,
     output: Vec<String>,
     language_scopes: Vec<HashMap<SymbolId, ExprId, FnvBuildHasher>>,
+    source_name: Option<String>,
+    definition_source: Option<u32>,
+    structures: HashMap<String, Vec<String>>,
     config: Config,
 }
 

@@ -1,6 +1,8 @@
 //! Session methods.
 
 use super::*;
+use crate::expr::Attributes;
+use crate::stdlib;
 
 impl Session {
     /// Create a session with default limits.
@@ -9,8 +11,13 @@ impl Session {
     }
 
     /// Create a session with explicit limits.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a bundled standard library module fails to parse or evaluate.
+    /// The modules are part of the crate and are exercised by the test suite.
     pub fn with_config(config: Config) -> Self {
-        Session {
+        let mut session = Session {
             arena: Arena::with_capacity(config.initial_arena_capacity),
             definitions: SessionDefinitions::new(),
             last_result: None,
@@ -20,8 +27,107 @@ impl Session {
             compiled_results: HashMap::default(),
             output: Vec::new(),
             language_scopes: Vec::new(),
+            source_name: None,
+            definition_source: None,
+            structures: HashMap::default(),
             config,
+        };
+        session.load_standard_library();
+        session
+    }
+
+    fn load_standard_library(&mut self) {
+        let order = stdlib::resolve_order(stdlib::MODULES)
+            .unwrap_or_else(|error| panic!("standard library: {error}"));
+        for index in order {
+            let module = &stdlib::MODULES[index];
+            self.eval_named_source(module.name, module.source)
+                .unwrap_or_else(|error| {
+                    panic!(
+                        "standard library module {} failed to evaluate: {error}",
+                        module.name
+                    )
+                });
         }
+        self.last_result = None;
+        self.output.clear();
+        self.collect_garbage(&[]);
+    }
+
+    fn privatize_module(&mut self, defined: &[String], exports: &[String], module: &str) {
+        let mut renames = Vec::new();
+        let mut targets: HashMap<SymbolId, SymbolId> = HashMap::default();
+        for name in defined {
+            let symbol = self.arena.symbol_or_intern(name);
+            if exports.iter().any(|export| export == name) {
+                targets.insert(symbol, symbol);
+                continue;
+            }
+            let mangled = self.mangled_symbol(module, name);
+            renames.push((symbol, mangled));
+            targets.insert(symbol, mangled);
+        }
+        let mut taken = Vec::with_capacity(defined.len());
+        for name in defined {
+            let symbol = self.arena.symbol_or_intern(name);
+            let rules = self.definitions.take_rules(symbol);
+            let own = self.definitions.take_own(symbol);
+            taken.push((symbol, rules, own));
+        }
+        for (symbol, mut rules, own) in taken {
+            for (from, to) in &renames {
+                for rule in &mut rules {
+                    let (lhs, rhs) = crate::eval::rename_definition(
+                        &mut self.arena,
+                        rule.lhs,
+                        rule.rhs,
+                        *from,
+                        *to,
+                    );
+                    rule.lhs = lhs;
+                    rule.rhs = rhs;
+                }
+            }
+            let target = targets.get(&symbol).copied().unwrap_or(symbol);
+            self.definitions.install_rules(target, rules);
+            if let Some(mut own) = own {
+                for (from, to) in &renames {
+                    own.value =
+                        crate::eval::rename_expression(&mut self.arena, own.value, *from, *to);
+                }
+                self.definitions.install_own(target, own);
+            }
+            self.protect(target);
+        }
+    }
+
+    fn mangled_symbol(&mut self, module: &str, name: &str) -> SymbolId {
+        let mut suffix = String::new();
+        let mut counter = 0usize;
+        loop {
+            let candidate = format!(
+                "{module}{}{}{suffix}",
+                name[..1].to_ascii_uppercase(),
+                &name[1..]
+            );
+            let symbol = self.arena.symbol_or_intern(&candidate);
+            let free = self.definitions.rules(symbol).is_empty()
+                && !self
+                    .arena
+                    .symbol_attributes(symbol)
+                    .has(Attributes::PROTECTED);
+            if free {
+                return symbol;
+            }
+            counter += 1;
+            suffix = counter.to_string();
+        }
+    }
+
+    fn protect(&mut self, symbol: SymbolId) {
+        let attributes = self.arena.symbol_attributes(symbol);
+        self.arena
+            .set_symbol_attributes(symbol, attributes.with(Attributes::PROTECTED));
     }
 
     /// Parse a single statement.
@@ -46,11 +152,35 @@ impl Session {
     }
 
     /// Parse and evaluate a complete surface language module.
+    ///
+    /// A module with at least one `export` statement is strict: only exported
+    /// definitions keep their names, and the other definitions are private to
+    /// the module. A module without an `export` statement keeps every
+    /// definition visible.
     pub fn eval_language(&mut self, source: &str) -> Result<ExprId, Diagnostic> {
         let program = syntax::parse_program(source)?;
+        let defined = defined_names(&program);
+        let exports = exported_names(&program);
+        for name in &exports {
+            if !defined.iter().any(|defined| defined == name) {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("module exports undefined function {name}"),
+                ));
+            }
+        }
+        let previous_source = self.definition_source;
+        self.definition_source = self
+            .source_name
+            .as_deref()
+            .map(|name| self.definitions.intern_source(name));
         self.language_scopes.push(HashMap::default());
-        let result = self.eval_language_statements(&program.body);
+        let result = self.eval_language_statements(&program.body, false);
         self.language_scopes.pop();
+        self.definition_source = previous_source;
+        if result.is_ok() && !exports.is_empty() {
+            self.privatize_module(&defined, &exports, &program.name);
+        }
         if let Ok(value) = result {
             self.last_result = Some(value);
             self.maybe_collect();
@@ -68,15 +198,279 @@ impl Session {
         core::mem::take(&mut self.output)
     }
 
-    fn eval_language_statements(&mut self, statements: &[Stmt]) -> Result<ExprId, Diagnostic> {
+    fn eval_language_statements(
+        &mut self,
+        statements: &[Stmt],
+        local: bool,
+    ) -> Result<ExprId, Diagnostic> {
         let mut last = None;
         for statement in statements {
-            last = Some(self.eval_language_statement(statement)?);
+            match self.eval_language_statement(statement, local) {
+                Ok(value) => last = Some(value),
+                Err(mut diagnostic) => {
+                    if let Some((span, expression, head)) = statement.location() {
+                        diagnostic.trace.push(Frame {
+                            head,
+                            expression,
+                            span: Some(span),
+                            source: self.source_name.clone(),
+                        });
+                    }
+                    return Err(diagnostic);
+                }
+            }
         }
         Ok(last.unwrap_or_else(|| self.arena.builtin_head("null")))
     }
 
-    fn eval_language_statement(&mut self, statement: &Stmt) -> Result<ExprId, Diagnostic> {
+    fn eval_language_block(&mut self, statements: &[Stmt]) -> Result<ExprId, Diagnostic> {
+        self.language_scopes.push(HashMap::default());
+        self.definitions.push_scope();
+        let result = self.eval_language_statements(statements, true);
+        self.definitions.pop_scope();
+        self.language_scopes.pop();
+        result
+    }
+
+    fn compile_definition(
+        &mut self,
+        name: &str,
+        parameters: &[PatternSource],
+        guard: &Option<ExprSource>,
+        body: &Body,
+    ) -> Result<(ExprId, ExprId), Diagnostic> {
+        self.compile_definition_with(name, parameters, guard, body, &[])
+    }
+
+    fn compile_definition_with(
+        &mut self,
+        name: &str,
+        parameters: &[PatternSource],
+        guard: &Option<ExprSource>,
+        body: &Body,
+        excluded: &[SymbolId],
+    ) -> Result<(ExprId, ExprId), Diagnostic> {
+        let blank_head = self.arena.builtin_head("blank");
+        let blank = self.arena.intern_call(blank_head, &[]);
+        let pattern_head = self.arena.builtin_head("pattern");
+        let mut patterns = Vec::with_capacity(parameters.len());
+        let mut parameter_symbols = Vec::new();
+        for parameter in parameters {
+            match parameter {
+                PatternSource::Name(parameter) => {
+                    let symbol = self.arena.symbol_or_intern(parameter);
+                    parameter_symbols.push(symbol);
+                    let name = self.arena.symbol_expr(symbol);
+                    patterns.push(self.arena.intern_call(pattern_head, &[name, blank]));
+                }
+                PatternSource::Literal(source) => {
+                    let expression = self.language_expression(source)?;
+                    self.collect_pattern_symbols(expression, &mut parameter_symbols);
+                    patterns.push(expression);
+                }
+            }
+        }
+        let mut scope = parameter_symbols;
+        for symbol in excluded {
+            if !scope.contains(symbol) {
+                scope.push(*symbol);
+            }
+        }
+        let body = self.resolve_body(body, &scope)?;
+        let guard = if let Some(guard) = guard {
+            Some(self.resolved_language_expression(guard, &scope)?)
+        } else {
+            None
+        };
+        let symbol = self.arena.symbol_or_intern(name);
+        let head = self.arena.symbol_expr(symbol);
+        let mut lhs = self.arena.intern_call(head, &patterns);
+        if let Some(guard) = guard {
+            let condition = self.arena.builtin_head("condition");
+            lhs = self.arena.intern_call(condition, &[lhs, guard]);
+        }
+        Ok((lhs, body))
+    }
+
+    fn ensure_name_free(&mut self, name: &str) -> Result<SymbolId, Diagnostic> {
+        if crate::eval::is_kernel_head(name) {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalProtected,
+                format!("symbol {name} is protected"),
+            ));
+        }
+        let symbol = self.arena.symbol_or_intern(name);
+        if self.definitions.own_value(symbol).is_some()
+            || !self.definitions.rules(symbol).is_empty()
+            || self
+                .arena
+                .symbol_attributes(symbol)
+                .has(Attributes::PROTECTED)
+        {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                format!("symbol {name} is already defined"),
+            ));
+        }
+        Ok(symbol)
+    }
+
+    fn declare_structure(
+        &mut self,
+        name: &str,
+        fields: &[String],
+        laws: &[(String, ExprSource)],
+    ) -> Result<(), Diagnostic> {
+        if self.structures.contains_key(name) {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                format!("structure {name} is already declared"),
+            ));
+        }
+        let field_symbols: Vec<SymbolId> = fields
+            .iter()
+            .map(|field| self.arena.symbol_or_intern(field))
+            .collect();
+        let mut generated = vec![name.to_string(), format!("{name}Holds")];
+        for field in fields {
+            generated.push(format!("{name}{}", capitalize(field)));
+        }
+        for generated_name in &generated {
+            self.ensure_name_free(generated_name)?;
+        }
+        let mut parts = vec![name.to_string()];
+        parts.extend(fields.iter().cloned());
+        let body = Body::Expression(ExprSource {
+            text: format!("[{}]", parts.join(",")),
+            line: 1,
+            column: 1,
+        });
+        let parameters: Vec<PatternSource> = fields
+            .iter()
+            .map(|field| PatternSource::Name(field.clone()))
+            .collect();
+        let (lhs, rhs) = self.compile_definition_with(name, &parameters, &None, &body, &[])?;
+        self.definitions.define(&self.arena, lhs, rhs, true)?;
+        for (index, field) in fields.iter().enumerate() {
+            let accessor = format!("{name}{}", capitalize(field));
+            let body = Body::Expression(ExprSource {
+                text: format!("nth(s,{})", index + 1),
+                line: 1,
+                column: 1,
+            });
+            let parameters = vec![PatternSource::Name("s".to_string())];
+            let (lhs, rhs) =
+                self.compile_definition_with(&accessor, &parameters, &None, &body, &[])?;
+            self.definitions.define(&self.arena, lhs, rhs, true)?;
+        }
+        let text = if laws.is_empty() {
+            "true".to_string()
+        } else {
+            let bindings = fields
+                .iter()
+                .enumerate()
+                .map(|(index, field)| format!("{field}=nth(s,{})", index + 1))
+                .collect::<Vec<_>>()
+                .join(",");
+            let conditions = laws
+                .iter()
+                .map(|(_, law)| law.text.clone())
+                .collect::<Vec<_>>()
+                .join(",");
+            format!("let([{bindings}],and({conditions}))")
+        };
+        let body = Body::Expression(ExprSource {
+            text,
+            line: 1,
+            column: 1,
+        });
+        let parameters = vec![PatternSource::Name("s".to_string())];
+        let holds = format!("{name}Holds");
+        let (lhs, rhs) =
+            self.compile_definition_with(&holds, &parameters, &None, &body, &field_symbols)?;
+        self.definitions.define(&self.arena, lhs, rhs, true)?;
+        self.structures.insert(name.to_string(), fields.to_vec());
+        Ok(())
+    }
+
+    fn declare_instance(
+        &mut self,
+        name: &str,
+        structure: &str,
+        assumed: bool,
+        fields: &[(String, ExprSource)],
+    ) -> Result<(), Diagnostic> {
+        let Some(schema) = self.structures.get(structure).cloned() else {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                format!("unknown structure {structure}"),
+            ));
+        };
+        if fields.len() != schema.len() {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                format!("instance {name} does not provide every field of {structure}"),
+            ));
+        }
+        for (field, _) in fields {
+            if !schema.iter().any(|schema_field| schema_field == field) {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("instance {name} has unknown field {field}"),
+                ));
+            }
+        }
+        let mut values = Vec::with_capacity(schema.len());
+        for field in &schema {
+            let Some((_, source)) = fields.iter().find(|(name, _)| name == field) else {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("instance {name} is missing field {field}"),
+                ));
+            };
+            let value = self.resolved_language_expression(source, &[])?;
+            values.push(self.eval(value)?);
+        }
+        let tag = self.arena.symbol_or_intern(structure);
+        let tag = self.arena.symbol_expr(tag);
+        let mut parts = Vec::with_capacity(values.len() + 1);
+        parts.push(tag);
+        parts.extend(values);
+        let list = self.arena.builtin_head("list");
+        let dictionary = self.arena.intern_call(list, &parts);
+        if !assumed {
+            let holds = format!("{structure}Holds");
+            let holds_symbol = self.arena.symbol_or_intern(&holds);
+            let holds = self.arena.symbol_expr(holds_symbol);
+            let call = self.arena.intern_call(holds, &[dictionary]);
+            let result = self.eval(call)?;
+            let true_value = self.arena.builtin_head("true");
+            let false_value = self.arena.builtin_head("false");
+            if result == false_value {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("instance {name} does not satisfy the laws of {structure}"),
+                ));
+            }
+            if result != true_value {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("instance {name} laws are undecidable; declare the instance assumed"),
+                ));
+            }
+        }
+        let symbol = self.ensure_name_free(name)?;
+        let symbol = self.arena.symbol_expr(symbol);
+        self.definitions
+            .define(&self.arena, symbol, dictionary, false)?;
+        Ok(())
+    }
+
+    fn eval_language_statement(
+        &mut self,
+        statement: &Stmt,
+        local: bool,
+    ) -> Result<ExprId, Diagnostic> {
         match statement {
             Stmt::Def {
                 name,
@@ -84,38 +478,26 @@ impl Session {
                 guard,
                 body,
             } => {
-                let blank_head = self.arena.builtin_head("blank");
-                let blank = self.arena.intern_call(blank_head, &[]);
-                let pattern_head = self.arena.builtin_head("pattern");
-                let mut patterns = Vec::with_capacity(parameters.len());
-                let mut parameter_symbols = Vec::new();
-                for parameter in parameters {
-                    match parameter {
-                        PatternSource::Name(parameter) => {
-                            let symbol = self.arena.symbol_or_intern(parameter);
-                            parameter_symbols.push(symbol);
-                            let name = self.arena.symbol_expr(symbol);
-                            patterns.push(self.arena.intern_call(pattern_head, &[name, blank]));
-                        }
-                        PatternSource::Literal(source) => {
-                            patterns.push(self.language_expression(source)?);
-                        }
+                let (lhs, rhs) = self.compile_definition(name, parameters, guard, body)?;
+                {
+                    let arena = &self.arena;
+                    if local {
+                        self.definitions.define_local(arena, lhs, rhs)?;
+                    } else {
+                        self.definitions.define(arena, lhs, rhs, true)?;
                     }
                 }
-                let body = self.resolved_language_expression(body, &parameter_symbols)?;
-                let guard = if let Some(guard) = guard {
-                    Some(self.resolved_language_expression(guard, &parameter_symbols)?)
-                } else {
-                    None
-                };
-                let symbol = self.arena.symbol_or_intern(name);
-                let head = self.arena.symbol_expr(symbol);
-                let mut lhs = self.arena.intern_call(head, &patterns);
-                if let Some(guard) = guard {
-                    let condition = self.arena.builtin_head("condition");
-                    lhs = self.arena.intern_call(condition, &[lhs, guard]);
+                if let (Some(source), Some((span, _, _))) =
+                    (self.definition_source, statement.location())
+                {
+                    let arena = &self.arena;
+                    self.definitions.annotate_last(
+                        arena,
+                        lhs,
+                        local,
+                        crate::eval::DefinitionSite { span, source },
+                    );
                 }
-                self.definitions.define(&self.arena, lhs, body, true)?;
                 Ok(self.arena.builtin_head("null"))
             }
             Stmt::Let { name, body } => {
@@ -139,14 +521,11 @@ impl Session {
                 let condition = self.resolved_language_expression(condition, &[])?;
                 let condition = self.eval(condition)?;
                 let truth = self.language_boolean(condition)?;
-                self.language_scopes.push(HashMap::default());
-                let result = if truth {
-                    self.eval_language_statements(then_body)
+                if truth {
+                    self.eval_language_block(then_body)
                 } else {
-                    self.eval_language_statements(else_body)
-                };
-                self.language_scopes.pop();
-                result
+                    self.eval_language_block(else_body)
+                }
             }
             Stmt::Match {
                 scrutinee,
@@ -157,21 +536,53 @@ impl Session {
                 let scrutinee = self.eval(scrutinee)?;
                 for case in cases {
                     if self.eval_case(case, scrutinee)? {
-                        let result = self.eval_language_statements(&case.body);
+                        let result = self.eval_language_statements(&case.body, true);
+                        self.definitions.pop_scope();
                         self.language_scopes.pop();
                         return result;
                     }
                 }
-                self.language_scopes.push(HashMap::default());
-                let result = self.eval_language_statements(else_body);
-                self.language_scopes.pop();
-                result
+                self.eval_language_block(else_body)
             }
             Stmt::Print { body } => {
                 let value = self.resolved_language_expression(body, &[])?;
                 let value = self.eval(value)?;
                 self.output.push(self.format_infix(value)?);
                 Ok(value)
+            }
+            Stmt::Structure { name, fields, laws } => {
+                if local {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        "a structure must appear at module level",
+                    ));
+                }
+                self.declare_structure(name, fields, laws)?;
+                Ok(self.arena.builtin_head("null"))
+            }
+            Stmt::Instance {
+                name,
+                structure,
+                assumed,
+                fields,
+            } => {
+                if local {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        "an instance must appear at module level",
+                    ));
+                }
+                self.declare_instance(name, structure, *assumed, fields)?;
+                Ok(self.arena.builtin_head("null"))
+            }
+            Stmt::Export { .. } | Stmt::Import { .. } => {
+                if local {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        "export and import must appear at module level",
+                    ));
+                }
+                Ok(self.arena.builtin_head("null"))
             }
         }
     }
@@ -192,7 +603,9 @@ impl Session {
                 literal == scrutinee
             }
         };
-        if !matched {
+        if matched {
+            self.definitions.push_scope();
+        } else {
             self.language_scopes.pop();
         }
         Ok(matched)
@@ -202,7 +615,7 @@ impl Session {
         match syntax::parse_statement(&mut self.arena, &source.text) {
             Ok(expression) => Ok(expression),
             Err(mut diagnostic) => {
-                if let Some(span) = diagnostic.span.as_mut()
+                if let Some(span) = diagnostic.span.as_deref_mut()
                     && span.line == 1
                 {
                     span.line = source.line;
@@ -250,6 +663,133 @@ impl Session {
         }
     }
 
+    fn collect_pattern_symbols(&self, expression: ExprId, symbols: &mut Vec<SymbolId>) {
+        let Node::Call { head, args } = self.arena.node(expression) else {
+            return;
+        };
+        if args.len() == 2
+            && self
+                .arena
+                .symbol_id(*head)
+                .map(|symbol| self.arena.symbol_name(symbol))
+                == Some("pattern")
+            && let Some(symbol) = self.arena.symbol_id(args[0])
+            && !symbols.contains(&symbol)
+        {
+            symbols.push(symbol);
+        }
+        for argument in args {
+            self.collect_pattern_symbols(*argument, symbols);
+        }
+    }
+
+    fn resolve_body(&mut self, body: &Body, parameters: &[SymbolId]) -> Result<ExprId, Diagnostic> {
+        match body {
+            Body::Expression(source) => self.resolved_language_expression(source, parameters),
+            Body::Block(statements) => self.compile_body(statements, parameters),
+        }
+    }
+
+    fn compile_body(
+        &mut self,
+        statements: &[BodyStmt],
+        parameters: &[SymbolId],
+    ) -> Result<ExprId, Diagnostic> {
+        let Some((first, rest)) = statements.split_first() else {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                "a definition body is empty",
+            ));
+        };
+        if let BodyStmt::Def { .. } = first {
+            let mut entries = Vec::new();
+            let mut tail = Vec::new();
+            let mut leading = true;
+            for statement in statements {
+                match statement {
+                    BodyStmt::Def {
+                        name,
+                        parameters,
+                        guard,
+                        body,
+                    } if leading => {
+                        let (lhs, rhs) = self.compile_definition(name, parameters, guard, body)?;
+                        let set_delayed = self.arena.builtin_head("setDelayed");
+                        entries.push(self.arena.intern_call(set_delayed, &[lhs, rhs]));
+                    }
+                    BodyStmt::Def { .. } => {
+                        return Err(Diagnostic::eval(
+                            ErrorCode::EvalDefinition,
+                            "local definitions must appear before other body statements",
+                        ));
+                    }
+                    other => {
+                        leading = false;
+                        tail.push(other.clone());
+                    }
+                }
+            }
+            if tail.is_empty() {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "a definition body ends with one expression",
+                ));
+            }
+            let tail = self.compile_body(&tail, parameters)?;
+            let list = self.arena.builtin_head("list");
+            let entries = self.arena.intern_call(list, &entries);
+            let local_defs = self.arena.builtin_head("localDefs");
+            return Ok(self.arena.intern_call(local_defs, &[entries, tail]));
+        }
+        match first {
+            BodyStmt::Expr(source) => {
+                if !rest.is_empty() {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        "a definition body ends with one expression",
+                    ));
+                }
+                self.resolved_language_expression(source, parameters)
+            }
+            BodyStmt::Let { name, body } => {
+                let value = self.resolved_language_expression(body, parameters)?;
+                let tail = self.compile_body(rest, parameters)?;
+                let name = self.arena.symbol_or_intern(name);
+                let name = self.arena.symbol_expr(name);
+                let set = self.arena.builtin_head("set");
+                let binding = self.arena.intern_call(set, &[name, value]);
+                let list = self.arena.builtin_head("list");
+                let bindings = self.arena.intern_call(list, &[binding]);
+                let let_head = self.arena.builtin_head("let");
+                Ok(self.arena.intern_call(let_head, &[bindings, tail]))
+            }
+            BodyStmt::If {
+                condition,
+                then_body,
+                else_body,
+            } => {
+                if !rest.is_empty() {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        "an if statement must be the last statement in a definition body",
+                    ));
+                }
+                let condition = self.resolved_language_expression(condition, parameters)?;
+                let then_value = self.compile_body(then_body, parameters)?;
+                let else_value = if else_body.is_empty() {
+                    self.arena.builtin_head("null")
+                } else {
+                    self.compile_body(else_body, parameters)?
+                };
+                let if_head = self.arena.builtin_head("if");
+                Ok(self
+                    .arena
+                    .intern_call(if_head, &[condition, then_value, else_value]))
+            }
+            BodyStmt::Def { .. } => unreachable!("local definitions are grouped above"),
+        }
+    }
+
     fn language_boolean(&self, value: ExprId) -> Result<bool, Diagnostic> {
         if let Node::Symbol(symbol) = self.arena.node(value) {
             match self.arena.symbol_name(*symbol) {
@@ -262,6 +802,26 @@ impl Session {
             crate::diag::ErrorCode::EvalDefinition,
             "a conditional requires true or false",
         ))
+    }
+
+    /// Parse and evaluate every statement, returning the final value.
+    pub fn eval_named_source(&mut self, name: &str, source: &str) -> Result<ExprId, Diagnostic> {
+        let previous = self.source_name.replace(name.to_string());
+        let result = self.eval_source(source);
+        self.source_name = previous;
+        result.map_err(|diagnostic| attach_source(diagnostic, name))
+    }
+
+    /// Read and evaluate a source file.
+    pub fn eval_file(&mut self, path: &str) -> Result<ExprId, Diagnostic> {
+        let source = std::fs::read_to_string(path).map_err(|error| {
+            Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                format!("cannot read {path}: {error}"),
+            )
+            .with_source(path)
+        })?;
+        self.eval_named_source(path, &source)
     }
 
     /// Parse and evaluate every statement, returning the final value.
@@ -420,4 +980,68 @@ impl Session {
     pub fn last_result(&self) -> Option<ExprId> {
         self.last_result
     }
+}
+
+fn defined_names(program: &syntax::Program) -> Vec<String> {
+    let mut names = Vec::new();
+    for statement in &program.body {
+        match statement {
+            Stmt::Def { name, .. } if !names.contains(name) => {
+                names.push(name.clone());
+            }
+            Stmt::Structure { name, fields, .. } => {
+                for generated in std::iter::once(name.clone())
+                    .chain(std::iter::once(format!("{name}Holds")))
+                    .chain(
+                        fields
+                            .iter()
+                            .map(|field| format!("{name}{}", capitalize(field))),
+                    )
+                {
+                    if !names.contains(&generated) {
+                        names.push(generated);
+                    }
+                }
+            }
+            Stmt::Instance { name, .. } if !names.contains(name) => {
+                names.push(name.clone());
+            }
+            _ => {}
+        }
+    }
+    names
+}
+
+fn capitalize(name: &str) -> String {
+    let mut characters = name.chars();
+    match characters.next() {
+        Some(first) => format!("{}{}", first.to_ascii_uppercase(), characters.as_str()),
+        None => String::new(),
+    }
+}
+
+fn exported_names(program: &syntax::Program) -> Vec<String> {
+    let mut names = Vec::new();
+    for statement in &program.body {
+        if let Stmt::Export { names: exported } = statement {
+            for name in exported {
+                if !names.contains(name) {
+                    names.push(name.clone());
+                }
+            }
+        }
+    }
+    names
+}
+
+fn attach_source(mut diagnostic: Diagnostic, source: &str) -> Diagnostic {
+    if diagnostic.source.is_none() {
+        diagnostic.source = Some(source.into());
+    }
+    for frame in &mut diagnostic.trace {
+        if frame.source.is_none() {
+            frame.source = Some(source.to_string());
+        }
+    }
+    diagnostic
 }

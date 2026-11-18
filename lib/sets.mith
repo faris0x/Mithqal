@@ -1,0 +1,40 @@
+// Finite sets, represented by canonical sorted lists without duplicates.
+//
+// A set value is a list in ascending canonical order. Use setOf to build one
+// from arbitrary items. Set equality is structural equality of the canonical
+// list, so two sets built from the same items are the same term.
+
+mod sets
+
+import lists
+import logic
+
+export setOf,emptySet,singleton,union,intersection,difference,member,subset,cardinality,isEmpty,powerSet,cartesian
+
+def setOf(items)=unique(items)
+def emptySet()=[]
+def singleton(value)=[value]
+
+def member(items,value)=contains(items,value)
+def subset(left,right)=allOf(left,fn(item)=>member(right,item))
+
+def union(left,right)=setOf(append(left,right))
+def intersection(left,right)=filter(left,fn(item)=>member(right,item))
+def difference(left,right)=filter(left,fn(item)=>not(member(right,item)))
+
+def cardinality(items)=length(items)
+def isEmpty(items)=length(items)==0
+
+def cartesian(left,right)=
+let pairs=concat(map(left,fn(x)=>map(right,fn(y)=>[x,y])))
+setOf(pairs)
+end
+
+def powerSet(items) when length(items)==0=[[]]
+def powerSet(items)=
+let item=first(items)
+let restSets=powerSet(rest(items))
+setOf(append(restSets,map(restSets,fn(subset)=>setOf(cons(item,subset)))))
+end
+
+end

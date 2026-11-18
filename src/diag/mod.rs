@@ -128,6 +128,8 @@ pub struct Frame {
     pub expression: String,
     /// The source span, when known.
     pub span: Option<Span>,
+    /// The source name, when known.
+    pub source: Option<String>,
 }
 
 /// A structured diagnostic.
@@ -138,9 +140,11 @@ pub struct Diagnostic {
     /// The broad category.
     pub kind: ErrorKind,
     /// A deterministic message.
-    pub message: String,
+    pub message: Box<str>,
     /// The source span, when known.
-    pub span: Option<Span>,
+    pub span: Option<Box<Span>>,
+    /// The source name, when known.
+    pub source: Option<Box<str>>,
     /// The evaluation trace.
     pub trace: Vec<Frame>,
     /// Additional notes.
@@ -153,8 +157,9 @@ impl Diagnostic {
         Diagnostic {
             code,
             kind: ErrorKind::Parse,
-            message: message.into(),
-            span: Some(span),
+            message: message.into().into_boxed_str(),
+            span: Some(Box::new(span)),
+            source: None,
             trace: Vec::new(),
             notes: Vec::new(),
         }
@@ -165,8 +170,9 @@ impl Diagnostic {
         Diagnostic {
             code,
             kind: ErrorKind::Eval,
-            message: message.into(),
+            message: message.into().into_boxed_str(),
             span: None,
+            source: None,
             trace: Vec::new(),
             notes: Vec::new(),
         }
@@ -175,6 +181,18 @@ impl Diagnostic {
     /// Add a note.
     pub fn with_note(mut self, note: impl Into<String>) -> Self {
         self.notes.push(note.into());
+        self
+    }
+
+    /// Set the source name.
+    pub fn with_source(mut self, source: impl Into<String>) -> Self {
+        self.source = Some(source.into().into_boxed_str());
+        self
+    }
+
+    /// Set the source span.
+    pub fn with_span(mut self, span: Span) -> Self {
+        self.span = Some(Box::new(span));
         self
     }
 
@@ -188,8 +206,11 @@ impl Diagnostic {
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "error {}: {}", self.code, self.message)?;
-        if let Some(span) = self.span {
-            writeln!(f, "  --> {}:{}", span.line, span.column)?;
+        if let Some(span) = &self.span {
+            match &self.source {
+                Some(source) => writeln!(f, "  --> {source}:{}:{}", span.line, span.column)?,
+                None => writeln!(f, "  --> {}:{}", span.line, span.column)?,
+            }
         }
         for note in &self.notes {
             writeln!(f, "  = note: {note}")?;
@@ -197,7 +218,25 @@ impl fmt::Display for Diagnostic {
         if !self.trace.is_empty() {
             writeln!(f, "  = trace:")?;
             for (index, frame) in self.trace.iter().enumerate() {
-                writeln!(f, "      {}. {}", index + 1, frame.expression)?;
+                match (&frame.source, frame.span) {
+                    (Some(source), Some(span)) => writeln!(
+                        f,
+                        "      {}. {source}:{}:{} {}",
+                        index + 1,
+                        span.line,
+                        span.column,
+                        frame.expression
+                    )?,
+                    (_, Some(span)) => writeln!(
+                        f,
+                        "      {}. {}:{} {}",
+                        index + 1,
+                        span.line,
+                        span.column,
+                        frame.expression
+                    )?,
+                    _ => writeln!(f, "      {}. {}", index + 1, frame.expression)?,
+                }
             }
         }
         Ok(())

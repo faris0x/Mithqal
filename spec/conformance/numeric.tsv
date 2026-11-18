@@ -1,0 +1,4 @@
+# id	profile	kind	expected	source	rationale
+numeric.approx.0001	numeric	output	0.2500000000000000000	mod c\nprt approx(1/4,10)\nend	Approximation of an exact rational.
+numeric.approx.0002	numeric	output	3.14159265358979324	mod c\nprt approx(pi,5)\nend	Approximation of pi.
+numeric.interval.0001	numeric	output	interval(0.2500000000000000,0.2500000000000000)	mod c\nprt approx(1/4,10)+interval(0,0)\nend	An exact point interval keeps real endpoints.
