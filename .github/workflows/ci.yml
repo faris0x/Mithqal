@@ -40,7 +40,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-mithqal-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'build.rs', '.gitmodules', 'vendor/gmp/**', 'vendor/mpfr/**', 'vendor/mpc/**', 'vendor/mithqalite/**') }}
+          key: ${{ runner.os }}-mithqal-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', '.gitmodules', 'vendor/mithqalite/**') }}
           restore-keys: |
             ${{ runner.os }}-mithqal-${{ steps.toolchain.outputs.cachekey }}-
 

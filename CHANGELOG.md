@@ -274,3 +274,8 @@ Initial kernel work.
 - Added `assumed` instances for laws that cannot be decided over the carrier.
 - Added binder and structure documentation, conformance cases, and tests.
 - Added the Mithqalite numeric fork as a git submodule and documented the fork policy, upstream tracking, and setup script.
+- Replaced GMP, MPFR, and MPC with Malachite Integer, Rational, and Float from the Mithqalite fork.
+- Added in-tree complex arithmetic over Malachite Float, including elementary functions, gamma, and log gamma.
+- Added in-tree real gamma, lgamma, erf, and erfc for the Malachite backend.
+- Removed the C build script, FFI modules, and vendored GMP, MPFR, and MPC sources.
+- Updated documentation, licenses, CI caching, and the CLI license notice for the pure Rust numeric core.

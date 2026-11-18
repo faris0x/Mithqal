@@ -13,18 +13,18 @@ use super::order::canonical_cmp;
 enum Key {
     Int {
         sign: i8,
-        limbs: Box<[u64]>,
+        limbs: Box<[u8]>,
     },
     Rat {
         sign: i8,
-        num: Box<[u64]>,
-        den: Box<[u64]>,
+        num: Box<[u8]>,
+        den: Box<[u8]>,
     },
     Real {
         precision: u32,
         sign: i8,
         exponent: i64,
-        limbs: Box<[u64]>,
+        limbs: Box<[u8]>,
         error: u64,
     },
     Symbol(SymbolId),

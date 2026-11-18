@@ -4,13 +4,11 @@ pub(super) const NOTICE: &str = "\
 Mithqal is licensed under the GNU GPL version 3.0 License only.
 Copyright (c) 2026 Faris Alfarhan
 
-Bundled native libraries:
-  GMP       GNU LGPL version 3.0 or later, or GNU GPL version 2.0 or later
-  MPFR      GNU LGPL version 3.0 or later
-  MPC       GNU LGPL version 3.0 or later
+Numeric library:
+  Malachite  GNU LGPL version 3.0 only (Mithqalite fork)
 
 Rust dependencies:
-  rustyline MIT
+  rustyline  MIT
   Transitive Rust crates are listed in license/LICENSES.md.
 
 See license/LICENSES.md for the complete list of dependencies, their licenses,

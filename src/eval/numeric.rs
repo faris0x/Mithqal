@@ -91,10 +91,10 @@ impl<'a> Evaluator<'a> {
         other_high: &Real,
     ) -> Result<(Real, Real), Diagnostic> {
         let low = low
-            .add_round(other_low, MPFR_RNDD)
+            .add_round(other_low, ROUND_DOWN)
             .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "interval addition failed"))?;
         let high = high
-            .add_round(other_high, MPFR_RNDU)
+            .add_round(other_high, ROUND_UP)
             .map_err(|_| Diagnostic::eval(ErrorCode::NumericFailure, "interval addition failed"))?;
         Ok((low, high))
     }
@@ -114,10 +114,10 @@ impl<'a> Evaluator<'a> {
             (high, other_low),
             (high, other_high),
         ] {
-            let lower = left.mul_round(right, MPFR_RNDD).map_err(|_| {
+            let lower = left.mul_round(right, ROUND_DOWN).map_err(|_| {
                 Diagnostic::eval(ErrorCode::NumericFailure, "interval product failed")
             })?;
-            let upper = left.mul_round(right, MPFR_RNDU).map_err(|_| {
+            let upper = left.mul_round(right, ROUND_UP).map_err(|_| {
                 Diagnostic::eval(ErrorCode::NumericFailure, "interval product failed")
             })?;
             let replace_low = match &lower_bound {
@@ -217,8 +217,8 @@ impl<'a> Evaluator<'a> {
             let positive = exponent.unsigned_abs() as i64;
             let (low_power, high_power) = self.interval_positive_power(low, high, positive)?;
             let one = Real::one(30).ok()?;
-            let low_result = one.div_round(&high_power, MPFR_RNDD).ok()?;
-            let high_result = one.div_round(&low_power, MPFR_RNDU).ok()?;
+            let low_result = one.div_round(&high_power, ROUND_DOWN).ok()?;
+            let high_result = one.div_round(&low_power, ROUND_UP).ok()?;
             return Some(self.interval_node(low_result, high_result));
         }
         let (low_power, high_power) = self.interval_positive_power(low, high, exponent)?;
@@ -231,8 +231,8 @@ impl<'a> Evaluator<'a> {
         high: &Real,
         exponent: i64,
     ) -> Option<(Real, Real)> {
-        let low_power = low.pow_si_round(exponent, MPFR_RNDD).ok()?;
-        let high_power = high.pow_si_round(exponent, MPFR_RNDU).ok()?;
+        let low_power = low.pow_si_round(exponent, ROUND_DOWN).ok()?;
+        let high_power = high.pow_si_round(exponent, ROUND_UP).ok()?;
         if exponent % 2 == 0 && low.sign() < 0 && high.sign() > 0 {
             let zero = Real::zero(30).ok()?;
             let low_abs = low.abs().ok()?;
@@ -242,12 +242,12 @@ impl<'a> Evaluator<'a> {
             } else {
                 high_abs
             };
-            let upper = high_magnitude.pow_si_round(exponent, MPFR_RNDU).ok()?;
+            let upper = high_magnitude.pow_si_round(exponent, ROUND_UP).ok()?;
             return Some((zero, upper));
         }
         if exponent % 2 == 0 && high.sign() <= 0 {
-            let upper = low.pow_si_round(exponent, MPFR_RNDU).ok()?;
-            let lower = high.pow_si_round(exponent, MPFR_RNDD).ok()?;
+            let upper = low.pow_si_round(exponent, ROUND_UP).ok()?;
+            let lower = high.pow_si_round(exponent, ROUND_DOWN).ok()?;
             return Some((lower, upper));
         }
         Some((low_power, high_power))
@@ -266,21 +266,21 @@ impl<'a> Evaluator<'a> {
             let zero = Real::zero(30).ok()?;
             let low = if low.sign() < 0 { &zero } else { low };
             (
-                low.sqrt_round(MPFR_RNDD).ok()?,
-                high.sqrt_round(MPFR_RNDU).ok()?,
+                low.sqrt_round(ROUND_DOWN).ok()?,
+                high.sqrt_round(ROUND_UP).ok()?,
             )
         } else if head == self.heads.exp {
             (
-                low.exp_round(MPFR_RNDD).ok()?,
-                high.exp_round(MPFR_RNDU).ok()?,
+                low.exp_round(ROUND_DOWN).ok()?,
+                high.exp_round(ROUND_UP).ok()?,
             )
         } else if head == self.heads.ln {
             if low.sign() <= 0 {
                 return None;
             }
             (
-                low.ln_round(MPFR_RNDD).ok()?,
-                high.ln_round(MPFR_RNDU).ok()?,
+                low.ln_round(ROUND_DOWN).ok()?,
+                high.ln_round(ROUND_UP).ok()?,
             )
         } else if head == self.heads.abs {
             if low.sign() >= 0 {
@@ -330,24 +330,24 @@ impl<'a> Evaluator<'a> {
         }
         let (low_lower, low_upper) = if sine {
             (
-                low.sin_round(MPFR_RNDD).ok()?,
-                low.sin_round(MPFR_RNDU).ok()?,
+                low.sin_round(ROUND_DOWN).ok()?,
+                low.sin_round(ROUND_UP).ok()?,
             )
         } else {
             (
-                low.cos_round(MPFR_RNDD).ok()?,
-                low.cos_round(MPFR_RNDU).ok()?,
+                low.cos_round(ROUND_DOWN).ok()?,
+                low.cos_round(ROUND_UP).ok()?,
             )
         };
         let (high_lower, high_upper) = if sine {
             (
-                high.sin_round(MPFR_RNDD).ok()?,
-                high.sin_round(MPFR_RNDU).ok()?,
+                high.sin_round(ROUND_DOWN).ok()?,
+                high.sin_round(ROUND_UP).ok()?,
             )
         } else {
             (
-                high.cos_round(MPFR_RNDD).ok()?,
-                high.cos_round(MPFR_RNDU).ok()?,
+                high.cos_round(ROUND_DOWN).ok()?,
+                high.cos_round(ROUND_UP).ok()?,
             )
         };
         let mut lower = if low_lower.cmp(&high_lower) == Ordering::Less {

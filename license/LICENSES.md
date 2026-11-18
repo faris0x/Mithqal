@@ -2,13 +2,11 @@
 
 Mithqal is licensed under the GNU GPL version 3.0 or later. The full text is in [GPL-3.0.txt](GPL-3.0.txt).
 
-## Native libraries
+## Numeric library
 
 | Dependency | Version | License | Repository | License texts |
 | --- | --- | --- | --- | --- |
-| GMP | 6.3.0 | GNU LGPL version 3.0 or later, or GNU GPL version 2.0 or later | https://github.com/gmp-mirror/gmp | [gmp](gmp/) |
-| MPFR | 4.2.1 | GNU LGPL version 3.0 or later | https://github.com/BrianGladman/mpfr | [mpfr](mpfr/) |
-| MPC | 1.3.1 | GNU LGPL version 3.0 or later | https://github.com/BrianGladman/mpc | [mpc](mpc/) |
+| Malachite and subcrates | 0.14.0 | GNU LGPL version 3.0 only | https://github.com/faris0x/Mithqalite | [malachite](malachite/) |
 
 ## Rust dependencies
 
@@ -38,3 +36,12 @@ These versions come from `Cargo.lock`. Some Windows-only crates are listed becau
 | windows-sys | 0.61.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [license-apache-2.0](rust/windows-sys/license-apache-2.0), [license-mit](rust/windows-sys/license-mit) |
 
 The Rust sources are fetched from crates.io. The Cargo registry keeps the complete package archives.
+| bytemuck | 1.25.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/Lokathor/bytemuck | [LICENSE-ZLIB](rust/bytemuck/LICENSE-ZLIB), [LICENSE-APACHE](rust/bytemuck/LICENSE-APACHE), [LICENSE-MIT](rust/bytemuck/LICENSE-MIT) |
+| either | 1.19.0 | MIT OR Apache-2.0 | https://github.com/rayon-rs/either | [LICENSE-APACHE](rust/either/LICENSE-APACHE), [LICENSE-MIT](rust/either/LICENSE-MIT) |
+| foldhash | 0.2.0 | Zlib | https://github.com/orlp/foldhash | [LICENSE](rust/foldhash/LICENSE) |
+| hashbrown | 0.16.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown | [LICENSE-APACHE](rust/hashbrown/LICENSE-APACHE), [LICENSE-MIT](rust/hashbrown/LICENSE-MIT) |
+| itertools | 0.14.0 | MIT OR Apache-2.0 | https://github.com/rust-itertools/itertools | [LICENSE-APACHE](rust/itertools/LICENSE-APACHE), [LICENSE-MIT](rust/itertools/LICENSE-MIT) |
+| libm | 0.2.16 | MIT | https://github.com/rust-lang/libm | [LICENSE](rust/libm/LICENSE.txt) |
+| ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 | https://github.com/dtolnay/ryu | [LICENSE-APACHE](rust/ryu/LICENSE-APACHE), [LICENSE-BOOST](rust/ryu/LICENSE-BOOST) |
+| safe_arch | 1.2.0 | Zlib OR Apache-2.0 OR MIT | https://github.com/Lokathor/safe_arch | [LICENSE-ZLIB](rust/safe_arch/LICENSE-ZLIB.md), [LICENSE-APACHE](rust/safe_arch/LICENSE-APACHE.md), [LICENSE-MIT](rust/safe_arch/LICENSE-MIT.md) |
+| wide | 1.7.1 | Zlib OR Apache-2.0 OR MIT | https://github.com/Lokathor/wide | [LICENSE-ZLIB](rust/wide/LICENSE-ZLIB.txt), [LICENSE-APACHE](rust/wide/LICENSE-APACHE.txt), [LICENSE-MIT](rust/wide/LICENSE-MIT.txt) |

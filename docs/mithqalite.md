@@ -4,7 +4,7 @@
 
 Mithqalite is the project's fork of [Malachite](https://github.com/mhogrefe/malachite). It lives at [faris0x/Mithqalite](https://github.com/faris0x/Mithqalite) and is checked out as a git submodule at `vendor/mithqalite`.
 
-The fork is the staging ground for the pure Rust numeric core. It is not a general-purpose dumping ground for every experimental numeric idea. Mithqal owns the engine-facing wrappers, complex numbers, hypercomplex numbers, fixed-point types, and special functions. Mithqalite owns changes that require access to Malachite internals.
+The fork is the pure Rust numeric core. Mithqal uses it for exact integers, rationals, and approximate real values. It is not a general-purpose dumping ground for every experimental numeric idea. Mithqal owns the engine-facing wrappers, complex numbers, hypercomplex numbers, fixed-point types, and special functions. Mithqalite owns changes that require access to Malachite internals.
 
 ## Initial setup
 

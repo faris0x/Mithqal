@@ -102,19 +102,19 @@ A closure is represented as a call with the protected `closure` head. Its parame
 ## Numbers
 
 ```rust
-pub struct Int { /* GMP mpz */ }
-pub struct Rat { /* GMP mpq */ }
+pub struct Int { /* Malachite Integer */ }
+pub struct Rat { /* Malachite Rational */ }
 ```
 
-`Int` and `Rat` implement `Clone`, `Debug`, and equality with the same type. They are not `Copy` because they own GMP storage. The API provides construction from Rust integer types and decimal string conversion.
+`Int` and `Rat` implement `Clone`, `Debug`, and equality with the same type. They are not `Copy` because they own heap storage. The API provides construction from Rust integer types and decimal string conversion.
 
-The numeric wrappers enforce GMP initialization and cleanup through `Drop`. No public method exposes a raw pointer.
+The numeric wrappers are plain Rust values with no manual initialization or cleanup.
 
 ```rust
-pub struct Real { /* MPFR value, binary precision, absolute error */ }
+pub struct Real { /* Malachite Float, binary precision, absolute error */ }
 ```
 
-`Real` exposes `to_decimal`, `precision_digits`, `accuracy_digits`, `is_zero`, `sign`, and arithmetic operations. It is created by `approx` or by the public constructors `Real::from_rat`, `Real::pi`, and `Real::e`. It enforces MPFR initialization and cleanup through `Drop`.
+`Real` exposes `to_decimal`, `precision_digits`, `accuracy_digits`, `is_zero`, `sign`, and arithmetic operations. It is created by `approx` or by the public constructors `Real::from_rat`, `Real::pi`, and `Real::e`. It owns a Malachite Float value and carries an absolute error estimate.
 
 `approx(expression,digits)` is the session level numeric boundary. It returns a `Real` expression when the input can be evaluated numerically.
 

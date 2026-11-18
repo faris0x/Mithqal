@@ -6,7 +6,7 @@
 //! reconstructed over the integers and accepted only when exact division
 //! succeeds.
 //!
-//! Coefficients and moduli use GMP integers, so the coefficient range is not
+//! Coefficients and moduli use arbitrary precision integers, so the coefficient range is not
 //! limited by machine word size.
 
 use super::*;

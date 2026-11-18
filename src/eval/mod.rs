@@ -22,7 +22,7 @@ use crate::diag::{Diagnostic, ErrorCode, Frame};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
 use crate::hash::FnvBuildHasher;
 use crate::kernel::Heads;
-use crate::num::{ComplexMpc, Int, MPFR_RNDD, MPFR_RNDU, Rat, Real};
+use crate::num::{ComplexMpc, Int, ROUND_DOWN, ROUND_UP, Rat, Real};
 
 use definitions::{Definitions, Rule};
 pub(crate) use evaluator::{Evaluator, fold_numeric_call};

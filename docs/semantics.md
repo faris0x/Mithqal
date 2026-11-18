@@ -19,8 +19,8 @@ Runtime values include symbolic terms and closures. A closure is represented as 
 
 The current version supports exact integers and exact rationals.
 
-- Integers use GMP `mpz`.
-- Rationals use GMP `mpq` and remain canonical. The denominator is positive. The greatest common divisor of the numerator and denominator is one. Zero has denominator one.
+- Integers use Malachite `Integer`.
+- Rationals use Malachite `Rational` and remain canonical. The denominator is positive. The greatest common divisor of the numerator and denominator is one. Zero has denominator one.
 - A decimal literal is exact. `1.23` denotes `123/100`.
 - There is no approximate literal. Approximate values are produced through the explicit `approx` evaluation boundary.
 - Scientific notation is written with `10^`. The lexer has no exponent literal syntax.
@@ -28,7 +28,7 @@ The current version supports exact integers and exact rationals.
 
 ## Approximate reals
 
-Approximate values are `Real` atoms backed by MPFR. Each value carries an absolute error estimate in addition to its binary precision.
+Approximate values are `Real` atoms backed by Malachite Float. Each value carries an absolute error estimate in addition to its binary precision.
 
 `gamma` and `lgamma` evaluate exactly for positive integers and half-integers. `gamma(5)` is `24`, `gamma(1/2)` is `sqrt(pi)`, and `lgamma(5)` is `ln(24)`. Other numeric arguments evaluate at the current precision, including complex values and the principal log gamma branch. Non-positive integers are poles and return `undefined`. General symbolic arguments remain symbolic.
 
@@ -54,13 +54,13 @@ An interval is a call with the protected `interval(low,high)` head. Endpoints ma
 
 Interval arithmetic is available for addition, multiplication, negation, and integer powers. Scalar values combine with intervals by treating the scalar as a zero width interval. Multiplication evaluates the four endpoint products and takes the minimum and maximum. Even powers that cross zero produce a lower bound of zero. A negative power requires an interval that does not contain zero.
 
-Interval endpoints are converted to `Real` with a default precision for the operation. Endpoint arithmetic uses MPFR directed rounding: lower bounds round down, upper bounds round up, and products evaluate all four endpoint combinations with directed rounding before selecting the extrema. Interval `sqrt`, `exp`, `ln`, and `abs` use monotonic endpoint rules. Interval `sin` and `cos` evaluate both endpoints with directed rounding and include the relevant extrema when the interval crosses a critical point. Intervals wider than one period, and intervals with very large magnitudes, conservatively return `[-1,1]`. Endpoints also widen by their stored significance error. The result is a conservative enclosure for the modeled error estimates. Fully rigorous enclosures from arbitrary real inputs remain a later refinement because significance estimates are themselves approximate.
+Interval endpoints are converted to `Real` with a default precision for the operation. Endpoint arithmetic uses directed rounding: lower bounds round down, upper bounds round up, and products evaluate all four endpoint combinations with directed rounding before selecting the extrema. Interval `sqrt`, `exp`, `ln`, and `abs` use monotonic endpoint rules. Interval `sin` and `cos` evaluate both endpoints with directed rounding and include the relevant extrema when the interval crosses a critical point. Intervals wider than one period, and intervals with very large magnitudes, conservatively return `[-1,1]`. Endpoints also widen by their stored significance error. The result is a conservative enclosure for the modeled error estimates. Fully rigorous enclosures from arbitrary real inputs remain a later refinement because significance estimates are themselves approximate.
 
 ## Approximate complex values
 
 An approximate complex value is a call with the protected `complex(real,imaginary)` head. The `approx` boundary recognizes the symbol `i`, converts real and imaginary parts to `Real` values, and returns a `complex` expression when the imaginary part is nonzero. A zero imaginary part normalizes to the real value.
 
-The numeric boundary supports complex addition, subtraction, multiplication, stable division, integer powers, real and complex powers, absolute value, exponential, logarithm, square root, sine, cosine, tangent, inverse sine, inverse cosine, inverse tangent, hyperbolic functions, and inverse hyperbolic functions. MPC supplies the complex elementary functions. Real arguments outside a real domain are promoted to complex values, including square roots and logarithms of negative numbers and inverse trigonometric or hyperbolic arguments outside their real ranges. The principal branch uses the principal logarithm with argument in `(-pi,pi]` and the principal square root with a cut on the negative real axis. Negative real logarithms return positive imaginary parts, and negative real square roots return positive imaginary parts. Promoted inverse trigonometric values follow these cuts. `atanh` is evaluated as `(ln(1+z)-ln(1-z))/2` with the principal logarithm, so real arguments above one return negative imaginary parts. Non finite complex results, such as the logarithm of zero or the inverse tangent of the imaginary unit, leave the `approx` call unevaluated because the stored significance model cannot represent a meaningful enclosure.
+The numeric boundary supports complex addition, subtraction, multiplication, stable division, integer powers, real and complex powers, absolute value, exponential, logarithm, square root, sine, cosine, tangent, inverse sine, inverse cosine, inverse tangent, hyperbolic functions, and inverse hyperbolic functions. Complex elementary functions are implemented over Malachite Float. Real arguments outside a real domain are promoted to complex values, including square roots and logarithms of negative numbers and inverse trigonometric or hyperbolic arguments outside their real ranges. The principal branch uses the principal logarithm with argument in `(-pi,pi]` and the principal square root with a cut on the negative real axis. Negative real logarithms return positive imaginary parts, and negative real square roots return positive imaginary parts. Promoted inverse trigonometric values follow these cuts. `atanh` is evaluated as `(ln(1+z)-ln(1-z))/2` with the principal logarithm, so real arguments above one return negative imaginary parts. Non finite complex results, such as the logarithm of zero or the inverse tangent of the imaginary unit, leave the `approx` call unevaluated because the stored significance model cannot represent a meaningful enclosure.
 
 ## Symbolic constants
 

@@ -47,7 +47,7 @@ discriminant(x^2-4,x)                 -> 16
 
 Univariate square-free decomposition uses polynomial gcds against the derivative. Repeated irreducible factors are separated and emitted with their multiplicities.
 
-Bounded univariate integer polynomials also pass through modular factorization and Hensel lifting. A small prime supplies a coprime split, the split is lifted above the coefficient bound, and factors are accepted only after exact integer division. Small coefficients use a fast 128 bit path. Larger coefficients and moduli use GMP integers, so the range is not limited by machine word size. This finds repeated and irreducible polynomial factors that rational roots miss.
+Bounded univariate integer polynomials also pass through modular factorization and Hensel lifting. A small prime supplies a coprime split, the split is lifted above the coefficient bound, and factors are accepted only after exact integer division. Small coefficients use a fast 128 bit path. Larger coefficients and moduli use arbitrary precision integers, so the range is not limited by machine word size. This finds repeated and irreducible polynomial factors that rational roots miss.
 
 Homogeneous bivariate forms are factored by solving their ratio polynomial over the rationals. This covers degrees above two, including repeated linear factors.
 

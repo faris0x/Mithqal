@@ -143,4 +143,4 @@ Tests generate a corpus of expressions, evaluate with both paths, and compare ca
 
 ## Target
 
-The current version targets Linux on x86 64 with a static GMP build. The virtual machine uses portable Rust and has no architecture specific code. Packed instruction encoding, bytecode serialization, and a JIT are later work.
+The current version targets Linux on x86 64 with a pure Rust numeric core. The virtual machine uses portable Rust and has no architecture specific code. Packed instruction encoding, bytecode serialization, and a JIT are later work.

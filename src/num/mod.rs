@@ -1,11 +1,8 @@
-//! Exact numbers and GMP bindings.
+//! Exact and approximate numbers backed by Malachite.
 //!
-//! The current version uses GMP for integers and rationals. The FFI layer is private
-//! and all public numeric values enforce GMP initialization and cleanup.
+//! Integers, rationals, reals, and complex values are pure Rust values. No C
+//! toolchain or foreign runtime is required.
 
-mod ffi;
-mod ffi_mpc;
-mod ffi_mpfr;
 mod int;
 mod mpc;
 mod rat;
@@ -15,7 +12,8 @@ pub use int::Int;
 pub use rat::Rat;
 pub use real::Real;
 
-pub(crate) use ffi_mpfr::{MPFR_RNDD, MPFR_RNDU};
+pub(crate) const ROUND_DOWN: core::ffi::c_int = 3;
+pub(crate) const ROUND_UP: core::ffi::c_int = 2;
 pub(crate) use mpc::Complex as ComplexMpc;
 
 use core::fmt;

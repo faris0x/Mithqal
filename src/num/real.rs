@@ -1,79 +1,66 @@
 //! Arbitrary precision reals with significance tracking.
+//!
+//! Values are stored as Malachite binary floats. The wrapper keeps the
+//! engine's decimal significance model and directed rounding interface.
 
 use core::cmp::Ordering;
 use core::fmt;
 
-use super::ffi_mpfr::{self, MPFR_RNDN, Mpfr};
+use malachite::Float;
+use malachite::base::num::arithmetic::traits::{Abs, Sign};
+use malachite::base::num::conversion::string::options::ToSciOptions;
+use malachite::base::num::conversion::traits::{RoundingFrom, ToSci};
+use malachite::base::rounding_modes::RoundingMode;
+
+use super::int::natural_bytes;
 use super::{NumError, Rat};
 
 /// An approximate real value with an absolute error estimate.
+#[derive(Clone)]
 pub struct Real {
-    pub(crate) inner: Mpfr,
+    pub(crate) inner: Float,
     pub(crate) bits: u32,
     pub(crate) error: f64,
 }
 
 impl Real {
-    fn initialized(bits: u32) -> Self {
-        let mut inner = Mpfr {
-            precision: 0,
-            sign: 0,
-            exponent: 0,
-            limbs: core::ptr::null_mut(),
-        };
-        // SAFETY: the structure has room for MPFR state and is initialized once.
-        unsafe { ffi_mpfr::mpfr_init2(&mut inner, bits as core::ffi::c_long) };
-        Real {
-            inner,
+    fn exact_bits(value: Float, bits: u32) -> Self {
+        let mut out = Real {
+            inner: value,
             bits,
             error: 0.0,
-        }
+        };
+        out.error = rounding_error(&out);
+        out
     }
 
     /// Convert an exact rational to a real with a requested decimal digit count.
     pub fn from_rat(value: &Rat, digits: u32) -> Result<Self, NumError> {
         let bits = bits_for_digits(digits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: both values are initialized. `mpfr_set_q` reads the GMP
-        // rational layout stored inside `Rat`.
-        unsafe {
-            ffi_mpfr::mpfr_set_q(&mut out.inner, &value.inner, MPFR_RNDN);
-        }
+        let inner = Float::from_rational_prec(value.inner.clone(), u64::from(bits)).0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
         out.error = rounding_error(&out);
         Ok(out)
-    }
-
-    pub(crate) fn from_mpfr_ref(source: &Mpfr, bits: u32, error: f64) -> Self {
-        let mut out = Self::initialized(bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_set(&mut out.inner, source, MPFR_RNDN) };
-        out.error = error;
-        out
     }
 
     /// Convert an `i64` to a real with a requested decimal digit count.
     pub fn from_i64(value: i64, digits: u32) -> Result<Self, NumError> {
-        Self::from_i64_round(value, digits, MPFR_RNDN)
-    }
-
-    pub(crate) fn blank(bits: u32) -> Self {
-        Self::initialized(bits)
+        Self::from_i64_round(value, digits, 0)
     }
 
     pub(crate) fn one_bits(bits: u32) -> Self {
-        let mut out = Self::initialized(bits);
-        // SAFETY: the value is initialized.
-        unsafe { ffi_mpfr::mpfr_set_ui(&mut out.inner, 1, MPFR_RNDN) };
-        out.error = rounding_error(&out);
-        out
+        Self::from_i64_bits(1, bits).expect("one is always representable")
     }
 
     pub(crate) fn from_i64_bits(value: i64, bits: u32) -> Result<Self, NumError> {
-        let mut out = Self::initialized(bits);
-        // SAFETY: the value is initialized.
-        unsafe { ffi_mpfr::mpfr_set_si(&mut out.inner, value as core::ffi::c_long, MPFR_RNDN) };
-        out.error = rounding_error(&out);
-        Ok(out)
+        Ok(Self::exact_bits(
+            Float::from_signed_prec(value, u64::from(bits)).0,
+            bits,
+        ))
     }
 
     pub(crate) fn from_i64_round(
@@ -82,12 +69,14 @@ impl Real {
         rounding: core::ffi::c_int,
     ) -> Result<Self, NumError> {
         let bits = bits_for_digits(digits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: the value is initialized.
-        unsafe {
-            ffi_mpfr::mpfr_set_si(&mut out.inner, value as core::ffi::c_long, rounding);
-        }
-        out.error = if rounding == MPFR_RNDN {
+        let inner =
+            Float::from_signed_prec_round(value, u64::from(bits), rounding_mode(rounding)).0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
+        out.error = if rounding == 0 {
             rounding_error(&out)
         } else {
             0.0
@@ -101,12 +90,15 @@ impl Real {
         rounding: core::ffi::c_int,
     ) -> Result<Real, NumError> {
         let bits = self.bits.max(other.bits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: all values are initialized.
-        unsafe {
-            ffi_mpfr::mpfr_add(&mut out.inner, &self.inner, &other.inner, rounding);
-        }
-        Ok(out)
+        let inner = self
+            .inner
+            .add_prec_round_ref_ref(&other.inner, u64::from(bits), rounding_mode(rounding))
+            .0;
+        Ok(Real {
+            inner,
+            bits,
+            error: 0.0,
+        })
     }
 
     pub(crate) fn mul_round(
@@ -115,12 +107,15 @@ impl Real {
         rounding: core::ffi::c_int,
     ) -> Result<Real, NumError> {
         let bits = self.bits.max(other.bits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: all values are initialized.
-        unsafe {
-            ffi_mpfr::mpfr_mul(&mut out.inner, &self.inner, &other.inner, rounding);
-        }
-        Ok(out)
+        let inner = self
+            .inner
+            .mul_prec_round_ref_ref(&other.inner, u64::from(bits), rounding_mode(rounding))
+            .0;
+        Ok(Real {
+            inner,
+            bits,
+            error: 0.0,
+        })
     }
 
     pub(crate) fn div_round(
@@ -132,12 +127,15 @@ impl Real {
             return Err(NumError::DivisionByZero);
         }
         let bits = self.bits.max(other.bits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: all values are initialized and the divisor is nonzero.
-        unsafe {
-            ffi_mpfr::mpfr_div(&mut out.inner, &self.inner, &other.inner, rounding);
-        }
-        Ok(out)
+        let inner = self
+            .inner
+            .div_prec_round_ref_ref(&other.inner, u64::from(bits), rounding_mode(rounding))
+            .0;
+        Ok(Real {
+            inner,
+            bits,
+            error: 0.0,
+        })
     }
 
     pub(crate) fn pow_si_round(
@@ -145,66 +143,91 @@ impl Real {
         exponent: i64,
         rounding: core::ffi::c_int,
     ) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe {
-            ffi_mpfr::mpfr_pow_si(
-                &mut out.inner,
-                &self.inner,
-                exponent as core::ffi::c_long,
-                rounding,
-            );
+        if self.is_zero() && exponent < 0 {
+            return Err(NumError::Domain);
         }
-        Ok(out)
+        let inner = self
+            .inner
+            .pow_s_prec_round_ref(exponent, u64::from(self.bits), rounding_mode(rounding))
+            .0;
+        Ok(Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        })
     }
 
     pub(crate) fn sqrt_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
         if self.sign() < 0 {
             return Err(NumError::Domain);
         }
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_sqrt(&mut out.inner, &self.inner, rounding) };
-        Ok(out)
+        Ok(Real {
+            inner: self
+                .inner
+                .sqrt_prec_round_ref(u64::from(self.bits), rounding_mode(rounding))
+                .0,
+            bits: self.bits,
+            error: 0.0,
+        })
     }
 
     pub(crate) fn exp_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_exp(&mut out.inner, &self.inner, rounding) };
-        Ok(out)
+        Ok(Real {
+            inner: self
+                .inner
+                .exp_prec_round_ref(u64::from(self.bits), rounding_mode(rounding))
+                .0,
+            bits: self.bits,
+            error: 0.0,
+        })
     }
 
     pub(crate) fn ln_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
         if self.sign() <= 0 {
             return Err(NumError::Domain);
         }
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_log(&mut out.inner, &self.inner, rounding) };
-        Ok(out)
+        Ok(Real {
+            inner: self
+                .inner
+                .ln_prec_round_ref(u64::from(self.bits), rounding_mode(rounding))
+                .0,
+            bits: self.bits,
+            error: 0.0,
+        })
     }
 
     pub(crate) fn sin_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_sin(&mut out.inner, &self.inner, rounding) };
-        Ok(out)
+        Ok(Real {
+            inner: self
+                .inner
+                .sin_prec_round_ref(u64::from(self.bits), rounding_mode(rounding))
+                .0,
+            bits: self.bits,
+            error: 0.0,
+        })
     }
 
     pub(crate) fn cos_round(&self, rounding: core::ffi::c_int) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_cos(&mut out.inner, &self.inner, rounding) };
-        Ok(out)
+        Ok(Real {
+            inner: self
+                .inner
+                .cos_prec_round_ref(u64::from(self.bits), rounding_mode(rounding))
+                .0,
+            bits: self.bits,
+            error: 0.0,
+        })
     }
 
     /// Convert an `f64` to a real with a requested decimal digit count.
     pub fn from_f64(value: f64, digits: u32) -> Result<Self, NumError> {
         let bits = bits_for_digits(digits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: the value is initialized.
-        unsafe { ffi_mpfr::mpfr_set_d(&mut out.inner, value, MPFR_RNDN) };
+        let inner =
+            Float::from_primitive_float_prec_round(value, u64::from(bits), RoundingMode::Nearest).0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
         out.error = rounding_error(&out);
         Ok(out)
     }
@@ -215,7 +238,7 @@ impl Real {
             return Ok(self.clone());
         }
         let error = Self::from_f64(-self.error, 64)?;
-        self.add_round(&error, ffi_mpfr::MPFR_RNDD)
+        self.add_round(&error, super::ROUND_DOWN)
     }
 
     /// A conservative upper endpoint from the stored error estimate.
@@ -224,7 +247,7 @@ impl Real {
             return Ok(self.clone());
         }
         let error = Self::from_f64(self.error, 64)?;
-        self.add_round(&error, ffi_mpfr::MPFR_RNDU)
+        self.add_round(&error, super::ROUND_UP)
     }
 
     /// The approximate zero at a requested decimal digit count.
@@ -240,9 +263,12 @@ impl Real {
     /// The constant pi with a requested decimal digit count.
     pub fn pi(digits: u32) -> Result<Self, NumError> {
         let bits = bits_for_digits(digits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: the value is initialized.
-        unsafe { ffi_mpfr::mpfr_const_pi(&mut out.inner, MPFR_RNDN) };
+        let inner = Float::pi_prec(u64::from(bits)).0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
         out.error = rounding_error(&out);
         Ok(out)
     }
@@ -250,12 +276,12 @@ impl Real {
     /// The constant e with a requested decimal digit count.
     pub fn e(digits: u32) -> Result<Self, NumError> {
         let bits = bits_for_digits(digits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: the value is initialized.
-        unsafe {
-            ffi_mpfr::mpfr_set_ui(&mut out.inner, 1, MPFR_RNDN);
-            ffi_mpfr::mpfr_exp(&mut out.inner, &out.inner, MPFR_RNDN);
-        }
+        let inner = Float::e_prec(u64::from(bits)).0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
         out.error = rounding_error(&out);
         Ok(out)
     }
@@ -264,7 +290,7 @@ impl Real {
     pub fn to_decimal(&self) -> String {
         let precision = self.precision_digits();
         let digits = if precision.is_finite() {
-            precision.clamp(1.0, 1000.0).floor() as usize
+            precision.clamp(1.0, 10000.0).floor() as usize
         } else {
             16
         };
@@ -272,33 +298,13 @@ impl Real {
     }
 
     fn to_decimal_with_digits(&self, digits: usize) -> String {
-        // SAFETY: the value is initialized.
-        if unsafe { ffi_mpfr::mpfr_cmp_ui(&self.inner, 0) } == 0 {
+        if self.is_zero() {
             return "0.0".to_string();
         }
-        let mut buffer = vec![0u8; digits + 3];
-        let mut exponent: core::ffi::c_long = 0;
-        // SAFETY: the buffer is large enough for the requested digits, a sign,
-        // and a NUL byte.
-        let pointer = unsafe {
-            ffi_mpfr::mpfr_get_str(
-                buffer.as_mut_ptr() as *mut core::ffi::c_char,
-                &mut exponent,
-                10,
-                digits,
-                &self.inner,
-                MPFR_RNDN,
-            )
-        };
-        if pointer.is_null() {
-            return "0.0".to_string();
-        }
-        let end = buffer
-            .iter()
-            .position(|byte| *byte == 0)
-            .unwrap_or(buffer.len());
-        let text = String::from_utf8_lossy(&buffer[..end]).into_owned();
-        format_decimal(&text, exponent)
+        let mut options = ToSciOptions::default();
+        options.set_precision(digits as u64);
+        options.set_include_trailing_zeros(true);
+        self.inner.to_sci_with_options(options).to_string()
     }
 
     /// Relative precision in decimal digits.
@@ -324,36 +330,37 @@ impl Real {
 
     /// True when the value is exactly zero in the stored representation.
     pub fn is_zero(&self) -> bool {
-        // SAFETY: the value is initialized.
-        unsafe { ffi_mpfr::mpfr_cmp_ui(&self.inner, 0) == 0 }
+        self.inner.is_zero()
     }
 
     /// The sign of the stored value.
     pub fn sign(&self) -> i8 {
-        // SAFETY: the value is initialized.
-        let order = unsafe { ffi_mpfr::mpfr_cmp_ui(&self.inner, 0) };
-        match order.cmp(&0) {
-            Ordering::Less => -1,
-            Ordering::Equal => 0,
-            Ordering::Greater => 1,
+        if self.is_zero() {
+            0
+        } else if self.inner.sign() == Ordering::Less {
+            -1
+        } else {
+            1
         }
     }
 
     /// Compare two approximate values by their stored approximations.
     #[allow(clippy::should_implement_trait)]
     pub fn cmp(&self, other: &Real) -> Ordering {
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_cmp(&self.inner, &other.inner) }.cmp(&0)
+        self.inner
+            .partial_cmp(&other.inner)
+            .unwrap_or(Ordering::Equal)
     }
 
     /// Add two approximate values.
     pub fn add(&self, other: &Real) -> Result<Real, NumError> {
         let bits = self.bits.max(other.bits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: all values are initialized.
-        unsafe {
-            ffi_mpfr::mpfr_add(&mut out.inner, &self.inner, &other.inner, MPFR_RNDN);
-        }
+        let inner = self.inner.add_prec_ref_ref(&other.inner, u64::from(bits)).0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
         out.error = self.error.hypot(other.error) + rounding_error(&out);
         Ok(out)
     }
@@ -361,11 +368,12 @@ impl Real {
     /// Subtract `other` from `self`.
     pub fn sub(&self, other: &Real) -> Result<Real, NumError> {
         let bits = self.bits.max(other.bits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: all values are initialized.
-        unsafe {
-            ffi_mpfr::mpfr_sub(&mut out.inner, &self.inner, &other.inner, MPFR_RNDN);
-        }
+        let inner = self.inner.sub_prec_ref_ref(&other.inner, u64::from(bits)).0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
         out.error = self.error.hypot(other.error) + rounding_error(&out);
         Ok(out)
     }
@@ -373,11 +381,12 @@ impl Real {
     /// Multiply two approximate values.
     pub fn mul(&self, other: &Real) -> Result<Real, NumError> {
         let bits = self.bits.max(other.bits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: all values are initialized.
-        unsafe {
-            ffi_mpfr::mpfr_mul(&mut out.inner, &self.inner, &other.inner, MPFR_RNDN);
-        }
+        let inner = self.inner.mul_prec_ref_ref(&other.inner, u64::from(bits)).0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
         let left = self.absolute_value();
         let right = other.absolute_value();
         let relative = if left == 0.0 || right == 0.0 {
@@ -395,11 +404,12 @@ impl Real {
             return Err(NumError::DivisionByZero);
         }
         let bits = self.bits.max(other.bits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: all values are initialized and the divisor is nonzero.
-        unsafe {
-            ffi_mpfr::mpfr_div(&mut out.inner, &self.inner, &other.inner, MPFR_RNDN);
-        }
+        let inner = self.inner.div_prec_ref_ref(&other.inner, u64::from(bits)).0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
         let left = self.absolute_value();
         let right = other.absolute_value();
         let relative = if left == 0.0 {
@@ -413,19 +423,15 @@ impl Real {
 
     /// Negate the value.
     pub fn neg(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_neg(&mut out.inner, &self.inner, MPFR_RNDN) };
-        out.error = self.error;
+        let mut out = self.clone();
+        out.inner = -out.inner;
         Ok(out)
     }
 
     /// Absolute value.
     pub fn abs(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_abs(&mut out.inner, &self.inner, MPFR_RNDN) };
-        out.error = self.error;
+        let mut out = self.clone();
+        out.inner = out.inner.abs();
         Ok(out)
     }
 
@@ -438,11 +444,15 @@ impl Real {
             return Err(NumError::Domain);
         }
         let bits = self.bits.max(exponent.bits);
-        let mut out = Self::initialized(bits);
-        // SAFETY: all values are initialized.
-        unsafe {
-            ffi_mpfr::mpfr_pow(&mut out.inner, &self.inner, &exponent.inner, MPFR_RNDN);
-        }
+        let inner = self
+            .inner
+            .pow_prec_ref_ref(&exponent.inner, u64::from(bits))
+            .0;
+        let mut out = Real {
+            inner,
+            bits,
+            error: 0.0,
+        };
         let base = self.to_f64();
         let exponent_value = exponent.to_f64();
         let derivative_base = if base == 0.0 {
@@ -463,16 +473,15 @@ impl Real {
 
     /// Raise to an integer power.
     pub fn pow_si(&self, exponent: i64) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe {
-            ffi_mpfr::mpfr_pow_si(
-                &mut out.inner,
-                &self.inner,
-                exponent as core::ffi::c_long,
-                MPFR_RNDN,
-            );
+        if self.is_zero() && exponent < 0 {
+            return Err(NumError::Domain);
         }
+        let inner = self.inner.pow_s_prec_ref(exponent, u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let derivative = if exponent == 0 {
             0.0
         } else {
@@ -487,9 +496,12 @@ impl Real {
         if self.sign() < 0 {
             return Err(NumError::Domain);
         }
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_sqrt(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.sqrt_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let derivative = out.absolute_value();
         out.error = if derivative == 0.0 {
             rounding_error(&out)
@@ -501,9 +513,12 @@ impl Real {
 
     /// Exponential function.
     pub fn exp(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_exp(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.exp_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         out.error = out.absolute_value() * self.error + rounding_error(&out);
         Ok(out)
     }
@@ -513,36 +528,48 @@ impl Real {
         if self.sign() <= 0 {
             return Err(NumError::Domain);
         }
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_log(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.ln_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         out.error = self.error / self.absolute_value() + rounding_error(&out);
         Ok(out)
     }
 
     /// Sine.
     pub fn sin(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_sin(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.sin_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         out.error = self.to_f64().cos().abs() * self.error + rounding_error(&out);
         Ok(out)
     }
 
     /// Cosine.
     pub fn cos(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_cos(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.cos_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         out.error = self.to_f64().sin().abs() * self.error + rounding_error(&out);
         Ok(out)
     }
 
     /// Tangent.
     pub fn tan(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_tan(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.tan_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let derivative = 1.0 + out.to_f64().powi(2);
         out.error = derivative.abs() * self.error + rounding_error(&out);
         Ok(out)
@@ -550,9 +577,17 @@ impl Real {
 
     /// Arcsine.
     pub fn asin(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_asin(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let one = Real::one_bits(self.bits);
+        let minus_one = one.neg()?;
+        if self.cmp(&one) == Ordering::Greater || self.cmp(&minus_one) == Ordering::Less {
+            return Err(NumError::Domain);
+        }
+        let inner = self.inner.asin_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let cosine = out.to_f64().cos().abs().max(f64::MIN_POSITIVE);
         out.error = self.error / cosine + rounding_error(&out);
         Ok(out)
@@ -560,9 +595,17 @@ impl Real {
 
     /// Arccosine.
     pub fn acos(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_acos(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let one = Real::one_bits(self.bits);
+        let minus_one = one.neg()?;
+        if self.cmp(&one) == Ordering::Greater || self.cmp(&minus_one) == Ordering::Less {
+            return Err(NumError::Domain);
+        }
+        let inner = self.inner.acos_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let cosine = out.to_f64().cos().abs().max(f64::MIN_POSITIVE);
         out.error = self.error / cosine + rounding_error(&out);
         Ok(out)
@@ -570,9 +613,12 @@ impl Real {
 
     /// Arctangent.
     pub fn atan(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_atan(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.atan_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let derivative = 1.0 / (1.0 + self.to_f64().powi(2));
         out.error = derivative * self.error + rounding_error(&out);
         Ok(out)
@@ -580,27 +626,36 @@ impl Real {
 
     /// Hyperbolic sine.
     pub fn sinh(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_sinh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.sinh_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         out.error = self.to_f64().cosh().abs() * self.error + rounding_error(&out);
         Ok(out)
     }
 
     /// Hyperbolic cosine.
     pub fn cosh(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_cosh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.cosh_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         out.error = self.to_f64().sinh().abs() * self.error + rounding_error(&out);
         Ok(out)
     }
 
     /// Hyperbolic tangent.
     pub fn tanh(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_tanh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.tanh_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let derivative = 1.0 - out.to_f64().powi(2);
         out.error = derivative.abs() * self.error + rounding_error(&out);
         Ok(out)
@@ -608,9 +663,12 @@ impl Real {
 
     /// Inverse hyperbolic sine.
     pub fn asinh(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_asinh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.asinh_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let derivative = 1.0 / out.to_f64().cosh().abs().max(f64::MIN_POSITIVE);
         out.error = derivative * self.error + rounding_error(&out);
         Ok(out)
@@ -618,13 +676,15 @@ impl Real {
 
     /// Inverse hyperbolic cosine.
     pub fn acosh(&self) -> Result<Real, NumError> {
-        // SAFETY: the value is initialized.
-        if unsafe { ffi_mpfr::mpfr_cmp_ui(&self.inner, 1) } < 0 {
+        if self.cmp(&Real::one_bits(self.bits)) == Ordering::Less {
             return Err(NumError::Domain);
         }
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_acosh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.acosh_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let sinh = out.to_f64().sinh().abs();
         let derivative = if sinh == 0.0 { 0.0 } else { 1.0 / sinh };
         out.error = derivative * self.error + rounding_error(&out);
@@ -633,13 +693,17 @@ impl Real {
 
     /// Inverse hyperbolic tangent.
     pub fn atanh(&self) -> Result<Real, NumError> {
-        // SAFETY: the value is initialized.
-        if unsafe { ffi_mpfr::mpfr_cmpabs_ui(&self.inner, 1) } >= 0 {
+        let one = Real::one_bits(self.bits);
+        let minus_one = one.neg()?;
+        if self.cmp(&one) != Ordering::Less || self.cmp(&minus_one) != Ordering::Greater {
             return Err(NumError::Domain);
         }
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_atanh(&mut out.inner, &self.inner, MPFR_RNDN) };
+        let inner = self.inner.atanh_prec_ref(u64::from(self.bits)).0;
+        let mut out = Real {
+            inner,
+            bits: self.bits,
+            error: 0.0,
+        };
         let derivative = out.to_f64().cosh().powi(2);
         out.error = derivative * self.error + rounding_error(&out);
         Ok(out)
@@ -647,132 +711,137 @@ impl Real {
 
     /// Gamma function.
     pub fn gamma(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_gamma(&mut out.inner, &self.inner, MPFR_RNDN) };
-        if !out.is_finite() {
+        if !self.is_finite() || self.is_zero() {
             return Err(NumError::Domain);
         }
-        let scale = out.to_f64().abs().max(1.0);
-        let derivative = scale * self.to_f64().abs().ln().abs().max(1.0);
-        out.error = derivative * self.error + rounding_error(&out);
-        Ok(out)
+        if self.sign() < 0 && self.inner.round_to_integer_ref().0.is_zero() {
+            return Err(NumError::Domain);
+        }
+        let digits = digits_for_bits(self.bits);
+        if self.to_f64() < 0.5 {
+            let one = Real::one(digits)?;
+            let reflected = one.sub(self)?.gamma()?;
+            let pi = Real::pi(digits)?;
+            let sine = self.mul(&pi)?.sin()?;
+            let denominator = sine.mul(&reflected)?;
+            let result = pi.div(&denominator)?;
+            if !result.is_finite() {
+                return Err(NumError::Domain);
+            }
+            return Ok(result);
+        }
+        let result = spouge_gamma(self, digits)?;
+        if !result.is_finite() {
+            return Err(NumError::Domain);
+        }
+        Ok(result)
     }
 
     /// Logarithm of the absolute gamma function.
     pub fn lgamma(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_lngamma(&mut out.inner, &self.inner, MPFR_RNDN) };
-        if !out.is_finite() {
+        let gamma = self.gamma()?;
+        let result = gamma.abs()?.ln()?;
+        if !result.is_finite() {
             return Err(NumError::Domain);
         }
-        let derivative = self.to_f64().abs().ln().abs().max(1.0);
-        out.error = derivative * self.error + rounding_error(&out);
-        Ok(out)
+        Ok(result)
     }
 
     /// Error function.
     pub fn erf(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_erf(&mut out.inner, &self.inner, MPFR_RNDN) };
-        let value = self.to_f64();
-        let derivative = 2.0 / core::f64::consts::PI.sqrt() * (-value * value).exp();
-        out.error = derivative * self.error + rounding_error(&out);
-        Ok(out)
+        if self.is_zero() {
+            return Ok(self.clone());
+        }
+        let digits = digits_for_bits(self.bits);
+        let magnitude = self.to_f64().abs();
+        if magnitude > 6.0 {
+            let result = Real::one(digits)?;
+            return if self.sign() < 0 {
+                result.neg()
+            } else {
+                Ok(result)
+            };
+        }
+        let x2 = self.mul(self)?;
+        let mut term = self.clone();
+        let mut sum = term.clone();
+        let threshold = 10f64.powi(-(digits as i32 + 5));
+        for n in 0..512i64 {
+            let numerator = Real::from_i64(-(2 * n + 1), digits)?;
+            let denominator = Real::from_i64((n + 1) * (2 * n + 3), digits)?;
+            let next = term.mul(&x2)?.mul(&numerator)?.div(&denominator)?;
+            term = next;
+            sum = sum.add(&term)?;
+            if term.abs()?.to_f64() <= threshold {
+                break;
+            }
+        }
+        let two = Real::from_i64(2, digits)?;
+        let sqrt_pi = Real::pi(digits)?.sqrt()?;
+        sum.mul(&two)?.div(&sqrt_pi)
     }
 
     /// Complementary error function.
     pub fn erfc(&self) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_erfc(&mut out.inner, &self.inner, MPFR_RNDN) };
-        let value = self.to_f64();
-        let derivative = 2.0 / core::f64::consts::PI.sqrt() * (-value * value).exp();
-        out.error = derivative * self.error + rounding_error(&out);
-        Ok(out)
+        let one = Real::one(digits_for_bits(self.bits))?;
+        one.sub(&self.erf()?)
     }
 
     /// True when the stored value is neither infinite nor NaN.
     pub(crate) fn is_finite(&self) -> bool {
-        // SAFETY: the value is initialized.
-        unsafe { ffi_mpfr::mpfr_nan_p(&self.inner) == 0 && ffi_mpfr::mpfr_inf_p(&self.inner) == 0 }
+        self.inner.is_finite()
     }
 
     /// The greatest integer not greater than the value.
     pub fn floor(&self) -> Result<Real, NumError> {
-        self.round_integral(ffi_mpfr::mpfr_floor)
+        let mut out = self.clone();
+        out.inner = self.inner.round_to_integer_round_ref(RoundingMode::Floor).0;
+        out.error = rounding_error(&out);
+        Ok(out)
     }
 
     /// The least integer not less than the value.
     pub fn ceil(&self) -> Result<Real, NumError> {
-        self.round_integral(ffi_mpfr::mpfr_ceil)
+        let mut out = self.clone();
+        out.inner = self
+            .inner
+            .round_to_integer_round_ref(RoundingMode::Ceiling)
+            .0;
+        out.error = rounding_error(&out);
+        Ok(out)
     }
 
     /// The nearest integer, with halves rounded away from zero.
     pub fn round(&self) -> Result<Real, NumError> {
-        self.round_integral(ffi_mpfr::mpfr_round)
-    }
-
-    fn round_integral(
-        &self,
-        operation: unsafe extern "C" fn(*mut Mpfr, *const Mpfr) -> core::ffi::c_int,
-    ) -> Result<Real, NumError> {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { operation(&mut out.inner, &self.inner) };
+        let mut out = self.clone();
+        out.inner = self.inner.round_to_integer_ties_away_ref().0;
         out.error = rounding_error(&out);
         Ok(out)
     }
 
     /// A stable identity string for interning.
-    pub(crate) fn key_parts(&self) -> (u32, i8, i64, Box<[u64]>, u64) {
+    pub(crate) fn key_parts(&self) -> (u32, i8, i64, Box<[u8]>, u64) {
         if self.is_zero() {
             return (self.bits, 0, 0, Box::new([]), self.error.to_bits());
         }
-        let limbs = (self.bits as usize).div_ceil(64);
-        let digits = if limbs == 0 {
-            Box::new([])
-        } else {
-            // SAFETY: MPFR stores `limbs` initialized limbs for a nonzero value.
-            let slice = unsafe { core::slice::from_raw_parts(self.inner.limbs, limbs) };
-            slice.to_vec().into_boxed_slice()
-        };
+        let exponent = i64::from(self.inner.get_exponent().unwrap_or(0));
+        let significand = self.inner.to_significand().unwrap_or_default();
         (
             self.bits,
             self.sign(),
-            self.inner.exponent,
-            digits,
+            exponent,
+            natural_bytes(&significand).into_boxed_slice(),
             self.error.to_bits(),
         )
     }
 
     /// Convert to a machine `f64` for diagnostics and external display.
     pub fn to_f64(&self) -> f64 {
-        // SAFETY: the value is initialized.
-        unsafe { ffi_mpfr::mpfr_get_d(&self.inner, MPFR_RNDN) }
+        f64::rounding_from(&self.inner, RoundingMode::Nearest).0
     }
 
     fn absolute_value(&self) -> f64 {
         self.to_f64().abs()
-    }
-}
-
-impl Clone for Real {
-    fn clone(&self) -> Self {
-        let mut out = Self::initialized(self.bits);
-        // SAFETY: both values are initialized.
-        unsafe { ffi_mpfr::mpfr_set(&mut out.inner, &self.inner, MPFR_RNDN) };
-        out.error = self.error;
-        out
-    }
-}
-
-impl Drop for Real {
-    fn drop(&mut self) {
-        // SAFETY: the value was initialized and is cleared exactly once.
-        unsafe { ffi_mpfr::mpfr_clear(&mut self.inner) };
     }
 }
 
@@ -794,6 +863,10 @@ fn bits_for_digits(digits: u32) -> u32 {
         .max(64)
 }
 
+fn digits_for_bits(bits: u32) -> u32 {
+    ((bits as f64 * std::f64::consts::LOG10_2).ceil() as u32).max(1)
+}
+
 fn rounding_error(value: &Real) -> f64 {
     let magnitude = value.absolute_value();
     if magnitude == 0.0 {
@@ -803,51 +876,48 @@ fn rounding_error(value: &Real) -> f64 {
     }
 }
 
-fn format_decimal(text: &str, exponent: core::ffi::c_long) -> String {
-    let (sign, digits) = if let Some(rest) = text.strip_prefix('-') {
-        ("-", rest)
-    } else {
-        ("", text)
-    };
-    if digits.is_empty() {
-        return "0.0".to_string();
+fn rounding_mode(rounding: core::ffi::c_int) -> RoundingMode {
+    match rounding {
+        super::ROUND_DOWN => RoundingMode::Floor,
+        super::ROUND_UP => RoundingMode::Ceiling,
+        _ => RoundingMode::Nearest,
     }
-    let exponent = exponent as isize;
-    let length = digits.len() as isize;
-    let mut out = String::from(sign);
-    if exponent <= 0 && exponent > -6 {
-        out.push_str("0.");
-        for _ in 0..(-exponent) {
-            out.push('0');
-        }
-        out.push_str(digits);
-    } else if exponent > 0 && exponent <= length {
-        let split = exponent as usize;
-        out.push_str(&digits[..split]);
-        out.push('.');
-        let rest = &digits[split..];
-        if rest.is_empty() {
-            out.push('0');
-        } else {
-            out.push_str(rest);
-        }
-    } else if exponent > length && exponent <= length + 6 {
-        out.push_str(digits);
-        for _ in 0..(exponent - length) {
-            out.push('0');
-        }
-        out.push_str(".0");
-    } else {
-        out.push_str(&digits[..1]);
-        out.push('.');
-        let rest = &digits[1..];
-        if rest.is_empty() {
-            out.push('0');
-        } else {
-            out.push_str(rest);
-        }
-        out.push('e');
-        out.push_str(&(exponent - 1).to_string());
+}
+
+fn spouge_gamma(value: &Real, digits: u32) -> Result<Real, NumError> {
+    let a = ((digits as f64 * 2.0).ceil() as i64 + 10).clamp(24, 512);
+    let one = Real::one(digits)?;
+    let two = Real::from_i64(2, digits)?;
+    let half = one.div(&two)?;
+    let w = value.sub(&one)?;
+    let offset = Real::from_i64(a, digits)?;
+    let base = w.add(&offset)?;
+    let exponent = w.add(&half)?;
+    let power = base.pow(&exponent)?;
+    let exponential = base.neg()?.exp()?;
+    let mut sum = Real::pi(digits)?.mul(&two)?.sqrt()?;
+    for k in 1..a {
+        let coefficient = spouge_coefficient(k, a, digits)?;
+        let denominator = w.add(&Real::from_i64(k, digits)?)?;
+        let term = coefficient.div(&denominator)?;
+        sum = sum.add(&term)?;
     }
-    out
+    power.mul(&exponential)?.mul(&sum)
+}
+
+fn spouge_coefficient(k: i64, a: i64, digits: u32) -> Result<Real, NumError> {
+    let mut factorial = Real::one(digits)?;
+    for value in 1..k {
+        factorial = factorial.mul(&Real::from_i64(value, digits)?)?;
+    }
+    let difference = Real::from_i64(a - k, digits)?;
+    let exponent = Real::from_i64(2 * k - 1, digits)?.div(&Real::from_i64(2, digits)?)?;
+    let power = difference.pow(&exponent)?;
+    let exponential = difference.exp()?;
+    let magnitude = power.mul(&exponential)?.div(&factorial)?;
+    if k % 2 == 1 {
+        Ok(magnitude)
+    } else {
+        magnitude.neg()
+    }
 }
