@@ -16,6 +16,7 @@ gui = []
 
 [dependencies]
 rustyline = { version = "19", optional = true }
+malachite = { path = "vendor/mithqalite/malachite", default-features = false, features = ["std", "naturals_and_integers", "rationals", "floats"] }
 
 [profile.release]
 opt-level = 3

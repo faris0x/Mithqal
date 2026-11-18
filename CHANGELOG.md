@@ -273,3 +273,4 @@ Initial kernel work.
 - Added `structure` and `instance` declarations with generated constructors, accessors, law checkers, and finite law validation.
 - Added `assumed` instances for laws that cannot be decided over the carrier.
 - Added binder and structure documentation, conformance cases, and tests.
+- Added the Mithqalite numeric fork as a git submodule and documented the fork policy, upstream tracking, and setup script.

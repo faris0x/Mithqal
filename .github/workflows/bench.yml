@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Rust
         id: toolchain
@@ -33,7 +35,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-mithqal-bench-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'build.rs', 'vendor/gmp/**', 'vendor/mpfr/**', 'vendor/mpc/**') }}
+          key: ${{ runner.os }}-mithqal-bench-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'build.rs', '.gitmodules', 'vendor/gmp/**', 'vendor/mpfr/**', 'vendor/mpc/**', 'vendor/mithqalite/**') }}
           restore-keys: |
             ${{ runner.os }}-mithqal-bench-${{ steps.toolchain.outputs.cachekey }}-
 

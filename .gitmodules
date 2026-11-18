@@ -1,0 +1,4 @@
+[submodule "vendor/mithqalite"]
+	path = vendor/mithqalite
+	url = https://github.com/faris0x/Mithqalite
+	branch = mithqal
