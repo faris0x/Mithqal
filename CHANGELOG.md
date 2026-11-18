@@ -279,3 +279,4 @@ Initial kernel work.
 - Added in-tree real gamma, lgamma, erf, and erfc for the Malachite backend.
 - Removed the C build script, FFI modules, and vendored GMP, MPFR, and MPC sources.
 - Updated documentation, licenses, CI caching, and the CLI license notice for the pure Rust numeric core.
+- Documented Mithqalite as an independent fork that does not follow Malachite upstream, and removed the upstream setup script.

@@ -2,9 +2,11 @@
 
 > Status: Experimental. See [Maturity](maturity.md).
 
-Mithqalite is the project's fork of [Malachite](https://github.com/mhogrefe/malachite). It lives at [faris0x/Mithqalite](https://github.com/faris0x/Mithqalite) and is checked out as a git submodule at `vendor/mithqalite`.
+Mithqalite is the project's independent fork of [Malachite](https://github.com/mhogrefe/malachite). It lives at [faris0x/Mithqalite](https://github.com/faris0x/Mithqalite) and is checked out as a git submodule at `vendor/mithqalite`.
 
-The fork is the pure Rust numeric core. Mithqal uses it for exact integers, rationals, and approximate real values. It is not a general-purpose dumping ground for every experimental numeric idea. Mithqal owns the engine-facing wrappers, complex numbers, hypercomplex numbers, fixed-point types, and special functions. Mithqalite owns changes that require access to Malachite internals.
+Mithqalite does not follow Malachite upstream. It has its own direction, release cadence, and compatibility decisions. Changes made in Malachite are not expected to be merged into Mithqalite, and Mithqalite is not expected to remain source-compatible with future Malachite releases.
+
+The fork is the pure Rust numeric core. Mithqal uses it for exact integers, rationals, and approximate real values. Mithqal owns the engine-facing wrappers, complex numbers, hypercomplex numbers, fixed-point types, and special functions. Mithqalite owns changes that require access to the numeric internals.
 
 ## Initial setup
 
@@ -14,16 +16,7 @@ After cloning the repository, initialize the fork:
 git submodule update --init --recursive
 ```
 
-The local fork has two remotes:
-
-- `origin` points to `faris0x/Mithqalite`.
-- `upstream` points to `mhogrefe/malachite`.
-
-A fresh submodule checkout only has `origin`. Add the upstream remote with:
-
-```text
-sh scripts/setup-mithqalite.sh
-```
+The fork's remote is `origin`, which points to `faris0x/Mithqalite`. There is no upstream synchronization remote.
 
 ## What belongs in Mithqalite
 
@@ -32,7 +25,7 @@ Changes that need internal access:
 - Constants caching for elementary functions.
 - Argument reduction and series evaluation.
 - Low-level limb, rounding, and precision optimizations.
-- Correctness fixes in Malachite's float implementation.
+- Correctness fixes in the float implementation.
 
 Changes that belong in Mithqal:
 
@@ -43,31 +36,28 @@ Changes that belong in Mithqal:
 - Gamma, lgamma, erf, and erfc.
 - Display, interning, and expression arena integration.
 
-## Patch rules
+## Update rules
 
-Every Mithqalite patch must have:
+Every Mithqalite update must have:
 
 - A benchmark or correctness case that demonstrates the need.
-- Tests that fail before the patch and pass after it.
+- Tests that fail before the update and pass after it.
 - A small, reviewable diff.
-- A note in Mithqal describing the patch and its upstream status.
-
-Prefer an upstream pull request for patches that are useful to Malachite users. Drop a local patch once upstream accepts an equivalent change.
+- A note in Mithqal describing the update.
 
 Do not copy code from another numeric library into Mithqalite without checking its license and documenting the origin. Malachite is LGPL-3.0-only. The fork remains LGPL-3.0-only when distributed.
 
-## Synchronization
+## Version control
 
 The fork is pinned by the submodule commit recorded in Mithqal. Update it deliberately:
 
 ```text
 cd vendor/mithqalite
 git fetch origin
-git fetch upstream
 git status
 ```
 
-Rebase or merge upstream changes on the `mithqal` branch, run Malachite's tests, then run Mithqal's full test suite and conformance corpus. Commit the new submodule pointer in Mithqal only after both pass.
+Run Mithqalite's tests, then run Mithqal's full test suite and conformance corpus. Commit the new submodule pointer in Mithqal only after both pass.
 
 ## CI
 
