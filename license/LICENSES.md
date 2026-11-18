@@ -1,6 +1,6 @@
 # Licenses
 
-Mithqal is licensed under the GNU GPL version 3.0 or later. The full text is in [GPL-3.0.txt](GPL-3.0.txt).
+Mithqal is licensed under the GNU GPL version 3.0 only. The full text is in [GPL-3.0.txt](GPL-3.0.txt).
 
 ## Numeric library
 

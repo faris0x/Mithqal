@@ -88,7 +88,7 @@ The current version targets Linux on x86-64. The project is named Mithqal. The p
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](./LICENSE).
+GPL-3.0-only. See [LICENSE](./LICENSE).
 
 ## AI Declaration
 
