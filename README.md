@@ -30,6 +30,41 @@ The supported build target is Linux on x86-64. A native build requires:
 
 The first build compiles the vendored numeric libraries and can take several minutes. Cargo caches the result in `target`.
 
+
+## Usage
+
+Evaluate an expression from the command line:
+
+```text
+$ cargo run -- -e "2+3"
+5
+```
+
+Start the interactive calculator with `cargo run`. The prompt accepts ordinary expressions and definitions:
+
+```text
+$ cargo run
+> differentiate(x^3,x)
+3*x^2
+```
+
+A surface language module looks like this:
+
+```text
+mod example
+def polynomial(x)=x^3+2*x
+prt polynomial(2)
+prt derive(polynomial(x),x)
+end
+```
+
+The module prints:
+
+```text
+12
+2+3*x^2
+```
+
 ## Documentation
 
 - [Language](./docs/language.md)

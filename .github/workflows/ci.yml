@@ -48,6 +48,9 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --locked --all-targets -- --deny warnings
 
+      - name: Build library without default features
+        run: cargo build --locked --no-default-features --lib
+
       - name: Check documentation claims
         run: sh scripts/check-docs.sh
 

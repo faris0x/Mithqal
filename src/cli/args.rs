@@ -57,10 +57,12 @@ fn evaluate(source: &str) -> i32 {
     let mut session = Session::new();
     match session.eval_source(source) {
         Ok(value) => {
-            for line in session.take_output() {
+            let output = session.take_output();
+            let printed = !output.is_empty();
+            for line in output {
                 println!("{line}");
             }
-            if !matches!(session.view(value), Ok(ExprView::Symbol("null"))) {
+            if !printed && !matches!(session.view(value), Ok(ExprView::Symbol("null"))) {
                 println!("{}", format::value(&session, source, value));
             }
             0
