@@ -125,6 +125,7 @@ Functions implemented by the bundled Mithqal standard library rather than the Ru
 | `lgamma` | numeric | exact | `lgamma(expr)` | all numeric arguments, with exact integer and half-integer values | infix | `lgamma(5)` | evaluates |
 | `erf` | numeric | approx | `erf(expr)` | supported numeric values under approx | infix | `approx(erf(1),30)` | approximate |
 | `erfc` | numeric | approx | `erfc(expr)` | supported numeric values under approx | infix | `approx(erfc(1),30)` | approximate |
+| `erfi` | numeric | approx | `erfi(expr)` | supported numeric values under approx | infix | `approx(erfi(1),30)` | approximate |
 | `set` | language | language | `set(symbol,value)` | language forms | infix | `set(f,3)` | language |
 | `setDelayed` | language | language | `setDelayed(lhs,rhs)` | language forms | infix | `setDelayed(f(x_),x^2)` | language |
 | `fn` | language | language | `fn(params)=>body` | language forms | infix | `fn(x)=>x^2` | language |

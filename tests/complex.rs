@@ -422,6 +422,25 @@ fn complex_gamma_values() {
 }
 
 #[test]
+fn complex_error_values() {
+    check(
+        "approx(erf(1+i),30)",
+        1.3161512816979476,
+        0.1904534692378347,
+    );
+    check(
+        "approx(erfc(1+i),30)",
+        -0.3161512816979476,
+        -0.1904534692378347,
+    );
+    check(
+        "approx(erfi(1+i),30)",
+        0.1904534692378347,
+        1.3161512816979476,
+    );
+}
+
+#[test]
 fn complex_log_gamma_values() {
     check(
         "approx(lgamma(1+i),30)",

@@ -639,6 +639,9 @@ impl<'a> Evaluator<'a> {
             NumericHead::Atanh => None,
             NumericHead::Gamma => complex.gamma(digits).and_then(|value| value.parts()),
             NumericHead::Lgamma => complex.lgamma(digits).and_then(|value| value.parts()),
+            NumericHead::Erf => complex.erf(),
+            NumericHead::Erfc => complex.erfc(),
+            NumericHead::Erfi => complex.erfi(),
             _ => None,
         }
     }
@@ -698,6 +701,7 @@ impl<'a> Evaluator<'a> {
                     NumericHead::Lgamma => value.lgamma(),
                     NumericHead::Erf => value.erf(),
                     NumericHead::Erfc => value.erfc(),
+                    NumericHead::Erfi => value.erfi(),
                     _ => return Ok(None),
                 };
                 if let Ok(real) = result

@@ -38,6 +38,7 @@ pub(crate) enum NumericHead {
     Lgamma,
     Erf,
     Erfc,
+    Erfi,
 }
 
 impl NumericHead {
@@ -71,6 +72,7 @@ impl NumericHead {
             "lgamma" => Self::Lgamma,
             "erf" => Self::Erf,
             "erfc" => Self::Erfc,
+            "erfi" => Self::Erfi,
             _ => return None,
         })
     }
@@ -100,6 +102,7 @@ impl NumericHead {
                 | Self::Lgamma
                 | Self::Erf
                 | Self::Erfc
+                | Self::Erfi
         )
     }
 }

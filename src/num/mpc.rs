@@ -8,6 +8,7 @@
 
 use super::Real;
 
+#[derive(Clone)]
 pub(crate) struct Complex {
     real: Real,
     imaginary: Real,
@@ -370,6 +371,60 @@ impl Complex {
 
     pub(crate) fn parts(&self) -> Option<(Real, Real)> {
         Some((self.real.clone(), self.imaginary.clone()))
+    }
+
+    pub(crate) fn erf(&self) -> Option<(Real, Real)> {
+        self.erf_series(true)
+    }
+
+    pub(crate) fn erfi(&self) -> Option<(Real, Real)> {
+        self.erf_series(false)
+    }
+
+    pub(crate) fn erfc(&self) -> Option<(Real, Real)> {
+        let (real, imaginary) = self.erf()?;
+        let digits = digits_for_bits(self.bits);
+        let one = Real::one(digits).ok()?;
+        Some((one.sub(&real).ok()?, imaginary.neg().ok()?))
+    }
+
+    fn erf_series(&self, alternating: bool) -> Option<(Real, Real)> {
+        let digits = digits_for_bits(self.bits);
+        let square = self.mul(self)?;
+        let mut term = self.clone();
+        let mut sum = self.clone();
+        let threshold = 10f64.powi(-(digits as i32 + 5));
+        for n in 1..1024i64 {
+            let denominator = Real::from_i64(n * (2 * n + 1), digits).ok()?;
+            let numerator = Real::from_i64(2 * n - 1, digits).ok()?;
+            let scale = denominator.div(&numerator).ok()?;
+            term = term.mul(&square)?.scale_inv(&scale)?;
+            if alternating && n % 2 == 1 {
+                sum = sum.sub(&term)?;
+            } else {
+                sum = sum.add(&term)?;
+            }
+            if n > 1 && term.abs_value() <= threshold {
+                break;
+            }
+        }
+        let two = Real::from_i64(2, digits).ok()?;
+        let sqrt_pi = Real::pi(digits).ok()?.sqrt().ok()?;
+        let factor = two.div(&sqrt_pi).ok()?;
+        sum = sum.scale(&factor)?;
+        sum.parts()
+    }
+
+    fn scale(&self, factor: &Real) -> Option<Complex> {
+        let real = self.real.mul(factor).ok()?;
+        let imaginary = self.imaginary.mul(factor).ok()?;
+        Complex::from_parts(&real, &imaginary)
+    }
+
+    fn scale_inv(&self, factor: &Real) -> Option<Complex> {
+        let real = self.real.div(factor).ok()?;
+        let imaginary = self.imaginary.div(factor).ok()?;
+        Complex::from_parts(&real, &imaginary)
     }
 
     pub(crate) fn gamma(&self, digits: u32) -> Option<Complex> {

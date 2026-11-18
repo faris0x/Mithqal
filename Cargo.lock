@@ -105,57 +105,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
-name = "malachite"
-version = "0.14.0"
-dependencies = [
- "malachite-base",
- "malachite-float",
- "malachite-nz",
- "malachite-q",
-]
-
-[[package]]
-name = "malachite-base"
-version = "0.14.0"
-dependencies = [
- "hashbrown",
- "itertools",
- "libm",
- "ryu",
-]
-
-[[package]]
-name = "malachite-float"
-version = "0.14.0"
-dependencies = [
- "itertools",
- "malachite-base",
- "malachite-nz",
- "malachite-q",
-]
-
-[[package]]
-name = "malachite-nz"
-version = "0.14.0"
-dependencies = [
- "bytemuck",
- "itertools",
- "libm",
- "malachite-base",
- "wide",
-]
-
-[[package]]
-name = "malachite-q"
-version = "0.14.0"
-dependencies = [
- "itertools",
- "libm",
- "malachite-base",
- "malachite-nz",
-]
-
-[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -165,8 +114,59 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 name = "mithqal"
 version = "0.0.1"
 dependencies = [
- "malachite",
+ "mithqalite",
  "rustyline",
+]
+
+[[package]]
+name = "mithqalite"
+version = "0.14.0"
+dependencies = [
+ "mithqalite-base",
+ "mithqalite-float",
+ "mithqalite-nz",
+ "mithqalite-q",
+]
+
+[[package]]
+name = "mithqalite-base"
+version = "0.14.0"
+dependencies = [
+ "hashbrown",
+ "itertools",
+ "libm",
+ "ryu",
+]
+
+[[package]]
+name = "mithqalite-float"
+version = "0.14.0"
+dependencies = [
+ "itertools",
+ "mithqalite-base",
+ "mithqalite-nz",
+ "mithqalite-q",
+]
+
+[[package]]
+name = "mithqalite-nz"
+version = "0.14.0"
+dependencies = [
+ "bytemuck",
+ "itertools",
+ "libm",
+ "mithqalite-base",
+ "wide",
+]
+
+[[package]]
+name = "mithqalite-q"
+version = "0.14.0"
+dependencies = [
+ "itertools",
+ "libm",
+ "mithqalite-base",
+ "mithqalite-nz",
 ]
 
 [[package]]

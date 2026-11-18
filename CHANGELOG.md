@@ -281,3 +281,7 @@ Initial kernel work.
 - Updated documentation, licenses, CI caching, and the CLI license notice for the pure Rust numeric core.
 - Documented Mithqalite as an independent fork that does not follow Malachite upstream, and removed the upstream setup script.
 - Corrected the project license metadata and documentation to GNU GPL version 3.0 only.
+- Renamed the Mithqalite workspace crates and Rust paths from Malachite names to Mithqalite names.
+- Added multi-entry constant caches for pi, ln 2, and e, accelerating constant, exponential, trigonometric, inverse trigonometric, and hyperbolic paths.
+- Replaced the real error-function series with a direct binary-float series and added the imaginary error function erfi for real and complex arguments.
+- Added complex erf and erfc, plus catalog, documentation, and test coverage for the error functions.

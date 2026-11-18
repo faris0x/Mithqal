@@ -19,8 +19,8 @@ Runtime values include symbolic terms and closures. A closure is represented as 
 
 The current version supports exact integers and exact rationals.
 
-- Integers use Malachite `Integer`.
-- Rationals use Malachite `Rational` and remain canonical. The denominator is positive. The greatest common divisor of the numerator and denominator is one. Zero has denominator one.
+- Integers use Mithqalite `Integer`.
+- Rationals use Mithqalite `Rational` and remain canonical. The denominator is positive. The greatest common divisor of the numerator and denominator is one. Zero has denominator one.
 - A decimal literal is exact. `1.23` denotes `123/100`.
 - There is no approximate literal. Approximate values are produced through the explicit `approx` evaluation boundary.
 - Scientific notation is written with `10^`. The lexer has no exponent literal syntax.
@@ -28,13 +28,13 @@ The current version supports exact integers and exact rationals.
 
 ## Approximate reals
 
-Approximate values are `Real` atoms backed by Malachite Float. Each value carries an absolute error estimate in addition to its binary precision.
+Approximate values are `Real` atoms backed by Mithqalite Float. Each value carries an absolute error estimate in addition to its binary precision.
 
 `gamma` and `lgamma` evaluate exactly for positive integers and half-integers. `gamma(5)` is `24`, `gamma(1/2)` is `sqrt(pi)`, and `lgamma(5)` is `ln(24)`. Other numeric arguments evaluate at the current precision, including complex values and the principal log gamma branch. Non-positive integers are poles and return `undefined`. General symbolic arguments remain symbolic.
 
 `approx(expression,digits)` is the numeric boundary. It evaluates its argument exactly first, then converts numeric subexpressions to `Real` values. The digit count defaults to 16 when omitted.
 
-The numeric boundary handles exact integers and rationals, `pi`, `e`, `plus`, `times`, `negate`, integer and real `power`, `sqrt`, `exp`, `ln`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh`, `gamma`, `lgamma`, `erf`, `erfc`, and `abs`. Negative real square roots and logarithms produce complex values. A symbolic argument that cannot be converted leaves the `approx` call unevaluated.
+The numeric boundary handles exact integers and rationals, `pi`, `e`, `plus`, `times`, `negate`, integer and real `power`, `sqrt`, `exp`, `ln`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh`, `gamma`, `lgamma`, `erf`, `erfc`, `erfi`, and `abs`. Negative real square roots and logarithms produce complex values. A symbolic argument that cannot be converted leaves the `approx` call unevaluated.
 
 Significance propagation uses first order error estimates:
 
@@ -60,7 +60,7 @@ Interval endpoints are converted to `Real` with a default precision for the oper
 
 An approximate complex value is a call with the protected `complex(real,imaginary)` head. The `approx` boundary recognizes the symbol `i`, converts real and imaginary parts to `Real` values, and returns a `complex` expression when the imaginary part is nonzero. A zero imaginary part normalizes to the real value.
 
-The numeric boundary supports complex addition, subtraction, multiplication, stable division, integer powers, real and complex powers, absolute value, exponential, logarithm, square root, sine, cosine, tangent, inverse sine, inverse cosine, inverse tangent, hyperbolic functions, and inverse hyperbolic functions. Complex elementary functions are implemented over Malachite Float. Real arguments outside a real domain are promoted to complex values, including square roots and logarithms of negative numbers and inverse trigonometric or hyperbolic arguments outside their real ranges. The principal branch uses the principal logarithm with argument in `(-pi,pi]` and the principal square root with a cut on the negative real axis. Negative real logarithms return positive imaginary parts, and negative real square roots return positive imaginary parts. Promoted inverse trigonometric values follow these cuts. `atanh` is evaluated as `(ln(1+z)-ln(1-z))/2` with the principal logarithm, so real arguments above one return negative imaginary parts. Non finite complex results, such as the logarithm of zero or the inverse tangent of the imaginary unit, leave the `approx` call unevaluated because the stored significance model cannot represent a meaningful enclosure.
+The numeric boundary supports complex addition, subtraction, multiplication, stable division, integer powers, real and complex powers, absolute value, exponential, logarithm, square root, sine, cosine, tangent, inverse sine, inverse cosine, inverse tangent, hyperbolic functions, and inverse hyperbolic functions. Complex elementary functions are implemented over Mithqalite Float. Real arguments outside a real domain are promoted to complex values, including square roots and logarithms of negative numbers and inverse trigonometric or hyperbolic arguments outside their real ranges. The principal branch uses the principal logarithm with argument in `(-pi,pi]` and the principal square root with a cut on the negative real axis. Negative real logarithms return positive imaginary parts, and negative real square roots return positive imaginary parts. Promoted inverse trigonometric values follow these cuts. `atanh` is evaluated as `(ln(1+z)-ln(1-z))/2` with the principal logarithm, so real arguments above one return negative imaginary parts. Non finite complex results, such as the logarithm of zero or the inverse tangent of the imaginary unit, leave the `approx` call unevaluated because the stored significance model cannot represent a meaningful enclosure.
 
 ## Symbolic constants
 

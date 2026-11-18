@@ -1,16 +1,16 @@
 //! Arbitrary precision reals with significance tracking.
 //!
-//! Values are stored as Malachite binary floats. The wrapper keeps the
+//! Values are stored as Mithqalite binary floats. The wrapper keeps the
 //! engine's decimal significance model and directed rounding interface.
 
 use core::cmp::Ordering;
 use core::fmt;
 
-use malachite::Float;
-use malachite::base::num::arithmetic::traits::{Abs, Sign};
-use malachite::base::num::conversion::string::options::ToSciOptions;
-use malachite::base::num::conversion::traits::{RoundingFrom, ToSci};
-use malachite::base::rounding_modes::RoundingMode;
+use mithqalite::Float;
+use mithqalite::base::num::arithmetic::traits::{Abs, Sign};
+use mithqalite::base::num::conversion::string::options::ToSciOptions;
+use mithqalite::base::num::conversion::traits::{RoundingFrom, ToSci};
+use mithqalite::base::rounding_modes::RoundingMode;
 
 use super::int::natural_bytes;
 use super::{NumError, Rat};
@@ -762,23 +762,43 @@ impl Real {
                 Ok(result)
             };
         }
-        let x2 = self.mul(self)?;
-        let mut term = self.clone();
-        let mut sum = term.clone();
-        let threshold = 10f64.powi(-(digits as i32 + 5));
-        for n in 0..512i64 {
-            let numerator = Real::from_i64(-(2 * n + 1), digits)?;
-            let denominator = Real::from_i64((n + 1) * (2 * n + 3), digits)?;
-            let next = term.mul(&x2)?.mul(&numerator)?.div(&denominator)?;
-            term = next;
-            sum = sum.add(&term)?;
-            if term.abs()?.to_f64() <= threshold {
-                break;
-            }
+        let absolute = self.abs()?;
+        let value = erf_series_float(&absolute.inner, self.bits, true)?;
+        let value = if self.sign() < 0 { -value } else { value };
+        let mut out = Real {
+            inner: value,
+            bits: self.bits,
+            error: 0.0,
+        };
+        let derivative =
+            2.0 / core::f64::consts::PI.sqrt() * (-self.to_f64() * self.to_f64()).exp();
+        out.error = derivative * self.error + rounding_error(&out);
+        Ok(out)
+    }
+
+    /// Imaginary error function.
+    pub fn erfi(&self) -> Result<Real, NumError> {
+        if self.is_zero() {
+            return Ok(self.clone());
         }
-        let two = Real::from_i64(2, digits)?;
-        let sqrt_pi = Real::pi(digits)?.sqrt()?;
-        sum.mul(&two)?.div(&sqrt_pi)
+        if !self.is_finite() {
+            return Err(NumError::Domain);
+        }
+        let absolute = self.abs()?;
+        let value = if absolute.to_f64() <= 6.0 {
+            erf_series_float(&absolute.inner, self.bits, false)?
+        } else {
+            erfi_asymptotic_float(&absolute.inner, self.bits)?
+        };
+        let value = if self.sign() < 0 { -value } else { value };
+        let mut out = Real {
+            inner: value,
+            bits: self.bits,
+            error: 0.0,
+        };
+        let derivative = 2.0 / core::f64::consts::PI.sqrt() * (self.to_f64() * self.to_f64()).exp();
+        out.error = derivative * self.error + rounding_error(&out);
+        Ok(out)
     }
 
     /// Complementary error function.
@@ -882,6 +902,73 @@ fn rounding_mode(rounding: core::ffi::c_int) -> RoundingMode {
         super::ROUND_UP => RoundingMode::Ceiling,
         _ => RoundingMode::Nearest,
     }
+}
+
+fn erf_series_float(value: &Float, bits: u32, alternating: bool) -> Result<Float, NumError> {
+    let working = u64::from(bits) + 24;
+    let x2 = value.square_prec_ref(working).0;
+    let mut term = value.clone();
+    let mut sum = term.clone();
+    for n in 1..1024u64 {
+        term = term.mul_prec_ref_ref(&x2, working).0;
+        term = term
+            .div_prec_round_ref_val(Float::from(n), working, RoundingMode::Nearest)
+            .0;
+        let addition = term
+            .div_prec_round_ref_val(Float::from(2 * n + 1), working, RoundingMode::Nearest)
+            .0;
+        if alternating && n % 2 == 1 {
+            sum = sum.sub_prec_ref_val(addition.clone(), working).0;
+        } else {
+            sum = sum.add_prec_ref_val(addition.clone(), working).0;
+        }
+        if addition.is_zero() {
+            break;
+        }
+        let term_exp = addition.get_exponent().unwrap_or(i32::MIN);
+        let sum_exp = sum.get_exponent().unwrap_or(0);
+        if term_exp < sum_exp - i32::try_from(working + 8).unwrap_or(i32::MAX) {
+            break;
+        }
+    }
+    let two = Float::from_unsigned_prec(2u32, working).0;
+    let sqrt_pi = Float::pi_prec(working).0.sqrt_prec(working).0;
+    let factor = two.div_prec_val_ref(&sqrt_pi, working).0;
+    Ok(sum.mul_prec_ref_val(factor, working).0)
+}
+
+fn erfi_asymptotic_float(value: &Float, bits: u32) -> Result<Float, NumError> {
+    let working = u64::from(bits) + 32;
+    let x2 = value.square_prec_ref(working).0;
+    let two_x2 = x2
+        .mul_prec_ref_val(Float::from_unsigned_prec(2u32, working).0, working)
+        .0;
+    let mut term = Float::from_unsigned_prec(1u32, working).0;
+    let mut sum = term.clone();
+    let mut previous = f64::INFINITY;
+    for n in 1..512u64 {
+        term = term
+            .mul_prec_ref_val(Float::from(2 * n - 1), working)
+            .0
+            .div_prec_round_ref_val(two_x2.clone(), working, RoundingMode::Nearest)
+            .0;
+        let magnitude = f64::rounding_from(&term, RoundingMode::Nearest).0.abs();
+        if magnitude >= previous {
+            break;
+        }
+        previous = magnitude;
+        sum = sum.add_prec_ref_val(term.clone(), working).0;
+        if term.is_zero() {
+            break;
+        }
+    }
+    let e = x2.exp_prec_ref(working).0;
+    let sqrt_pi = Float::pi_prec(working).0.sqrt_prec(working).0;
+    let denominator = value.mul_prec_ref_val(sqrt_pi, working).0;
+    Ok(e.mul_prec_ref_val(sum, working)
+        .0
+        .div_prec_round_ref_val(denominator, working, RoundingMode::Nearest)
+        .0)
 }
 
 fn spouge_gamma(value: &Real, digits: u32) -> Result<Real, NumError> {

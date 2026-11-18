@@ -105,6 +105,18 @@ fn main() {
     });
 
     let mut cold_arena = Arena::new();
+    measure("cold approx erfi", 3_000, || {
+        let parsed = parse_statement(&mut cold_arena, "approx(erfi(1),30)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold approx complex erf", 2_000, || {
+        let parsed = parse_statement(&mut cold_arena, "approx(erf(1+i),30)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
     measure("cold interval add", 20_000, || {
         let parsed = parse_statement(&mut cold_arena, "interval(1,2)+3").unwrap();
         black_box(evaluate(&mut cold_arena, parsed).unwrap());

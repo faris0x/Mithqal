@@ -1,13 +1,13 @@
-//! Canonical exact rationals backed by Malachite.
+//! Canonical exact rationals backed by Mithqalite.
 
 use core::cmp::Ordering;
 use core::fmt;
 use core::str::FromStr;
 
-use malachite::base::num::arithmetic::traits::{Abs, Ceiling, Floor, Sign};
-use malachite::base::num::conversion::traits::RoundingFrom;
-use malachite::base::rounding_modes::RoundingMode;
-use malachite::{Integer, Rational};
+use mithqalite::base::num::arithmetic::traits::{Abs, Ceiling, Floor, Sign};
+use mithqalite::base::num::conversion::traits::RoundingFrom;
+use mithqalite::base::rounding_modes::RoundingMode;
+use mithqalite::{Integer, Rational};
 
 use super::int::natural_bytes;
 use super::{Int, NumError};

@@ -42,7 +42,7 @@ fn license_notice_lists_numeric_and_rust_dependencies() {
     let text = stdout(&output);
     assert!(text.contains("GNU GPL version 3.0"));
     assert!(text.contains("Faris Alfarhan"));
-    assert!(text.contains("Malachite"));
+    assert!(text.contains("Mithqalite"));
     assert!(text.contains("rustyline  MIT"));
 }
 

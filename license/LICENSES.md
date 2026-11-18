@@ -6,7 +6,7 @@ Mithqal is licensed under the GNU GPL version 3.0 only. The full text is in [GPL
 
 | Dependency | Version | License | Repository | License texts |
 | --- | --- | --- | --- | --- |
-| Malachite and subcrates | 0.14.0 | GNU LGPL version 3.0 only | https://github.com/faris0x/Mithqalite | [malachite](malachite/) |
+| Mithqalite and subcrates | 0.14.0 | GNU LGPL version 3.0 only | https://github.com/faris0x/Mithqalite | [mithqalite](mithqalite/) |
 
 ## Rust dependencies
 

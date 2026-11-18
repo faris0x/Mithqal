@@ -5,7 +5,7 @@ Mithqal is licensed under the GNU GPL version 3.0 License only.
 Copyright (c) 2026 Faris Alfarhan
 
 Numeric library:
-  Malachite  GNU LGPL version 3.0 only (Mithqalite fork)
+  Mithqalite  GNU LGPL version 3.0 only
 
 Rust dependencies:
   rustyline  MIT

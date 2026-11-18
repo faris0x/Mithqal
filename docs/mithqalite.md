@@ -6,7 +6,7 @@ Mithqalite is the project's independent fork of [Malachite](https://github.com/m
 
 Mithqalite does not follow Malachite upstream. It has its own direction, release cadence, and compatibility decisions. Changes made in Malachite are not expected to be merged into Mithqalite, and Mithqalite is not expected to remain source-compatible with future Malachite releases.
 
-The fork is the pure Rust numeric core. Mithqal uses it for exact integers, rationals, and approximate real values. Mithqal owns the engine-facing wrappers, complex numbers, hypercomplex numbers, fixed-point types, and special functions. Mithqalite owns changes that require access to the numeric internals.
+The workspace crates are named `mithqalite`, `mithqalite-base`, `mithqalite-nz`, `mithqalite-q`, and `mithqalite-float`. The fork is the pure Rust numeric core. Mithqal uses it for exact integers, rationals, and approximate real values. Mithqal owns the engine-facing wrappers, complex numbers, hypercomplex numbers, fixed-point types, and special functions. Mithqalite owns changes that require access to the numeric internals.
 
 ## Initial setup
 
@@ -30,10 +30,10 @@ Changes that need internal access:
 Changes that belong in Mithqal:
 
 - The engine-facing `Int`, `Rat`, `Real`, and `Complex` wrappers.
-- Complex arithmetic on top of Malachite Float.
+- Complex arithmetic on top of Mithqalite Float.
 - Quaternion, octonion, and sedenion types.
 - Q31.32 fixed-point arithmetic.
-- Gamma, lgamma, erf, and erfc.
+- Gamma, lgamma, erf, erfc, and erfi.
 - Display, interning, and expression arena integration.
 
 ## Update rules
@@ -45,7 +45,7 @@ Every Mithqalite update must have:
 - A small, reviewable diff.
 - A note in Mithqal describing the update.
 
-Do not copy code from another numeric library into Mithqalite without checking its license and documenting the origin. Malachite is LGPL-3.0-only. The fork remains LGPL-3.0-only when distributed.
+Do not copy code from another numeric library into Mithqalite without checking its license and documenting the origin. Mithqalite is LGPL-3.0-only. The fork remains LGPL-3.0-only when distributed.
 
 ## Version control
 

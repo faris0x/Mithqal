@@ -6,8 +6,8 @@ This document records the support level of each public area. Stable areas follow
 | --- | --- | --- |
 | Session, configuration, diagnostics | Stable | Public session methods, error codes, and node-count limits. |
 | Expression handles and views | Stable | Generational handles, fallible inspection, and session scoping. |
-| Exact integers and rationals | Stable | Malachite-backed canonical arithmetic. |
-| Approximate real and complex numerics | Partial | Malachite significance, directed intervals, and complex branches. |
+| Exact integers and rationals | Stable | Mithqalite-backed canonical arithmetic. |
+| Approximate real and complex numerics | Partial | Mithqalite significance, directed intervals, and complex branches. |
 | Polynomial expansion and univariate factorisation | Stable | Bounded by the documented term and exponent limits. |
 | Multivariate factorisation | Partial | Staged interpolation through eight variables and bounded Hensel lifting. |
 | Calculus and limits | Partial | Polynomial, elementary, inverse-function, and supported improper cases. |

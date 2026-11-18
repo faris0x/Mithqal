@@ -36,7 +36,7 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         }
         "assume" | "assuming" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "gcd" | "lcm" | "factorial" | "binomial" | "floor" | "ceil" | "round" | "gamma"
-        | "lgamma" | "erf" | "erfc" => A::new().with(A::PROTECTED),
+        | "lgamma" | "erf" | "erfc" | "erfi" => A::new().with(A::PROTECTED),
         "det" | "rank" | "transpose" | "inverse" | "rref" | "trace" | "matmul" | "identity"
         | "solveLinear" | "dot" | "cross" | "plu" | "charpoly" | "eigenvalues" | "nullspace"
         | "kernel" | "eigenvectors" | "qr" => A::new().with(A::PROTECTED),

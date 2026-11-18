@@ -52,7 +52,7 @@ error is zero.
 The boundary supports exact integers and rationals, `pi`, `e`, arithmetic,
 integer and real powers, roots, exponentials, logarithms, trigonometric
 functions, inverse trigonometric functions, hyperbolic functions, inverse
-hyperbolic functions, `gamma`, `lgamma`, `erf`, `erfc`, and `abs`. A symbolic
+hyperbolic functions, `gamma`, `lgamma`, `erf`, `erfc`, `erfi`, and `abs`. A symbolic
 argument that cannot be converted leaves the `approx` call unevaluated.
 
 Approximate values are not accepted as source literals in this version.

@@ -1,12 +1,12 @@
-//! Arbitrary precision integers backed by Malachite.
+//! Arbitrary precision integers backed by Mithqalite.
 
 use core::cmp::Ordering;
 use core::fmt;
 use core::str::FromStr;
 
-use malachite::Integer;
-use malachite::Natural;
-use malachite::base::num::arithmetic::traits::{Abs, DivRem, Gcd, Pow, Sign};
+use mithqalite::Integer;
+use mithqalite::Natural;
+use mithqalite::base::num::arithmetic::traits::{Abs, DivRem, Gcd, Pow, Sign};
 
 use super::NumError;
 

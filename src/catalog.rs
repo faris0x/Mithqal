@@ -1266,6 +1266,15 @@ pub const FUNCTIONS: &[FunctionInfo] = &[
         capability: Capability::approximate("supported numeric values under approx"),
     },
     FunctionInfo {
+        name: "erfi",
+        category: "numeric",
+        signature: "erfi(expr)",
+        summary: "Imaginary error function.",
+        example: "approx(erfi(1),30)",
+        example_kind: ExampleKind::Approximate,
+        capability: Capability::approximate("supported numeric values under approx"),
+    },
+    FunctionInfo {
         name: "set",
         category: "language",
         signature: "set(symbol,value)",

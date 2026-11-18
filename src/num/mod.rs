@@ -1,4 +1,4 @@
-//! Exact and approximate numbers backed by Malachite.
+//! Exact and approximate numbers backed by Mithqalite.
 //!
 //! Integers, rationals, reals, and complex values are pure Rust values. No C
 //! toolchain or foreign runtime is required.

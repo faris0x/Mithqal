@@ -6,7 +6,7 @@ The project ships small versions. The current version establishes the kernel and
 
 Included:
 
-- Exact integers and rationals through Malachite.
+- Exact integers and rationals through Mithqalite.
 - Symbol table, attributes, canonical order, and hash consed expressions.
 - Source reader for whitespace free statements with newline separators and whole line comments.
 - Canonical and infix printers.
@@ -14,7 +14,7 @@ Included:
 - Pattern matcher for the current pattern set.
 - Definitions, lexical `let`, closures, listable arithmetic, comparisons, and logic.
 - Symbolic `Q(i)` normalization.
-- Approximate reals through Malachite Float with significance tracking and a numeric boundary.
+- Approximate reals through Mithqalite Float with significance tracking and a numeric boundary.
 - Approximate interval arithmetic with directed endpoint rounding and significance widening.
 - Approximate complex arithmetic, elementary functions, inverse functions, powers, reciprocals, absolute value, gamma, log gamma, and error functions.
 - Exact polynomial expansion, factoring, polynomial gcd, resultants, rational function cancellation, and linear or quadratic solving.
@@ -68,7 +68,7 @@ Excluded:
 
 ## Implementation order
 
-1. Vendor Malachite and write the numeric backend layer.
+1. Vendor Mithqalite and write the numeric backend layer.
 2. Implement `Int` and `Rat` wrappers with exact arithmetic tests.
 3. Implement the expression arena, symbol table, interning, and canonical order.
 4. Implement the lexer, parser, canonical printer, and infix printer.
@@ -84,7 +84,7 @@ Each step ends with a green test suite. The next step does not begin while the p
 
 The test suite covers these areas:
 
-- Malachite wrapper correctness against known values and small integer oracles.
+- Mithqalite wrapper correctness against known values and small integer oracles.
 - Parser round trips through canonical output.
 - Evaluation idempotence and determinism across sessions.
 - Pattern matching with repeated variables, conditions, and sequence patterns.
@@ -105,7 +105,7 @@ The engine remains a small core. Mathematics lives in Mithqal modules. Frontends
 ## Constraints
 
 - Target Linux on x86 64 for the current version.
-- Link Malachite from the Mithqalite fork.
+- Link Mithqalite from the Mithqalite fork.
 - Keep external Rust crates limited to the numeric core and optional frontends.
 - Keep `unsafe` confined to arena internals.
 - Keep evaluation deterministic.
