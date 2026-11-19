@@ -4,6 +4,9 @@
 //! threading, comparisons, logic, definitions, closures, control flow,
 //! binders, quantifiers, numeric boundaries, and limit and series dispatch.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 mod arithmetic;
 mod control;
 mod definitions;
@@ -15,8 +18,8 @@ mod numeric;
 mod pattern;
 mod support;
 
+use crate::collections::{HashMap, HashSet};
 use core::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
 
 use crate::diag::{Diagnostic, ErrorCode, Frame};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};

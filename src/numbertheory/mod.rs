@@ -3,6 +3,9 @@
 //! Functions operate on machine sized integers for factorization and primality.
 //! Modular arithmetic uses arbitrary precision integers.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::expr::{Arena, ExprId, Node};
 use crate::num::Int;
 

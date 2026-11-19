@@ -1,5 +1,8 @@
 //! Dense rational matrices and scalar operations.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 #[derive(Clone, Debug, PartialEq)]

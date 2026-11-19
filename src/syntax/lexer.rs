@@ -3,6 +3,9 @@
 //! Statements occupy one line. Comments occupy whole lines and may nest.
 //! Whitespace inside a statement is a diagnostic.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::diag::{Diagnostic, ErrorCode, Span};
 
 /// A lexical token.

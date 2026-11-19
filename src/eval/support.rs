@@ -1,5 +1,8 @@
 //! Shared evaluator helpers for signs, exact values, and numeric folding.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 pub(super) fn require_arity(

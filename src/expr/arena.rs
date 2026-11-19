@@ -1,7 +1,10 @@
 //! The expression arena and symbol table.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
+use crate::collections::HashMap;
 use core::cmp::Ordering;
-use std::collections::HashMap;
 
 use crate::hash::FnvBuildHasher;
 use crate::num::{Int, Rat, Real};

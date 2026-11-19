@@ -1,5 +1,8 @@
 //! Polynomial factorisation.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 fn merge_dense_factor(factors: &mut Vec<(Vec<Rat>, u32)>, polynomial: Vec<Rat>, multiplicity: u32) {

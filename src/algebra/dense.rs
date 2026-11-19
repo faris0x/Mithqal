@@ -1,5 +1,8 @@
 //! Dense polynomial coefficient helpers shared by algebra stages.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::num::{Int, Rat};
 
 pub(crate) fn trim(mut coefficients: Vec<Rat>) -> Vec<Rat> {

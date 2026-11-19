@@ -1,5 +1,8 @@
 //! Interactive read, evaluate, print loop.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use std::path::PathBuf;
 use std::time::Instant;
 

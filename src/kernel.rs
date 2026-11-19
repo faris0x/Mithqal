@@ -3,6 +3,9 @@
 //! An arena resolves this fixed set once. Later evaluator instances copy the
 //! cached handles instead of repeating symbol lookups.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::expr::{Arena, ExprId};
 
 /// Expression handles for the core kernel heads.

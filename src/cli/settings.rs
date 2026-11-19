@@ -1,5 +1,8 @@
 //! REPL settings.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 #[derive(Copy, Clone, Debug)]
 pub(super) struct Settings {
     pub timing: bool,

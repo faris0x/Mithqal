@@ -4,6 +4,9 @@
 //! owns the static attribute table so the parser and evaluator agree on the
 //! shape of kernel heads.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::expr::Attributes;
 
 /// The attributes of a built in symbol, or `None` for an ordinary name.

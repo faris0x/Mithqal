@@ -5,6 +5,9 @@
 //! instances, and print statements. Expressions are parsed separately by the
 //! existing expression reader and must contain no whitespace.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::diag::{Diagnostic, ErrorCode, Span};
 
 /// A parsed source expression with its original location.

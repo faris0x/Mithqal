@@ -5,8 +5,12 @@
 //!
 //! The project is named Mithqal.
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
 #![forbid(unsafe_op_in_unsafe_fn)]
+
+#[macro_use]
+extern crate alloc;
 
 mod algebra;
 pub mod api;
@@ -15,6 +19,7 @@ mod calculus;
 pub mod catalog;
 #[cfg(feature = "cli")]
 pub mod cli;
+mod collections;
 pub mod config;
 pub mod diag;
 pub mod eval;
@@ -24,8 +29,10 @@ mod hash;
 pub mod ir;
 mod kernel;
 mod linalg;
+mod math;
 pub mod num;
 mod numbertheory;
+mod prelude;
 pub mod print;
 pub mod runtime;
 mod stdlib;

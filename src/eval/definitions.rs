@@ -1,6 +1,9 @@
 //! Own values and down values.
 
-use std::collections::HashMap;
+#[allow(unused_imports)]
+use crate::prelude::*;
+
+use crate::collections::HashMap;
 
 use crate::diag::{Diagnostic, ErrorCode, Span};
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};

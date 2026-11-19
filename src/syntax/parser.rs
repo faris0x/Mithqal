@@ -1,5 +1,8 @@
 //! Recursive descent parser for the source language.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode, Span};
 use crate::expr::{Arena, ExprId};

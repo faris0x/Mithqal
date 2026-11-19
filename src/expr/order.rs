@@ -1,5 +1,8 @@
 //! Canonical order over expressions.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use core::cmp::Ordering;
 
 use super::arena::Arena;

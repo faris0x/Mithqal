@@ -1,5 +1,8 @@
 //! Interactive commands.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::Session;
 
 use crate::catalog;

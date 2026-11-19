@@ -9,6 +9,9 @@
 //! multivariate interpolation, and grouping. Cancellation uses polynomial
 //! gcds and monomial content.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 mod dense;
 mod factor;
 mod hensel;
@@ -31,7 +34,7 @@ pub(crate) use solve::solve;
 
 use rational::*;
 
-use std::collections::{BTreeMap, BTreeSet};
+use crate::collections::{BTreeMap, BTreeSet};
 
 use crate::expr::{Arena, ExprId, Node, SymbolId};
 use crate::num::{Int, Rat};

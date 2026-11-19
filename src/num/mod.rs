@@ -3,6 +3,9 @@
 //! Integers, rationals, reals, and complex values are pure Rust values. No C
 //! toolchain or foreign runtime is required.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 mod int;
 mod mpc;
 mod rat;
@@ -43,4 +46,4 @@ impl fmt::Display for NumError {
     }
 }
 
-impl std::error::Error for NumError {}
+impl core::error::Error for NumError {}

@@ -1,5 +1,8 @@
 //! Sparse and dense interpolation helpers for the multivariate stages.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 pub(super) type SparseRoots = (Vec<(Rat, u32)>, Vec<Rat>);

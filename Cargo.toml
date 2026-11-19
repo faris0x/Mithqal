@@ -10,13 +10,16 @@ homepage = "https://github.com/faris0x/Mithqal"
 publish = false
 
 [features]
-default = ["cli"]
-cli = ["dep:rustyline"]
+default = ["std", "cli"]
+std = ["mithqalite/std"]
+cli = ["std", "dep:rustyline"]
 gui = []
 
 [dependencies]
 rustyline = { version = "19", optional = true }
-mithqalite = { path = "vendor/mithqalite/mithqalite", default-features = false, features = ["std", "naturals_and_integers", "rationals", "floats"] }
+mithqalite = { path = "vendor/mithqalite/mithqalite", default-features = false, features = ["naturals_and_integers", "rationals", "floats"] }
+hashbrown = { version = "0.16.1", default-features = false, features = ["default-hasher", "inline-more"] }
+libm = "0.2.16"
 
 [profile.release]
 opt-level = 3

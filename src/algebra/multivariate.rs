@@ -28,6 +28,9 @@
 //! - Evaluation and interpolation over more than eight variables.
 //! - General multivariate factorisation beyond the staged bounds.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 mod interpolation;
 mod support;
 

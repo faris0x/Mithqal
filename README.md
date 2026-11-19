@@ -21,7 +21,15 @@ cargo run
 
 Use `cargo build --no-default-features --lib` to build the engine without the command line frontend. The `cli` feature controls the frontend and the `gui` feature is reserved for a future graphical frontend.
 
-The supported build target is Linux on x86-64. A native build requires the Rust toolchain pinned in `rust-toolchain.toml`. Numeric work is pure Rust; no C compiler, Make, or native numeric libraries are required. The first build compiles Mithqalite from `vendor/mithqalite` and caches the result in `target`.
+The supported desktop build target is Linux on x86-64. A native build requires the Rust toolchain pinned in `rust-toolchain.toml`. Numeric work is pure Rust; no C compiler, Make, or native numeric libraries are required. The first build compiles Mithqalite from `vendor/mithqalite` and caches the result in `target`.
+
+The library also builds without the standard library:
+
+```text
+cargo build --no-default-features --lib
+```
+
+The no-std build uses `core` and `alloc`, and requires the final binary to provide a global allocator and panic handler. The CLI is std-only. See [no_std](./docs/no_std.md).
 
 
 ## Usage
@@ -81,6 +89,7 @@ The module prints:
 - [Maturity](./docs/maturity.md)
 - [Testing](./docs/testing.md)
 - [Mithqalite numeric fork](./docs/mithqalite.md)
+- [no_std](./docs/no_std.md)
 
 ## Status
 

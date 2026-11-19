@@ -1,5 +1,8 @@
 //! Human-readable CLI output formatting.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::{ExprId, ExprView, Session};
 
 pub(super) fn value(session: &Session, source: &str, value: ExprId) -> String {

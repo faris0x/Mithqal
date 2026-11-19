@@ -1,5 +1,8 @@
 //! Limit, series, and convergence evaluation helpers.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 mod infinity;

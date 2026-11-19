@@ -9,6 +9,9 @@
 //! Coefficients and moduli use arbitrary precision integers, so the coefficient range is not
 //! limited by machine word size.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 const MAX_DEGREE: usize = 8;

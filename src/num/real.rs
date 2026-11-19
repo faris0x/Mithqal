@@ -3,6 +3,9 @@
 //! Values are stored as Mithqalite binary floats. The wrapper keeps the
 //! engine's decimal significance model and directed rounding interface.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use core::cmp::Ordering;
 use core::fmt;
 
@@ -878,13 +881,13 @@ impl fmt::Debug for Real {
 }
 
 fn bits_for_digits(digits: u32) -> u32 {
-    ((digits as f64 * std::f64::consts::LOG2_10) as u32)
+    ((digits as f64 * core::f64::consts::LOG2_10) as u32)
         .saturating_add(32)
         .max(64)
 }
 
 fn digits_for_bits(bits: u32) -> u32 {
-    ((bits as f64 * std::f64::consts::LOG10_2).ceil() as u32).max(1)
+    ((bits as f64 * core::f64::consts::LOG10_2).ceil() as u32).max(1)
 }
 
 fn rounding_error(value: &Real) -> f64 {

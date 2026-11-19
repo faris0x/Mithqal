@@ -1,5 +1,8 @@
 //! Evaluator state and rewrite methods.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 pub(crate) struct Evaluator<'a> {

@@ -1,5 +1,8 @@
 //! Tab completion for the interactive calculator.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use rustyline::completion::{Completer, Pair};
 use rustyline::highlight::Highlighter;
 use rustyline::hint::Hinter;

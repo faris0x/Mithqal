@@ -1,5 +1,8 @@
 //! Session methods.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 use crate::expr::Attributes;
 use crate::stdlib;
@@ -813,6 +816,7 @@ impl Session {
     }
 
     /// Read and evaluate a source file.
+    #[cfg(feature = "std")]
     pub fn eval_file(&mut self, path: &str) -> Result<ExprId, Diagnostic> {
         let source = std::fs::read_to_string(path).map_err(|error| {
             Diagnostic::eval(
@@ -990,8 +994,8 @@ fn defined_names(program: &syntax::Program) -> Vec<String> {
                 names.push(name.clone());
             }
             Stmt::Structure { name, fields, .. } => {
-                for generated in std::iter::once(name.clone())
-                    .chain(std::iter::once(format!("{name}Holds")))
+                for generated in core::iter::once(name.clone())
+                    .chain(core::iter::once(format!("{name}Holds")))
                     .chain(
                         fields
                             .iter()

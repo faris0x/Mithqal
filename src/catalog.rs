@@ -1,5 +1,8 @@
 //! User-facing built-in function catalog.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 /// Strongest support guarantee for a catalog function.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Support {
@@ -1385,7 +1388,7 @@ pub fn matches(function: &FunctionInfo, query: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
+    use crate::collections::HashSet;
 
     #[test]
     fn catalog_entries_are_unique_and_complete() {

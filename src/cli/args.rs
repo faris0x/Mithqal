@@ -1,5 +1,8 @@
 //! Argument handling for the command line frontend.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::{ExprView, Session};
 
 use super::{format, license, repl};

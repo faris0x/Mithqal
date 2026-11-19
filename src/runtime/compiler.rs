@@ -1,5 +1,8 @@
 //! Compiler from expressions to typed instructions.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::diag::{Diagnostic, ErrorCode};
 use crate::expr::{Arena, Attributes, ExprId, Node};
 

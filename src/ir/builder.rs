@@ -1,5 +1,8 @@
 //! IR builder.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 /// Incremental builder for a structured module.

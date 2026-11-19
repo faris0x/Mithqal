@@ -1,5 +1,8 @@
 //! Structured intermediate representation.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 mod builder;
 mod types;
 

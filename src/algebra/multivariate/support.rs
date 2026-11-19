@@ -1,5 +1,8 @@
 //! Shared helper functions for the multivariate factorisation stages.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 pub(super) fn has_rational_root_slice(
@@ -205,7 +208,7 @@ pub(super) fn taylor_slices(
         }
     }
     for slice in &mut slices {
-        *slice = trim(std::mem::take(slice));
+        *slice = trim(core::mem::take(slice));
     }
     slices
 }

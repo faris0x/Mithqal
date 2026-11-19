@@ -1,5 +1,8 @@
 //! Numeric boundary, interval, and complex evaluation.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 impl<'a> Evaluator<'a> {

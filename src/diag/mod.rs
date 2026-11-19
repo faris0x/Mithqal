@@ -1,5 +1,8 @@
 //! Diagnostics and source spans.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use core::fmt;
 
 /// A source span with byte offsets and a one based line and column.
@@ -243,4 +246,4 @@ impl fmt::Display for Diagnostic {
     }
 }
 
-impl std::error::Error for Diagnostic {}
+impl core::error::Error for Diagnostic {}

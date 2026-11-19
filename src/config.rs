@@ -1,5 +1,8 @@
 //! Session configuration.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 /// Limits and memory settings for a session.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Config {

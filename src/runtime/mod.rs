@@ -3,6 +3,9 @@
 //! The evaluator owns the rewrite semantics. The virtual machine executes
 //! compiled control flow and delegates symbolic calls to the evaluator.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 mod compiler;
 mod instr;
 mod vm;

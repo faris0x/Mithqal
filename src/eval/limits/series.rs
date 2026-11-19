@@ -1,5 +1,8 @@
 //! Series helpers.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 impl<'a> Evaluator<'a> {

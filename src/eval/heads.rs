@@ -1,5 +1,8 @@
 //! Kernel head enums and name lookup.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 pub(crate) enum Numeric {

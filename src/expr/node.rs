@@ -1,5 +1,8 @@
 //! Expression nodes, symbols, and attributes.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use core::fmt;
 
 use crate::num::{Int, Rat, Real};

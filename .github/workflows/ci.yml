@@ -32,6 +32,7 @@ jobs:
         with:
           toolchain: 1.97.1
           components: rustfmt, clippy
+          targets: wasm32-unknown-unknown,thumbv7m-none-eabi
 
       - name: Cache Cargo and build output
         uses: actions/cache@v4
@@ -52,6 +53,20 @@ jobs:
 
       - name: Build library without default features
         run: cargo build --locked --no-default-features --lib
+
+      - name: Check no_std host build
+        run: cargo check --locked --no-default-features --lib
+
+      - name: Check no_std wasm32
+        run: cargo check --locked --target wasm32-unknown-unknown --no-default-features --lib
+
+      - name: Check no_std thumbv7m
+        run: cargo check --locked --target thumbv7m-none-eabi --no-default-features --lib
+
+      - name: Check Mithqalite no_std
+        run: |
+          cargo check --manifest-path vendor/mithqalite/Cargo.toml -p mithqalite-float --lib --no-default-features
+          cargo check --manifest-path vendor/mithqalite/Cargo.toml -p mithqalite --lib --no-default-features --features naturals_and_integers,rationals,floats
 
       - name: Check documentation claims
         run: sh scripts/check-docs.sh

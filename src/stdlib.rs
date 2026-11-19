@@ -4,7 +4,10 @@
 //! resolves the import graph, evaluates every module, and makes only the names
 //! a module exports visible.
 
-use std::collections::HashMap;
+#[allow(unused_imports)]
+use crate::prelude::*;
+
+use crate::collections::HashMap;
 
 use crate::syntax::{Stmt, parse_program};
 
@@ -170,7 +173,7 @@ pub(crate) fn is_library_function(name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
+    use crate::collections::HashSet;
 
     #[test]
     fn exports_are_defined_and_unique() {

@@ -1,5 +1,8 @@
 //! Command line frontend.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 mod args;
 mod commands;
 mod completion;

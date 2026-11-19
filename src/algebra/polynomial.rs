@@ -1,5 +1,8 @@
 //! Sparse polynomial representation and conversion.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]

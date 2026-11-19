@@ -1,5 +1,8 @@
 //! Arbitrary precision integers backed by Mithqalite.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use core::cmp::Ordering;
 use core::fmt;
 use core::str::FromStr;

@@ -1,5 +1,8 @@
 //! Symbolic differentiation.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 pub(crate) fn differentiate(

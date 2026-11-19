@@ -1,5 +1,8 @@
 //! License notice for Mithqal and its dependencies.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 pub(super) const NOTICE: &str = "\
 Mithqal is licensed under the GNU GPL version 3.0 License only.
 Copyright (c) 2026 Faris Alfarhan

@@ -1,5 +1,8 @@
 //! Canonical arithmetic, comparisons, and Gaussian rational collection.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 impl<'a> Evaluator<'a> {

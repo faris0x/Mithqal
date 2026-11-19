@@ -1,5 +1,8 @@
 //! Symbolic matrix operations.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 #[derive(Clone)]

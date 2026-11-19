@@ -285,3 +285,5 @@ Initial kernel work.
 - Added multi-entry constant caches for pi, ln 2, and e, accelerating constant, exponential, trigonometric, inverse trigonometric, and hyperbolic paths.
 - Replaced the real error-function series with a direct binary-float series and added the imaginary error function erfi for real and complex arguments.
 - Added complex erf and erfc, plus catalog, documentation, and test coverage for the error functions.
+- Added a `std` feature split and a no-std library build using `core`, `alloc`, `hashbrown`, and `libm`.
+- Added no-std checks for `wasm32-unknown-unknown` and `thumbv7m-none-eabi`, plus a no-std usage document.

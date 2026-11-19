@@ -1,5 +1,8 @@
 //! Exact rational linear algebra.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::expr::{Arena, ExprId, Node};
 use crate::num::{Int, Rat};
 

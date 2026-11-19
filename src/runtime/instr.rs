@@ -1,5 +1,8 @@
 //! Typed instruction stream.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::expr::{ExprId, SymbolId};
 
 /// A virtual machine instruction.

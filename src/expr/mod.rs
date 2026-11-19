@@ -5,6 +5,9 @@
 //! This module is an unstable internal surface. Library users should inspect
 //! expressions through [`crate::Session`].
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 mod arena;
 mod node;
 mod order;

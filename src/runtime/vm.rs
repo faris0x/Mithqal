@@ -1,5 +1,8 @@
 //! Typed instruction virtual machine.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode};
 use crate::eval::{SessionDefinitions, evaluate_with_definitions};

@@ -1,6 +1,9 @@
 //! Rational roots and integer coefficient normalisation.
 
-use std::collections::BTreeSet;
+#[allow(unused_imports)]
+use crate::prelude::*;
+
+use crate::collections::BTreeSet;
 
 use crate::num::{Int, Rat};
 

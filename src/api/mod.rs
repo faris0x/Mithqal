@@ -1,6 +1,9 @@
 //! Public session and expression handle API.
 
-use std::collections::HashMap;
+#[allow(unused_imports)]
+use crate::prelude::*;
+
+use crate::collections::HashMap;
 
 use crate::config::Config;
 use crate::diag::{Diagnostic, ErrorCode, Frame, Span};

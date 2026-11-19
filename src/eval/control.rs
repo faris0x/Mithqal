@@ -1,5 +1,8 @@
 //! Definitions, closures, control flow, binders, local definitions, and list threading.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 impl<'a> Evaluator<'a> {

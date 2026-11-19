@@ -1,5 +1,8 @@
 //! Human infix printer.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use core::fmt::Write;
 
 use crate::expr::{Arena, ExprId, Node};

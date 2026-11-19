@@ -1,6 +1,9 @@
 //! Structural pattern matching and substitution.
 
-use std::collections::{HashMap, HashSet};
+#[allow(unused_imports)]
+use crate::prelude::*;
+
+use crate::collections::{HashMap, HashSet};
 
 use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
 

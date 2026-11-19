@@ -10,6 +10,9 @@
 //!
 //! The IR is a scaffold. Parsing and lowering into it arrive in a later layer.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use core::fmt;
 
 /// Version of the structured IR layout.
@@ -391,7 +394,7 @@ impl fmt::Display for IrError {
     }
 }
 
-impl std::error::Error for IrError {}
+impl core::error::Error for IrError {}
 
 impl Module {
     /// Create an empty module with the current format version.
@@ -422,7 +425,7 @@ impl Module {
         if nodes > MAX_NODES {
             return Err(IrError::TooManyNodes);
         }
-        let mut names = std::collections::HashSet::new();
+        let mut names = crate::collections::HashSet::new();
         for symbol in &self.symbols {
             if symbol.name.is_empty() {
                 return Err(IrError::EmptySymbolName);

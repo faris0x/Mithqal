@@ -1,5 +1,8 @@
 //! A small deterministic hasher for hot maps.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use core::hash::{BuildHasherDefault, Hasher};
 
 /// FNV-1a 64 bit hasher.

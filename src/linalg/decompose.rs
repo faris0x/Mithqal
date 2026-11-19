@@ -1,5 +1,8 @@
 //! Matrix factorisations and spectral operations.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 pub(crate) fn plu(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {

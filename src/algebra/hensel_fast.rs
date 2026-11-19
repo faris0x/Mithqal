@@ -9,6 +9,9 @@
 //! Coefficients are converted to signed 128 bit values. Inputs that exceed that
 //! range fall back to leaving the polynomial unfactored.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::*;
 
 const MAX_DEGREE: usize = 8;

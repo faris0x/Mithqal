@@ -2,6 +2,9 @@
 //!
 //! The surface grammar is described in `docs/syntax.md`.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 mod language;
 mod lexer;
 mod parser;

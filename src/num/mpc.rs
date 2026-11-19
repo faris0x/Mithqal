@@ -6,6 +6,9 @@
 //! infinite, and non finite results are rejected instead of entering the
 //! expression arena.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use super::Real;
 
 #[derive(Clone)]
