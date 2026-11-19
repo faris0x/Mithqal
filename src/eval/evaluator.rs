@@ -5,6 +5,14 @@ use crate::prelude::*;
 
 use super::*;
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Control {
+    Return(ExprId),
+    Break,
+    Continue,
+    Throw(ExprId, Option<ExprId>),
+}
+
 pub(crate) struct Evaluator<'a> {
     pub(super) arena: &'a mut Arena,
     pub(super) definitions: &'a mut Definitions,
@@ -16,6 +24,7 @@ pub(crate) struct Evaluator<'a> {
     pub(super) depth: u32,
     pub(super) max_depth: u32,
     pub(super) approximation_digits: Option<u32>,
+    pub(super) control: Option<Control>,
 }
 
 impl<'a> Evaluator<'a> {
@@ -32,10 +41,14 @@ impl<'a> Evaluator<'a> {
             depth: 0,
             max_depth: 2048,
             approximation_digits: None,
+            control: None,
         }
     }
 
     pub(super) fn eval(&mut self, id: ExprId) -> Result<ExprId, Diagnostic> {
+        if self.control.is_some() {
+            return Ok(self.heads.null);
+        }
         self.steps += 1;
         if self.steps > self.max_steps {
             return Err(Diagnostic::eval(
@@ -58,7 +71,12 @@ impl<'a> Evaluator<'a> {
 
     pub(super) fn eval_inner(&mut self, id: ExprId) -> Result<ExprId, Diagnostic> {
         let (head, args) = match self.arena.node(id) {
-            Node::Int(_) | Node::Rat(_) | Node::Real(_) => return Ok(id),
+            Node::Int(_)
+            | Node::Rat(_)
+            | Node::Real(_)
+            | Node::String(_)
+            | Node::Bytes(_)
+            | Node::Association(_) => return Ok(id),
             Node::Symbol(symbol) => {
                 let symbol = *symbol;
                 if let Some(value) = self.local_value(symbol) {
@@ -66,6 +84,18 @@ impl<'a> Evaluator<'a> {
                 }
                 if let Some(own) = self.definitions.own_value(symbol) {
                     return self.eval(own.value);
+                }
+                if self.arena.symbol_name(symbol) == "$Context" {
+                    let context = self.arena.current_context().to_string();
+                    return Ok(self.arena.intern_string(&context));
+                }
+                if self.arena.symbol_name(symbol) == "$ContextPath" {
+                    let path = self.arena.context_path().to_vec();
+                    let mut values = Vec::with_capacity(path.len());
+                    for context in path {
+                        values.push(self.arena.intern_string(&context));
+                    }
+                    return Ok(self.arena.intern_call(self.heads.list, &values));
                 }
                 return Ok(id);
             }
@@ -107,6 +137,113 @@ impl<'a> Evaluator<'a> {
             })
         {
             return Ok(id);
+        }
+        if head == self.heads.begin {
+            return self.eval_begin(args.as_slice());
+        }
+        if head == self.heads.end {
+            return self.eval_end(args.as_slice());
+        }
+        if head == self.heads.context {
+            return self.eval_context(args.as_slice());
+        }
+        if head == self.heads.contexts {
+            return self.eval_contexts(args.as_slice());
+        }
+        if head == self.heads.hold {
+            return self.eval_hold(args.as_slice());
+        }
+        if head == self.heads.unevaluated {
+            if args.as_slice().len() != 1 {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalArity,
+                    "unevaluated expects one argument",
+                ));
+            }
+            return Ok(args.as_slice()[0]);
+        }
+        if head == self.heads.compound {
+            return self.eval_compound(args.as_slice());
+        }
+        if head == self.heads.which {
+            return self.eval_which(args.as_slice());
+        }
+        if head == self.heads.switch {
+            return self.eval_switch(args.as_slice());
+        }
+        if head == self.heads.do_loop {
+            return self.eval_do(args.as_slice());
+        }
+        if head == self.heads.while_loop {
+            return self.eval_while(args.as_slice());
+        }
+        if head == self.heads.for_loop {
+            return self.eval_for(args.as_slice());
+        }
+        if head == self.heads.return_form {
+            return self.eval_return(args.as_slice());
+        }
+        if head == self.heads.break_form {
+            return self.eval_break(args.as_slice());
+        }
+        if head == self.heads.continue_form {
+            return self.eval_continue(args.as_slice());
+        }
+        if head == self.heads.throw_form {
+            return self.eval_throw(args.as_slice());
+        }
+        if head == self.heads.catch_form {
+            return self.eval_catch(args.as_slice());
+        }
+        if head == self.heads.unset {
+            return self.eval_unset(args.as_slice());
+        }
+        if head == self.heads.clear || head == self.heads.clear_all || head == self.heads.remove {
+            return self.eval_clear(head, args.as_slice());
+        }
+        if head == self.heads.message {
+            return self.eval_message(args.as_slice());
+        }
+        if head == self.heads.check {
+            return self.eval_check(args.as_slice());
+        }
+        if head == self.heads.quiet {
+            return self.eval_quiet(args.as_slice());
+        }
+        if head == self.heads.off || head == self.heads.on {
+            return self.eval_message_control(head == self.heads.on, args.as_slice());
+        }
+        if head == self.heads.up_set
+            || head == self.heads.up_set_delayed
+            || head == self.heads.tag_set
+            || head == self.heads.tag_set_delayed
+        {
+            return self.eval_up_definition(head, args.as_slice());
+        }
+        if head == self.heads.set_attributes {
+            return self.eval_set_attributes(args.as_slice(), false);
+        }
+        if head == self.heads.clear_attributes {
+            return self.eval_set_attributes(args.as_slice(), true);
+        }
+        if head == self.heads.attributes {
+            return self.eval_attributes(args.as_slice());
+        }
+        if head == self.heads.protect || head == self.heads.unprotect {
+            return self.eval_protect(head, args.as_slice());
+        }
+        if head == self.heads.own_values
+            || head == self.heads.down_values
+            || head == self.heads.sub_values
+            || head == self.heads.up_values
+        {
+            return self.eval_values(head, args.as_slice());
+        }
+        if head == self.heads.definition || head == self.heads.full_definition {
+            return self.eval_definition_info(args.as_slice());
+        }
+        if self.is_mutation_head(head) {
+            return self.eval_mutation(head, args.as_slice());
         }
         if head == self.heads.assume || head == self.heads.assuming {
             return self.eval_assume(args.as_slice());
@@ -173,9 +310,31 @@ impl<'a> Evaluator<'a> {
         }
 
         let mut evaluated = SmallArgs::new();
+        let sequence_hold = attrs.has(Attributes::SEQUENCE_HOLD);
         for arg in args.as_slice() {
+            if let Node::Call { head, args: inner } = self.arena.node(*arg)
+                && *head == self.heads.unevaluated
+                && inner.len() == 1
+            {
+                evaluated.push(inner[0]);
+                continue;
+            }
             let arg = self.expand_series_sums(*arg);
-            evaluated.push(self.eval(arg)?);
+            let value = self.eval(arg)?;
+            if !sequence_hold
+                && let Node::Call {
+                    head,
+                    args: sequence,
+                } = self.arena.node(value)
+                && *head == self.heads.sequence
+            {
+                let sequence = sequence.to_vec();
+                for item in sequence {
+                    evaluated.push(self.eval(item)?);
+                }
+            } else {
+                evaluated.push(value);
+            }
         }
 
         if head == self.heads.plus || head == self.heads.times || head == self.heads.negate {
@@ -262,6 +421,7 @@ impl<'a> Evaluator<'a> {
             Node::Int(value) => Some(sign_of(value.sign())),
             Node::Rat(value) => Some(sign_of(value.sign())),
             Node::Real(value) => Some(sign_of(value.sign())),
+            Node::String(_) | Node::Bytes(_) | Node::Association(_) => None,
             Node::Symbol(symbol) => {
                 if let Some(sign) = self
                     .assumptions
@@ -486,6 +646,9 @@ impl<'a> Evaluator<'a> {
         self.locals.push(frame);
         let result = self.eval(closure[1]);
         self.locals = outer;
+        if let Some(value) = self.take_return() {
+            return Ok(value);
+        }
         result
     }
 

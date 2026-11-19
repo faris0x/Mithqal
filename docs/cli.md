@@ -52,7 +52,7 @@ An assignment can be written with `=`:
 25
 ```
 
-The REPL keeps one session for the whole run, so definitions remain available. Errors print a diagnostic and the session continues.
+The REPL keeps one session for the whole run, so definitions remain available. Errors print a diagnostic and the session continues. Non-fatal messages print to stderr before the result.
 
 `factorInteger` results use a prime product in the default display:
 

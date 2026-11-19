@@ -12,7 +12,12 @@ pub(crate) fn differentiate(
     context: &Context,
 ) -> Option<ExprId> {
     match arena.node(expression) {
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) => Some(int_expression(arena, 0)),
+        Node::Int(_)
+        | Node::Rat(_)
+        | Node::Real(_)
+        | Node::String(_)
+        | Node::Bytes(_)
+        | Node::Association(_) => Some(int_expression(arena, 0)),
         Node::Symbol(_) => Some(int_expression(
             arena,
             if expression == variable { 1 } else { 0 },

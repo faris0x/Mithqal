@@ -1,4 +1,4 @@
-//! Own values and down values.
+//! Own values, down values, up values, and definition scopes.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -35,6 +35,7 @@ pub(crate) struct Rule {
 pub(crate) struct Definitions {
     own: HashMap<SymbolId, OwnValue>,
     down: HashMap<SymbolId, Vec<Rule>>,
+    up: HashMap<SymbolId, Vec<Rule>>,
     local: Vec<HashMap<SymbolId, Vec<Rule>>>,
     sources: Vec<String>,
     version: u64,
@@ -51,6 +52,10 @@ impl Definitions {
 
     /// The rules for a symbol. The innermost local frame shadows outer frames
     /// and the global definitions entirely.
+    pub(crate) fn up_rules(&self, symbol: SymbolId) -> Vec<Rule> {
+        self.up.get(&symbol).cloned().unwrap_or_default()
+    }
+
     pub(crate) fn rules(&self, symbol: SymbolId) -> Vec<Rule> {
         for frame in self.local.iter().rev() {
             if let Some(rules) = frame.get(&symbol) {
@@ -62,6 +67,10 @@ impl Definitions {
 
     pub(crate) fn version(&self) -> u64 {
         self.version
+    }
+
+    pub(crate) fn bump_version(&mut self) {
+        self.version = self.version.wrapping_add(1);
     }
 
     /// Intern a source name and return its identifier.
@@ -163,11 +172,41 @@ impl Definitions {
         self.version = self.version.wrapping_add(1);
     }
 
+    pub(crate) fn unset_symbol(&mut self, symbol: SymbolId) {
+        self.own.remove(&symbol);
+        self.version = self.version.wrapping_add(1);
+    }
+
+    pub(crate) fn unset_rules(&mut self, symbol: SymbolId) {
+        self.down.remove(&symbol);
+        self.up.remove(&symbol);
+        for frame in &mut self.local {
+            frame.remove(&symbol);
+        }
+        self.version = self.version.wrapping_add(1);
+    }
+
+    pub(crate) fn clear_symbol(&mut self, symbol: SymbolId) {
+        self.own.remove(&symbol);
+        self.down.remove(&symbol);
+        self.up.remove(&symbol);
+        for frame in &mut self.local {
+            frame.remove(&symbol);
+        }
+        self.version = self.version.wrapping_add(1);
+    }
+
     pub(crate) fn roots(&self, roots: &mut Vec<ExprId>) {
         for own in self.own.values() {
             roots.push(own.value);
         }
         for rules in self.down.values() {
+            for rule in rules {
+                roots.push(rule.lhs);
+                roots.push(rule.rhs);
+            }
+        }
+        for rules in self.up.values() {
             for rule in rules {
                 roots.push(rule.lhs);
                 roots.push(rule.rhs);
@@ -220,6 +259,25 @@ impl Definitions {
                 "a definition target must be a symbol or a call",
             )),
         }
+    }
+
+    pub(crate) fn define_up(
+        &mut self,
+        arena: &Arena,
+        tag: SymbolId,
+        lhs: ExprId,
+        rhs: ExprId,
+        delayed: bool,
+    ) -> Result<(), Diagnostic> {
+        self.check_protected(arena, tag)?;
+        self.up.entry(tag).or_default().push(Rule {
+            lhs,
+            rhs,
+            delayed,
+            site: None,
+        });
+        self.version = self.version.wrapping_add(1);
+        Ok(())
     }
 
     /// Install a delayed rule in the innermost lexical scope.
@@ -319,7 +377,13 @@ fn is_sequence_pattern(arena: &Arena, pattern: ExprId) -> bool {
         .symbol_id(*head)
         .map(|symbol| arena.symbol_name(symbol))
     {
-        Some("blankSequence") | Some("blankNullSequence") => true,
+        Some("blankSequence")
+        | Some("blankNullSequence")
+        | Some("repeated")
+        | Some("repeatedNull")
+        | Some("optional")
+        | Some("longest")
+        | Some("shortest") => true,
         Some("pattern") if args.len() == 2 => is_sequence_pattern(arena, args[1]),
         _ => false,
     }

@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.0.2
+
+Version 0.0.2 begins the language-generalisation phase. The language version
+tracks the Mithqal crate version.
+
+- Added string, byte array, and association expression atoms.
+- Added canonical and infix printing, public views, interning, ordering, and
+  collection support for the new atoms.
+- Added context-aware symbols, `$Context`, `$ContextPath`, `Context`, and
+  `Contexts`.
+- Added qualified names with a semicolon separator, as in `ctx;name`.
+- Added `Begin` and `End` for context changes.
+- Added string, byte array, and association literals.
+- Added one based indexing with `expr[[...]]`, including negative indices.
+- Added part access for lists, calls, strings, byte arrays, and associations.
+- Added part assignment, `unset`, `clear`, `clearAll`, `remove`, and mutation
+  helpers.
+- Added `hold`, `holdForm`, `holdPattern`, `evaluate`, `unevaluated`, and
+  `sequence`.
+- Added `compound`, `which`, `switch`, `do`, `while`, `for`, `return`, `break`,
+  `continue`, `throw`, and `catch`.
+- Added string, byte array, and association functions.
+- Added file text, CSV, TSV, and JSON import and export under the `std` feature.
+- Added user attribute controls and definition introspection.
+- Added typed blanks, alternatives, pattern tests, optionals, repeated patterns,
+  `except`, `verbatim`, `longest`, `shortest`, and full orderless multiset
+  matching.
+- Added package loading with file imports, relative and search-path resolution,
+  once-only loading, cycle detection, and `Session::needs`/`Session::get`.
+- Replaced private module name mangling with module contexts.
+- Added `upSet`, `upSetDelayed`, `tagSet`, `tagSetDelayed`, and `upValues`.
+- Added `message`, `messageName`, `check`, `quiet`, `off`, and `on`, with
+  session message collection and CLI rendering.
+- Added stable part, key, context, package, pattern, and I/O error codes.
+- Added parser and pattern fuzz smoke tests and new benchmark cases.
+- Preserved the existing whitespace rule: expressions contain no whitespace.
+- Added a version consistency check for the crate, lockfile, specification, and
+  changelog.
+- Added the language v2 design and grammar documents.
+
 ## 0.0.1
 
 Initial kernel work.

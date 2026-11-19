@@ -289,8 +289,7 @@ pub(crate) fn eigenvectors(arena: &mut Arena, expression: ExprId) -> Option<Expr
     } else {
         let magnitude = rational_expression(arena, &discriminant.neg());
         let sqrt = sqrt_expression_simplified(arena, magnitude);
-        let imaginary_symbol = arena.symbol_or_intern("i");
-        let imaginary = arena.symbol_expr(imaginary_symbol);
+        let imaginary = arena.builtin_head("i");
         expression_multiply(arena, imaginary, sqrt)
     };
     let two = arena.intern_int(Int::from_i64(2));
@@ -344,9 +343,7 @@ pub(crate) fn qr(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
     let mut q_columns: Vec<Vec<ExprId>> = Vec::with_capacity(columns);
     let mut r = SymbolicMatrix::new(columns, columns);
     let zero = arena.intern_int(Int::zero());
-    for entry in &mut r.entries {
-        *entry = zero;
-    }
+    r.entries.fill(zero);
     for column in 0..columns {
         let mut values = Vec::with_capacity(rows);
         for row in 0..rows {

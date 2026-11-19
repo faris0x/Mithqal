@@ -30,6 +30,36 @@ pub enum ErrorKind {
     Numeric,
     /// An internal invariant failure.
     Internal,
+    /// A file or input/output failure.
+    Io,
+}
+
+/// A non-fatal message emitted during evaluation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Message {
+    /// The stable message code.
+    pub code: &'static str,
+    /// The message name, such as `symbol::tag`.
+    pub name: String,
+    /// The formatted message text.
+    pub text: String,
+}
+
+impl Message {
+    /// Build a message.
+    pub fn new(code: &'static str, name: impl Into<String>, text: impl Into<String>) -> Self {
+        Message {
+            code,
+            name: name.into(),
+            text: text.into(),
+        }
+    }
+}
+
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.code, self.text)
+    }
 }
 
 /// A stable diagnostic code.
@@ -68,6 +98,18 @@ pub enum ErrorCode {
     NumericFailure,
     /// An internal invariant failed.
     InternalInvariant,
+    /// A file or input/output operation failed.
+    IoFailure,
+    /// A part or index operation failed.
+    EvalPart,
+    /// A key operation failed.
+    EvalKey,
+    /// A context operation failed.
+    EvalContext,
+    /// A package operation failed.
+    EvalPackage,
+    /// A pattern operation failed.
+    EvalPattern,
 }
 
 impl ErrorCode {
@@ -90,6 +132,12 @@ impl ErrorCode {
             ErrorCode::EvalNotLive => "TGN-EVAL-0015",
             ErrorCode::NumericFailure => "TGN-NUM-0001",
             ErrorCode::InternalInvariant => "TGN-INT-0001",
+            ErrorCode::IoFailure => "TGN-IO-0001",
+            ErrorCode::EvalPart => "TGN-EVAL-0016",
+            ErrorCode::EvalKey => "TGN-EVAL-0017",
+            ErrorCode::EvalContext => "TGN-EVAL-0018",
+            ErrorCode::EvalPackage => "TGN-EVAL-0019",
+            ErrorCode::EvalPattern => "TGN-EVAL-0020",
         }
     }
 
@@ -112,6 +160,12 @@ impl ErrorCode {
             | ErrorCode::EvalNotLive => ErrorKind::Eval,
             ErrorCode::NumericFailure => ErrorKind::Numeric,
             ErrorCode::InternalInvariant => ErrorKind::Internal,
+            ErrorCode::IoFailure => ErrorKind::Io,
+            ErrorCode::EvalPart
+            | ErrorCode::EvalKey
+            | ErrorCode::EvalContext
+            | ErrorCode::EvalPackage
+            | ErrorCode::EvalPattern => ErrorKind::Eval,
         }
     }
 }

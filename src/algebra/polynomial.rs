@@ -379,7 +379,7 @@ pub(crate) fn poly_from_expr(arena: &Arena, context: &Context, expression: ExprI
             Rat::from_ints(value.clone(), Int::one()).ok()?,
         )),
         Node::Rat(value) => Some(Poly::constant(value.clone())),
-        Node::Real(_) => None,
+        Node::Real(_) | Node::String(_) | Node::Bytes(_) | Node::Association(_) => None,
         Node::Symbol(symbol) => Some(Poly::variable(*symbol)),
         Node::Call { head, args } => {
             if *head == context.plus {

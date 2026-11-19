@@ -6,12 +6,15 @@ This document defines the expression model and the evaluation rules for the curr
 
 ## Terms and values
 
-An expression is a term. The kernel has two term forms.
+An expression is a term. The kernel has three term forms.
 
-- An atom is an exact integer, an exact rational, a symbol, or a string when strings are added.
+- An atom is an exact integer, an exact rational, an approximate real, a string, a byte array, or a symbol.
 - A compound term is a call with a head and a sequence of arguments. The head is itself an expression.
+- An association is an ordered mapping from canonical keys to values.
 
-Every compound term is represented as `Call(head, args)`. Symbols such as `plus`, `times`, `list`, `rule`, and `blank` are ordinary expressions. Nothing about a term's surface spelling changes its internal representation.
+Calls are represented as `Call(head, args)`. Symbols such as `plus`, `times`, `list`, `rule`, and `blank` are ordinary expressions. Nothing about a term's surface spelling changes its internal representation.
+
+Associations are a dedicated node, not a call. Their keys are unique and sorted into canonical order. Their representation is intended to support later context-dependent views such as matrices and quaternions without changing the node kind.
 
 Runtime values include symbolic terms and closures. A closure is represented as a protected `closure(params,body,environment)` call. The parameter list holds symbols, the body holds the expression to evaluate, and the environment holds a list of captured `set(name,value)` bindings. Closures are expressions and can be printed, stored, and hash consed like other calls.
 
@@ -77,7 +80,7 @@ A user definition of `i` changes the meaning of the symbol. With `i=3`, the expr
 
 ## Symbols and attributes
 
-A symbol has a name, attributes, an optional own value, and a list of down values.
+A symbol has a name, attributes, an optional own value, a list of down values, and a list of up values.
 
 Attributes used in the current version:
 
@@ -86,11 +89,14 @@ Attributes used in the current version:
 - `holdAll`, `holdFirst`, and `holdRest`: argument evaluation is controlled by the head.
 - `listable`: the head threads over arguments that are lists.
 - `protected`: user definitions of the symbol are rejected.
+- `oneIdentity`: a one argument call pattern may match a bare value.
+- `sequenceHold`: `sequence` arguments are not spliced at this head.
 - `constant`: marks built in constants such as `i`, `pi`, `e`, and `null`.
 
 Protected symbols in the current version:
 
-- All kernel heads: `plus`, `times`, `power`, `negate`, `list`, `set`, `setDelayed`, `if`, `and`, `or`, `not`, `map`, `apply`, `fold`, `nest`, `function`, `let`, `forall`, `exists`, `setBuilder`, `pattern`, `blank`, `blankSequence`, `blankNullSequence`, `condition`, `rule`, `ruleDelayed`.
+- All kernel heads: `plus`, `times`, `power`, `negate`, `list`, `set`, `setDelayed`, `if`, `and`, `or`, `not`, `map`, `apply`, `fold`, `nest`, `function`, `let`, `forall`, `exists`, `setBuilder`, `pattern`, `blank`, `blankSequence`, `blankNullSequence`, `condition`, `rule`, `ruleDelayed`, `part`, `hold`, `holdForm`, `holdPattern`, `evaluate`, `unevaluated`, `sequence`, `compound`, `which`, `switch`, `do`, `while`, `for`, `return`, `break`, `continue`, `throw`, `catch`, `unset`, `clear`, `clearAll`, `remove`, `appendTo`, `prependTo`, `addTo`, `subtractFrom`, `timesBy`, `divideBy`.
+- Context, attribute, message, text, association, and file heads registered by the current version.
 - Truth values: `true`, `false`.
 - Structural constants: `emptyset`, `inf`.
 - Error values: `undefined`, `indeterminate`, `failed`.
@@ -114,10 +120,11 @@ For a call, the evaluator proceeds as follows.
 1. Evaluate the head.
 2. Evaluate each argument in order, unless an attribute holds it.
 3. Apply listable threading when the head has the `listable` attribute and an argument is a list.
-4. Apply the built in implementation for the head when one exists.
-5. Try user down values for the head.
-6. Canonicalize the result.
-7. Evaluate the result again when it changed.
+4. Try up values of the head symbol and of symbols in the arguments.
+5. Apply the built in implementation for the head when one exists.
+6. Try user down values for the head.
+7. Canonicalize the result.
+8. Evaluate the result again when it changed.
 
 The head is evaluated before the arguments so that own values and aliases resolve correctly. Held arguments are evaluated by the control form that owns them.
 
@@ -133,8 +140,8 @@ Canonical order is a total order over expressions. It depends on content and nev
 
 The order proceeds by expression kind, then by content:
 
-- Exact numbers sort before symbols.
-- Symbols sort by name, then by sort information when sorts exist.
+- Exact numbers, strings, byte arrays, and associations sort by kind and content.
+- Symbols sort by context, then by short name.
 - Calls sort by head, then by arguments from left to right.
 - A shorter argument list sorts before a longer list with an equal prefix.
 
@@ -329,6 +336,26 @@ The normalization includes rationalizing a denominator. A zero denominator produ
 
 This normalization applies only to closed Gaussian rational expressions. It does not expand expressions that contain `pi`, `e`, free symbols, or other numeric functions. For example, `(a+b*i)*(c+d*i)` remains a product.
 
+## Parts and assignment
+
+`part(expr,index,...)` indexes lists, calls, strings, byte arrays, and associations. List and call indices are one based; zero selects the head; negative indices count from the end. String and byte array indices are one based and negative. `span(start,end)` selects an inclusive range. A missing association key returns `undefined`. A missing list or call index leaves the `part` call unevaluated.
+
+`set(part(...),value)` updates a part of an existing value. Nested parts update recursively. A list or call index must be in range. An association assignment inserts a missing key when it is the final index. A string part requires a one character string; a byte part requires an integer from 0 through 255. `setDelayed` does not accept a part target.
+
+`unset` removes an own value or the rules of a function head. `clear`, `clearAll`, and `remove` remove definitions. Protected symbols reject all three.
+
+## Evaluation control
+
+`hold` returns its argument unevaluated. A direct `evaluate(arg)` inside `hold` is evaluated. `holdForm` and `holdPattern` remain unevaluated. `unevaluated` suppresses one evaluation of a direct argument. `sequence` splices its elements into the enclosing argument list.
+
+`compound` evaluates its arguments in order and returns the last value.
+
+## Control flow
+
+`which` evaluates condition and value pairs in order and returns the first selected value. `switch` compares its evaluated scrutinee with held patterns and returns the first matching value, or the optional default.
+
+`do`, `while`, and `for` iterate. `return` exits the enclosing function. `break` and `continue` control loops. `throw(value[,tag])` transfers control to the nearest `catch(body[,tag])` whose tag matches. An uncaught control signal produces a diagnostic.
+
 ## Listable heads
 
 A head with the `listable` attribute threads over list arguments.
@@ -385,7 +412,42 @@ Pattern expressions use these heads:
 
 A named pattern binds the matched value. A repeated name requires equal bindings. A sequence pattern binds a sequence of values. `blankSequence` matches one or more arguments. `blankNullSequence` matches zero or more arguments.
 
-Matching runs against evaluated and canonical arguments. For an `orderless` head, arguments are sorted before matching. Fixed arity patterns use deterministic backtracking over candidate assignments. Sequence patterns on `flat` and `orderless` heads use a contiguous segment in canonical order in the current version. Full multiset partitioning is deferred.
+`blank(head)` is a typed blank. The head names a type or a call head. `alternatives` tries each alternative. `patternTest(pattern, test)` adds a test call after matching. `optional(pattern[,default])` may consume zero or one argument. `repeated` and `repeatedNull` bind one or more or zero or more arguments. `longest` and `shortest` choose sequence order. `except` fails when its pattern matches. `verbatim` compares without pattern interpretation.
+
+For an `orderless` head, sequence patterns use multiset partitions rather than contiguous segments. A `oneIdentity` head allows a one argument call pattern to match a bare value. Nested same-head `flat` grouping is not implemented in this version; flat arguments are matched in their flattened form.
+
+Matching runs against evaluated and canonical arguments. For an `orderless` head, arguments are sorted before matching. Fixed arity patterns use deterministic backtracking over candidate assignments.
+
+## Messages
+
+`message(name, args...)` records a non-fatal message and returns `null`.
+`messageName(symbol, tag)` names a message as `symbol::tag`. `check(expr,
+fallback)` returns the expression value unless a message was emitted, in which
+case it returns the fallback. `quiet(expr)` suppresses messages for the dynamic
+extent of the expression. `off(name)` and `on(name)` disable and enable a named
+message.
+
+Messages carry a stable code (`TGN-MSG-0001`) and are drained with
+`Session::take_messages`. They do not replace diagnostics: parse failures,
+budget exhaustion, and invalid operations still return a `Diagnostic`.
+
+## Packages and up values
+
+`import` loads a bundled module or a package file. Package files resolve
+relative to the importing source, then through `$MithqalPath`. `Session::needs`
+loads once and `Session::get` re-evaluates. Import cycles and missing packages
+are diagnostics.
+
+Up values are rules associated with a tag symbol. For a call, up values of the
+head symbol and of symbols in the arguments are tried before down values and
+built in implementations. `tagSet` and `tagSetDelayed` install an explicit tag;
+`upSet` and `upSetDelayed` use the head of the left hand side.
+
+## Attributes and introspection
+
+`setAttributes(symbol, attributes...)` and `clearAttributes(symbol, attributes...)` change the attribute bits of a symbol. `protect` and `unprotect` manage the protected flag. Built in symbols cannot be unprotected or given new attributes. Attribute changes invalidate cached evaluation results.
+
+`attributes(symbol)` returns the attribute names. `ownValues`, `downValues`, and `upValues` return rules for own, down, and up values. `subValues` is empty in this version. `definition` returns a three item list of attributes, own values, and down values. `fullDefinition` is an alias for the current definition view.
 
 ## Comparisons
 
@@ -442,7 +504,7 @@ All scoping is lexical.
 - A local `def` inside a block creates a lexical function scope. The innermost definition scope shadows outer scopes and global definitions entirely.
 - Mutual recursion is available among definitions in the same local scope.
 - Local definitions cannot shadow protected symbols.
-- A strict module's private definitions are installed under deterministic internal names and are not callable by their source name. Exported names are protected.
+- A strict module's private definitions are installed in a module context and are not callable by their short source name. Exported names are protected.
 - `fn` creates a closure over the current lexical environment.
 - Pattern variables are lexical within the rule body.
 - Rule bodies are substituted with capture avoidance: a closure parameter or `let` binding is renamed when an inserted value would otherwise be captured.

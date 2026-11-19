@@ -42,7 +42,8 @@ fn int_expression(arena: &mut Arena, value: i64) -> ExprId {
 }
 
 fn call(arena: &mut Arena, name: &str, args: &[ExprId]) -> ExprId {
-    let symbol = arena.symbol_or_intern(name);
+    let attrs = crate::builtins::attributes(name).unwrap_or_default();
+    let symbol = arena.intern_symbol(name, attrs);
     let head = arena.symbol_expr(symbol);
     arena.intern_call(head, args)
 }

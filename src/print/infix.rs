@@ -55,7 +55,7 @@ fn precedence(arena: &Arena, id: ExprId) -> u8 {
                 P_ATOM
             }
         }
-        Node::Symbol(_) => P_ATOM,
+        Node::String(_) | Node::Bytes(_) | Node::Symbol(_) | Node::Association(_) => P_ATOM,
         Node::Call { .. } => match head_name(arena, id) {
             Some("set") | Some("setDelayed") => P_SET,
             Some("rule") | Some("ruleDelayed") => P_RULE,
@@ -95,8 +95,31 @@ fn write_infix_inner(arena: &Arena, id: ExprId, out: &mut String) {
         Node::Real(value) => {
             let _ = out.write_str(&value.to_decimal());
         }
+        Node::String(value) => write_string(value, out),
+        Node::Bytes(value) => {
+            out.push_str("byteArray(");
+            for (index, byte) in value.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                let _ = write!(out, "{byte}");
+            }
+            out.push(')');
+        }
         Node::Symbol(symbol) => {
-            let _ = out.write_str(arena.symbol_name(*symbol));
+            let _ = out.write_str(&arena.symbol_display_name(*symbol));
+        }
+        Node::Association(entries) => {
+            out.push_str("<|");
+            for (index, entry) in entries.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                write_infix(arena, entry.key, P_RULE, out);
+                out.push_str("->");
+                write_infix(arena, entry.value, P_RULE, out);
+            }
+            out.push_str("|>");
         }
         Node::Call { args, .. } => match head_name(arena, id) {
             Some("plus") => write_sum(arena, args, P_ADD, P_ADD + 1, out),
@@ -392,16 +415,22 @@ fn write_pattern(arena: &Arena, args: &[ExprId], out: &mut String) {
     if let Node::Symbol(symbol) = arena.node(args[0]) {
         let _ = out.write_str(arena.symbol_name(*symbol));
         match arena.node(args[1]) {
-            Node::Call { head, .. } if head_name(arena, *head) == Some("blank") => {
-                out.push('_');
-                return;
-            }
-            Node::Call { head, .. } if head_name(arena, *head) == Some("blankSequence") => {
-                out.push_str("__");
-                return;
-            }
-            Node::Call { head, .. } if head_name(arena, *head) == Some("blankNullSequence") => {
-                out.push_str("___");
+            Node::Call {
+                head,
+                args: blank_args,
+            } if matches!(
+                head_name(arena, *head),
+                Some("blank" | "blankSequence" | "blankNullSequence")
+            ) =>
+            {
+                out.push_str(match head_name(arena, *head) {
+                    Some("blank") => "_",
+                    Some("blankSequence") => "__",
+                    _ => "___",
+                });
+                if blank_args.len() == 1 {
+                    write_infix(arena, blank_args[0], P_ATOM, out);
+                }
                 return;
             }
             _ => {}
@@ -452,4 +481,20 @@ fn write_function(arena: &Arena, args: &[ExprId], out: &mut String) {
     }
     out.push_str(")=>");
     write_infix(arena, args[1], 0, out);
+}
+
+fn write_string(value: &str, out: &mut String) {
+    out.push('"');
+    for character in value.chars() {
+        match character {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\0' => out.push_str("\\0"),
+            other => out.push(other),
+        }
+    }
+    out.push('"');
 }

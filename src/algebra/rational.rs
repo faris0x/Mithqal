@@ -71,7 +71,7 @@ pub(crate) fn rational_from_expr(
             numerator: poly_from_expr(arena, context, expression)?,
             denominator: Poly::constant(Rat::one()),
         }),
-        Node::Real(_) => None,
+        Node::Real(_) | Node::String(_) | Node::Bytes(_) | Node::Association(_) => None,
         Node::Call { head, args } => {
             if *head == context.plus {
                 let mut sum = RationalFunction {

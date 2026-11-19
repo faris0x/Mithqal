@@ -1,22 +1,30 @@
 //! Fixed point evaluator.
 //!
 //! Evaluates canonical expressions through exact arithmetic, listable
-//! threading, comparisons, logic, definitions, closures, control flow,
-//! binders, quantifiers, numeric boundaries, and limit and series dispatch.
+//! threading, comparisons, logic, definitions, attributes, closures, control
+//! flow, binders, quantifiers, parts, messages, numeric boundaries, and
+//! algebra, calculus, text, association, and file dispatch.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
 
 mod arithmetic;
+mod attributes;
 mod control;
 mod definitions;
 mod dispatch;
 mod evaluator;
+#[cfg(feature = "std")]
+mod fileio;
 mod heads;
 mod limits;
+mod lvalue;
+mod messages;
 mod numeric;
 mod pattern;
 mod support;
+mod text;
+mod upvalues;
 
 use crate::collections::{HashMap, HashSet};
 use core::cmp::Ordering;
@@ -28,7 +36,7 @@ use crate::kernel::Heads;
 use crate::num::{ComplexMpc, Int, ROUND_DOWN, ROUND_UP, Rat, Real};
 
 use definitions::{Definitions, Rule};
-pub(crate) use evaluator::{Evaluator, fold_numeric_call};
+pub(crate) use evaluator::{Control, Evaluator, fold_numeric_call};
 pub(crate) use heads::*;
 use pattern::{Bindings, match_pattern, substitute};
 pub(crate) use pattern::{all_symbols, rename_definition, rename_expression};
@@ -81,7 +89,17 @@ pub(crate) fn evaluate_with_definitions(
     let mut evaluator = Evaluator::new(arena, definitions);
     evaluator.max_steps = max_steps.max(1);
     evaluator.max_depth = max_depth.max(1);
-    evaluator.eval(id)
+    let result = evaluator.eval(id)?;
+    if let Some(control) = evaluator.control {
+        let message = match control {
+            Control::Return(_) => "return has no enclosing function",
+            Control::Break => "break has no enclosing loop",
+            Control::Continue => "continue has no enclosing loop",
+            Control::Throw(_, _) => "throw has no enclosing catch",
+        };
+        return Err(Diagnostic::eval(ErrorCode::EvalDefinition, message));
+    }
+    Ok(result)
 }
 
 struct SmallArgs {

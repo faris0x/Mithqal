@@ -1,6 +1,6 @@
 # Numbers
 
-> Spec version: 0.0.1 (draft)
+> Spec version: 0.0.2 (draft)
 
 ## Numeric tower
 

@@ -493,7 +493,9 @@ impl<'a> Evaluator<'a> {
                 }
                 Ok((Rat::one(), Some(id)))
             }
-            Node::Symbol(_) => Ok((Rat::one(), Some(id))),
+            Node::Symbol(_) | Node::String(_) | Node::Bytes(_) | Node::Association(_) => {
+                Ok((Rat::one(), Some(id)))
+            }
         }
     }
 
@@ -513,8 +515,11 @@ impl<'a> Evaluator<'a> {
             Node::Rat(value) => {
                 *coefficient = coefficient.mul(value);
             }
-            Node::Real(_) => self.add_base(bases, id, Rat::one()),
-            Node::Symbol(_) => self.add_base(bases, id, Rat::one()),
+            Node::Real(_)
+            | Node::String(_)
+            | Node::Bytes(_)
+            | Node::Association(_)
+            | Node::Symbol(_) => self.add_base(bases, id, Rat::one()),
             Node::Call { head, args } => {
                 let head = *head;
                 let args = args.to_vec();
@@ -596,7 +601,7 @@ impl<'a> Evaluator<'a> {
                 Some((real, Rat::zero()))
             }
             Node::Rat(value) => Some((value.clone(), Rat::zero())),
-            Node::Real(_) => None,
+            Node::Real(_) | Node::String(_) | Node::Bytes(_) | Node::Association(_) => None,
             Node::Symbol(_) => {
                 if id == self.heads.imaginary {
                     Some((Rat::zero(), Rat::one()))

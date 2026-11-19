@@ -5,6 +5,9 @@ use mithqal::catalog::{self, ExampleKind, Support};
 fn documented_examples_match_their_declared_kind() {
     let mut failures = Vec::new();
     for function in catalog::FUNCTIONS {
+        if function.category == "io" {
+            continue;
+        }
         let mut session = Session::new();
         let parsed = match session.parse_statement(function.example) {
             Ok(value) => value,
@@ -88,6 +91,9 @@ fn every_non_language_function_has_a_test_reference() {
 #[test]
 fn documented_examples_do_not_leak_internal_forms() {
     for function in catalog::FUNCTIONS {
+        if function.category == "io" {
+            continue;
+        }
         let mut session = Session::new();
         let value = session.eval_source(function.example).unwrap();
         let text = session.format_infix(value).unwrap();

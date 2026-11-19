@@ -68,6 +68,9 @@ jobs:
           cargo check --manifest-path vendor/mithqalite/Cargo.toml -p mithqalite-float --lib --no-default-features
           cargo check --manifest-path vendor/mithqalite/Cargo.toml -p mithqalite --lib --no-default-features --features naturals_and_integers,rationals,floats
 
+      - name: Check version consistency
+        run: sh scripts/check-versions.sh
+
       - name: Check documentation claims
         run: sh scripts/check-docs.sh
 

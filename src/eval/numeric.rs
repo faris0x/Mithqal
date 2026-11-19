@@ -451,6 +451,7 @@ impl<'a> Evaluator<'a> {
             }
             Node::Rat(value) => self.approximate_rat(value.clone(), digits),
             Node::Real(value) => Ok(Some(Numeric::Real(value.clone()))),
+            Node::String(_) | Node::Bytes(_) | Node::Association(_) => Ok(None),
             Node::Symbol(_) => {
                 if expression == self.heads.pi {
                     return Ok(Some(Numeric::Real(Real::pi(digits).map_err(|_| {

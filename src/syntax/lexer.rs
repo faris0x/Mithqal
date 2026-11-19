@@ -15,6 +15,8 @@ pub enum TokenKind {
     Newline,
     /// An integer or decimal literal.
     Number(String),
+    /// A string literal.
+    String(String),
     /// An identifier.
     Ident(String),
     /// `+`
@@ -35,8 +37,14 @@ pub enum TokenKind {
     LBracket,
     /// `]`
     RBracket,
+    /// `<|`
+    LessBar,
+    /// `|>`
+    BarGreater,
     /// `,`
     Comma,
+    /// `;`
+    Semicolon,
     /// `_`
     Underscore,
     /// `__`
@@ -275,16 +283,25 @@ fn tokenize_line(
                     pos,
                 );
             }
-            b'a'..=b'z' | b'A'..=b'Z' => {
+            b'a'..=b'z' | b'A'..=b'Z' | b'$' => {
                 let start = pos;
                 pos += 1;
                 while pos < bytes.len()
-                    && (bytes[pos].is_ascii_alphanumeric() || bytes[pos] == b'_')
+                    && (bytes[pos].is_ascii_alphanumeric()
+                        || bytes[pos] == b'_'
+                        || bytes[pos] == b'$')
                 {
                     if bytes[pos] == b'_' {
                         break;
                     }
                     pos += 1;
+                }
+                if bytes[start] == b'$' && pos == start + 1 {
+                    return Err(Diagnostic::parse(
+                        ErrorCode::ParseUnexpectedCharacter,
+                        "a dollar sign must begin a name",
+                        span_at(line_number, line_start, start, 1),
+                    ));
                 }
                 push(
                     tokens,
@@ -320,6 +337,13 @@ fn tokenize_line(
             b'/' => single(tokens, TokenKind::Slash, line_number, line_start, &mut pos),
             b'^' => single(tokens, TokenKind::Caret, line_number, line_start, &mut pos),
             b',' => single(tokens, TokenKind::Comma, line_number, line_start, &mut pos),
+            b';' => single(
+                tokens,
+                TokenKind::Semicolon,
+                line_number,
+                line_start,
+                &mut pos,
+            ),
             b'~' => single(tokens, TokenKind::Tilde, line_number, line_start, &mut pos),
             b'(' => {
                 if pos + 1 < bytes.len() && bytes[pos + 1] == b'*' {
@@ -347,8 +371,31 @@ fn tokenize_line(
                 &mut pos,
             ),
             b'!' => single(tokens, TokenKind::Not, line_number, line_start, &mut pos),
+            b'"' => {
+                let (value, end) = scan_string(line, pos, line_number, line_start)?;
+                push(
+                    tokens,
+                    TokenKind::String(value),
+                    line_number,
+                    line_start,
+                    pos,
+                    end,
+                );
+                pos = end;
+            }
             b'<' => {
-                if pos + 1 < bytes.len() && bytes[pos + 1] == b'=' {
+                if pos + 1 < bytes.len() && bytes[pos + 1] == b'|' {
+                    let start = pos;
+                    pos += 2;
+                    push(
+                        tokens,
+                        TokenKind::LessBar,
+                        line_number,
+                        line_start,
+                        start,
+                        pos,
+                    );
+                } else if pos + 1 < bytes.len() && bytes[pos + 1] == b'=' {
                     let start = pos;
                     pos += 2;
                     push(
@@ -399,7 +446,18 @@ fn tokenize_line(
                 }
             }
             b'|' => {
-                if pos + 1 < bytes.len() && bytes[pos + 1] == b'|' {
+                if pos + 1 < bytes.len() && bytes[pos + 1] == b'>' {
+                    let start = pos;
+                    pos += 2;
+                    push(
+                        tokens,
+                        TokenKind::BarGreater,
+                        line_number,
+                        line_start,
+                        start,
+                        pos,
+                    );
+                } else if pos + 1 < bytes.len() && bytes[pos + 1] == b'|' {
                     let start = pos;
                     pos += 2;
                     push(tokens, TokenKind::Or, line_number, line_start, start, pos);
@@ -557,4 +615,61 @@ fn span_at(line: usize, line_start: usize, column: usize, len: usize) -> Span {
         line,
         column: column + 1,
     }
+}
+
+fn scan_string(
+    line: &str,
+    start: usize,
+    line_number: usize,
+    line_start: usize,
+) -> Result<(String, usize), Diagnostic> {
+    let bytes = line.as_bytes();
+    let mut position = start + 1;
+    let mut value = String::new();
+    while position < bytes.len() {
+        match bytes[position] {
+            b'"' => return Ok((value, position + 1)),
+            b'\\' => {
+                let Some(escaped) = bytes.get(position + 1).copied() else {
+                    return Err(Diagnostic::parse(
+                        ErrorCode::ParseUnexpectedCharacter,
+                        "a string escape is incomplete",
+                        span_at(line_number, line_start, position, 1),
+                    ));
+                };
+                match escaped {
+                    b'"' => value.push('"'),
+                    b'\\' => value.push('\\'),
+                    b'n' => value.push('\n'),
+                    b'r' => value.push('\r'),
+                    b't' => value.push('\t'),
+                    b'0' => value.push('\0'),
+                    _ => {
+                        return Err(Diagnostic::parse(
+                            ErrorCode::ParseUnexpectedCharacter,
+                            "unknown string escape",
+                            span_at(line_number, line_start, position, 2),
+                        ));
+                    }
+                }
+                position += 2;
+            }
+            _ => {
+                let Some(character) = line[position..].chars().next() else {
+                    return Err(Diagnostic::parse(
+                        ErrorCode::ParseUnexpectedCharacter,
+                        "a string contains invalid text",
+                        span_at(line_number, line_start, position, 1),
+                    ));
+                };
+                value.push(character);
+                position += character.len_utf8();
+            }
+        }
+    }
+    Err(Diagnostic::parse(
+        ErrorCode::ParseUnclosedDelimiter,
+        "a string is not closed",
+        span_at(line_number, line_start, start, 1),
+    ))
 }

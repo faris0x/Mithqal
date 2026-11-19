@@ -1,6 +1,6 @@
 # Function Capabilities
 
-> Status: Stable. See [Maturity](maturity.md).
+> Status: Mixed. Core entries are stable; text, association, and file entries are experimental. See [Maturity](maturity.md).
 
 This table is the capability matrix for the advertised function surface. `list capabilities` in the REPL prints the same metadata.
 
@@ -135,3 +135,60 @@ Functions implemented by the bundled Mithqal standard library rather than the Ru
 | `apply` | language | language | `apply(function,list)` | language forms | infix | `apply(fn(x,y)=>x+y,[3,4])` | language |
 | `fold` | language | language | `fold(function,initial,list)` | language forms | infix | `fold(fn(x,y)=>x+y,0,[1,2,3])` | language |
 | `nest` | language | language | `nest(function,value,count)` | language forms | infix | `nest(fn(x)=>x+1,0,5)` | language |
+
+## Text, associations, and files
+
+The text layer provides strings, byte arrays, associations, and exact
+structured-data operations.
+
+| Function | Signature | Summary |
+| --- | --- | --- |
+| `stringLength` | `stringLength(string)` | String length in characters. |
+| `stringJoin` | `stringJoin(a,b,...)` | Join strings. |
+| `stringSplit` | `stringSplit(string[,separator])` | Split a string. |
+| `stringReplace` | `stringReplace(string,from,to)` | Replace all occurrences. |
+| `stringTake` | `stringTake(string,count)` | Take characters. |
+| `stringDrop` | `stringDrop(string,count)` | Drop characters. |
+| `stringContains` | `stringContains(string,substring)` | Substring test. |
+| `stringReverse` | `stringReverse(string)` | Reverse a string. |
+| `characters` | `characters(string)` | List of one-character strings. |
+| `characterCode` | `characterCode(string)` | Code point of the first character. |
+| `fromCharacterCode` | `fromCharacterCode(code)` | One-character string from a code point. |
+| `toString` | `toString(expression)` | Display form as a string. |
+| `byteArrayLength` | `byteArrayLength(bytes)` | Byte array length. |
+| `byteArrayToList` | `byteArrayToList(bytes)` | Byte array as integers. |
+| `byteArrayFromList` | `byteArrayFromList(list)` | Byte array from integers. |
+| `byteArrayToString` | `byteArrayToString(bytes)` | UTF-8 decoding. |
+| `stringToByteArray` | `stringToByteArray(string)` | UTF-8 encoding. |
+| `associationLength` | `associationLength(association)` | Number of entries. |
+| `associationKeys` | `associationKeys(association)` | Association keys. |
+| `associationValues` | `associationValues(association)` | Association values. |
+| `lookup` | `lookup(association,key[,default])` | Look up a key. |
+| `keyExistsQ` | `keyExistsQ(association,key)` | Key membership test. |
+| `associationMerge` | `associationMerge(a,b,...)` | Merge associations. |
+| `associationKeyTake` | `associationKeyTake(association,keys)` | Select keys. |
+| `associationKeyDrop` | `associationKeyDrop(association,keys)` | Remove keys. |
+| `associationFromPairs` | `associationFromPairs(pairs)` | Association from pairs. |
+| `associationToPairs` | `associationToPairs(association)` | Association as pairs. |
+| `associationMap` | `associationMap(association,function)` | Map over entries. |
+
+File functions are available only with the `std` feature.
+
+| Function | Signature | Summary |
+| --- | --- | --- |
+| `readString` | `readString(path)` | Read UTF-8 text. |
+| `writeString` | `writeString(path,text)` | Write UTF-8 text. |
+| `fileExistsQ` | `fileExistsQ(path)` | Path existence test. |
+| `fileNames` | `fileNames([directory])` | Directory entry names. |
+| `directoryName` | `directoryName(path)` | Parent directory. |
+| `fileNameJoin` | `fileNameJoin(parts)` | Join path components. |
+| `createDirectory` | `createDirectory(path)` | Create a directory. |
+| `deleteFile` | `deleteFile(path)` | Delete a file. |
+| `importText` | `importText(path)` | Import UTF-8 text. |
+| `exportText` | `exportText(path,text)` | Export UTF-8 text. |
+| `importCsv` | `importCsv(path)` | Import CSV rows. |
+| `exportCsv` | `exportCsv(path,rows)` | Export CSV rows. |
+| `importTsv` | `importTsv(path)` | Import TSV rows. |
+| `exportTsv` | `exportTsv(path,rows)` | Export TSV rows. |
+| `importJson` | `importJson(path)` | Import JSON. |
+| `exportJson` | `exportJson(path,expr)` | Export JSON. |

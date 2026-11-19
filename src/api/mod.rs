@@ -3,12 +3,12 @@
 #[allow(unused_imports)]
 use crate::prelude::*;
 
-use crate::collections::HashMap;
+use crate::collections::{HashMap, HashSet};
 
 use crate::config::Config;
 use crate::diag::{Diagnostic, ErrorCode, Frame, Span};
 use crate::eval::{SessionDefinitions, evaluate_with_definitions};
-use crate::expr::{Arena, ExprId, Node, SymbolId};
+use crate::expr::{Arena, AssociationEntry, ExprId, Node, SymbolId};
 use crate::hash::FnvBuildHasher;
 use crate::num::{Int, Rat};
 use crate::print;
@@ -25,6 +25,10 @@ pub enum ExprView<'a> {
     Rational(&'a Rat),
     /// An approximate real.
     Real(&'a crate::num::Real),
+    /// A string value.
+    String(&'a str),
+    /// An immutable byte array.
+    Bytes(&'a [u8]),
     /// A symbol.
     Symbol(&'a str),
     /// A call.
@@ -34,6 +38,8 @@ pub enum ExprView<'a> {
         /// The argument expressions.
         args: &'a [ExprId],
     },
+    /// An association of canonical keys to values.
+    Association(&'a [AssociationEntry]),
 }
 
 fn stale_handle() -> Diagnostic {
@@ -45,15 +51,20 @@ pub struct Session {
     arena: Arena,
     definitions: SessionDefinitions,
     last_result: Option<ExprId>,
-    parse_cache: HashMap<String, ExprId, FnvBuildHasher>,
+    parse_cache: HashMap<(String, u64), ExprId, FnvBuildHasher>,
     compiled_cache: HashMap<ExprId, runtime::Code, FnvBuildHasher>,
-    eval_cache: HashMap<(ExprId, u64), ExprId, FnvBuildHasher>,
-    compiled_results: HashMap<(ExprId, u64), ExprId, FnvBuildHasher>,
+    eval_cache: HashMap<(ExprId, u64, u64), ExprId, FnvBuildHasher>,
+    compiled_results: HashMap<(ExprId, u64, u64), ExprId, FnvBuildHasher>,
     output: Vec<String>,
     language_scopes: Vec<HashMap<SymbolId, ExprId, FnvBuildHasher>>,
     source_name: Option<String>,
     definition_source: Option<u32>,
     structures: HashMap<String, Vec<String>>,
+    package_path: Vec<String>,
+    #[allow(dead_code)]
+    loaded_packages: HashSet<String>,
+    #[allow(dead_code)]
+    loading_packages: Vec<String>,
     config: Config,
 }
 

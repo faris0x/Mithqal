@@ -5,7 +5,7 @@ use crate::prelude::*;
 
 use crate::builtins;
 use crate::diag::{Diagnostic, ErrorCode, Span};
-use crate::expr::{Arena, ExprId};
+use crate::expr::{Arena, AssociationEntry, ExprId, Node};
 use crate::num::{Int, NumError, Rat};
 
 use super::lexer::{Token, TokenKind, lex};
@@ -139,7 +139,7 @@ impl Parser<'_> {
         let symbol = if let Some(attrs) = builtins::attributes(name) {
             self.arena.intern_symbol(name, attrs)
         } else {
-            self.arena.symbol_or_intern(name)
+            self.arena.resolve_symbol(name)
         };
         self.arena.symbol_expr(symbol)
     }
@@ -271,6 +271,50 @@ impl Parser<'_> {
     }
 
     fn parse_primary(&mut self) -> Result<ExprId, Diagnostic> {
+        let value = self.parse_primary_bare()?;
+        self.parse_postfix(value)
+    }
+
+    fn parse_postfix(&mut self, mut value: ExprId) -> Result<ExprId, Diagnostic> {
+        while self.at_index_open() {
+            self.advance();
+            self.advance();
+            let mut indices = Vec::new();
+            loop {
+                indices.push(self.parse_expr()?);
+                if self.at(&TokenKind::Comma) {
+                    self.advance();
+                    continue;
+                }
+                break;
+            }
+            self.expect(
+                TokenKind::RBracket,
+                "expected a closing bracket for indexing",
+            )?;
+            self.expect(TokenKind::RBracket, "expected a closing indexing bracket")?;
+            let mut args = Vec::with_capacity(indices.len() + 1);
+            args.push(value);
+            args.extend(indices);
+            value = self.call_name("part", &args);
+        }
+        Ok(value)
+    }
+
+    fn at_index_open(&self) -> bool {
+        let Some(first) = self.tokens.get(self.pos) else {
+            return false;
+        };
+        if first.kind != TokenKind::LBracket {
+            return false;
+        }
+        let Some(second) = self.tokens.get(self.pos + 1) else {
+            return false;
+        };
+        second.kind == TokenKind::LBracket && first.span.end == second.span.start
+    }
+
+    fn parse_primary_bare(&mut self) -> Result<ExprId, Diagnostic> {
         let token = match self.advance() {
             Some(token) => token.clone(),
             None => {
@@ -279,11 +323,17 @@ impl Parser<'_> {
         };
         match token.kind {
             TokenKind::Number(text) => self.number(&text, token.span),
+            TokenKind::String(value) => Ok(self.arena.intern_string(&value)),
+            TokenKind::LessBar => self.parse_association(),
             TokenKind::Ident(name) => {
                 if name == "fn" && self.at(&TokenKind::LParen) {
                     return self.parse_function();
                 }
-                let base = self.symbol(&name);
+                let base = if self.at(&TokenKind::Semicolon) {
+                    self.parse_qualified_name(&name)?
+                } else {
+                    self.symbol(&name)
+                };
                 match self.peek() {
                     Some(TokenKind::Underscore) => self.pattern(base, "blank"),
                     Some(TokenKind::Underscore2) => self.pattern(base, "blankSequence"),
@@ -299,9 +349,11 @@ impl Parser<'_> {
                     _ => Ok(base),
                 }
             }
-            TokenKind::Underscore => Ok(self.call_name("blank", &[])),
-            TokenKind::Underscore2 => Ok(self.call_name("blankSequence", &[])),
-            TokenKind::Underscore3 => Ok(self.call_name("blankNullSequence", &[])),
+            TokenKind::Underscore => Ok(self.standalone_blank("blank", token.span.end)),
+            TokenKind::Underscore2 => Ok(self.standalone_blank("blankSequence", token.span.end)),
+            TokenKind::Underscore3 => {
+                Ok(self.standalone_blank("blankNullSequence", token.span.end))
+            }
             TokenKind::LParen => {
                 let inner = self.parse_expr()?;
                 self.expect(TokenKind::RParen, "expected a closing parenthesis")?;
@@ -310,15 +362,111 @@ impl Parser<'_> {
             TokenKind::LBracket => self.parse_list(),
             _ => Err(self.error(
                 ErrorCode::ParseUnexpectedToken,
-                "expected a number, name, list, or parenthesized expression",
+                "expected a number, string, name, list, association, or parenthesized expression",
             )),
         }
     }
 
+    fn parse_association(&mut self) -> Result<ExprId, Diagnostic> {
+        if self.at(&TokenKind::BarGreater) {
+            self.advance();
+            return self
+                .arena
+                .intern_association(Vec::new())
+                .map_err(|_| self.error(ErrorCode::ParseUnexpectedToken, "invalid association"));
+        }
+        let mut entries = Vec::new();
+        loop {
+            let key = self.parse_binary(3)?;
+            self.expect(TokenKind::Arrow, "expected -> after an association key")?;
+            let value = self.parse_expr()?;
+            entries.push(AssociationEntry { key, value });
+            if self.at(&TokenKind::Comma) {
+                self.advance();
+                continue;
+            }
+            break;
+        }
+        self.expect(
+            TokenKind::BarGreater,
+            "expected |> to close the association",
+        )?;
+        self.arena.intern_association(entries).map_err(|_| {
+            self.error(
+                ErrorCode::ParseUnexpectedToken,
+                "association keys must be unique",
+            )
+        })
+    }
+
+    fn parse_qualified_name(&mut self, first: &str) -> Result<ExprId, Diagnostic> {
+        let mut segments = vec![first.to_string()];
+        while self.at(&TokenKind::Semicolon) {
+            self.advance();
+            let token = match self.advance() {
+                Some(token) => token.clone(),
+                None => {
+                    return Err(self.error(
+                        ErrorCode::ParseUnexpectedToken,
+                        "expected a name after the context separator",
+                    ));
+                }
+            };
+            let name = match token.kind {
+                TokenKind::Ident(name) => name,
+                _ => {
+                    return Err(Diagnostic::parse(
+                        ErrorCode::ParseUnexpectedToken,
+                        "a context separator must be followed by a name",
+                        token.span,
+                    ));
+                }
+            };
+            segments.push(name);
+        }
+        let name = segments
+            .pop()
+            .expect("a qualified name has a final segment");
+        let context = segments.join(";");
+        let attrs = if context == "Global" {
+            builtins::attributes(&name).unwrap_or_default()
+        } else {
+            Default::default()
+        };
+        let symbol = self.arena.intern_qualified_symbol(&context, &name, attrs);
+        Ok(self.arena.symbol_expr(symbol))
+    }
+
     fn pattern(&mut self, name: ExprId, blank: &str) -> Result<ExprId, Diagnostic> {
+        let end = self.tokens[self.pos].span.end;
         self.advance();
-        let blank = self.call_name(blank, &[]);
+        let blank = if let Some(head) = self.blank_head(end) {
+            self.call_name(blank, &[head])
+        } else {
+            self.call_name(blank, &[])
+        };
         Ok(self.call_name("pattern", &[name, blank]))
+    }
+
+    fn standalone_blank(&mut self, blank: &str, end: usize) -> ExprId {
+        if let Some(head) = self.blank_head(end) {
+            self.call_name(blank, &[head])
+        } else {
+            self.call_name(blank, &[])
+        }
+    }
+
+    fn blank_head(&mut self, end: usize) -> Option<ExprId> {
+        let token = self.tokens.get(self.pos)?.clone();
+        if token.span.start != end {
+            return None;
+        }
+        let TokenKind::Ident(name) = token.kind else {
+            return None;
+        };
+        let head = self.symbol(&name);
+        self.advance();
+        Some(head)
     }
 
     fn parse_call(&mut self, head: ExprId) -> Result<ExprId, Diagnostic> {
@@ -337,6 +485,22 @@ impl Parser<'_> {
             break;
         }
         self.expect(TokenKind::RParen, "expected a closing parenthesis")?;
+        if head == self.arena.builtin_head("byteArray") {
+            let mut bytes = Vec::with_capacity(args.len());
+            for argument in &args {
+                let Node::Int(value) = self.arena.node(*argument) else {
+                    return Ok(self.call(head, &args));
+                };
+                let Some(value) = value.to_i64() else {
+                    return Ok(self.call(head, &args));
+                };
+                if !(0..=255).contains(&value) {
+                    return Ok(self.call(head, &args));
+                }
+                bytes.push(value as u8);
+            }
+            return Ok(self.arena.intern_bytes(&bytes));
+        }
         Ok(self.call(head, &args))
     }
 
@@ -570,7 +734,7 @@ impl SimpleParser<'_> {
                     self.position += 1;
                 }
                 let name = core::str::from_utf8(&self.bytes[start..self.position]).ok()?;
-                let symbol = self.arena.symbol_or_intern(name);
+                let symbol = self.arena.resolve_symbol(name);
                 let head = self.arena.symbol_expr(symbol);
                 if self.bytes.get(self.position) != Some(&b'(') {
                     return Some(head);

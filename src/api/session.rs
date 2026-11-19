@@ -4,6 +4,7 @@
 use crate::prelude::*;
 
 use super::*;
+use crate::diag::Message;
 use crate::expr::Attributes;
 use crate::stdlib;
 
@@ -33,10 +34,28 @@ impl Session {
             source_name: None,
             definition_source: None,
             structures: HashMap::default(),
+            package_path: default_package_path(),
+            loaded_packages: HashSet::default(),
+            loading_packages: Vec::new(),
             config,
         };
         session.load_standard_library();
+        session.install_package_path();
         session
+    }
+
+    fn install_package_path(&mut self) {
+        let attrs = crate::builtins::attributes("$MithqalPath").unwrap_or_default();
+        let symbol = self.arena.intern_symbol("$MithqalPath", attrs);
+        let path = self.package_path.clone();
+        let mut items = Vec::with_capacity(path.len());
+        for entry in path {
+            items.push(self.arena.intern_string(&entry));
+        }
+        let list_head = self.arena.builtin_head("list");
+        let list = self.arena.intern_call(list_head, &items);
+        let lhs = self.arena.symbol_expr(symbol);
+        let _ = self.definitions.define(&self.arena, lhs, list, false);
     }
 
     fn load_standard_library(&mut self) {
@@ -66,9 +85,9 @@ impl Session {
                 targets.insert(symbol, symbol);
                 continue;
             }
-            let mangled = self.mangled_symbol(module, name);
-            renames.push((symbol, mangled));
-            targets.insert(symbol, mangled);
+            let private = self.private_symbol(module, name);
+            renames.push((symbol, private));
+            targets.insert(symbol, private);
         }
         let mut taken = Vec::with_capacity(defined.len());
         for name in defined {
@@ -104,27 +123,9 @@ impl Session {
         }
     }
 
-    fn mangled_symbol(&mut self, module: &str, name: &str) -> SymbolId {
-        let mut suffix = String::new();
-        let mut counter = 0usize;
-        loop {
-            let candidate = format!(
-                "{module}{}{}{suffix}",
-                name[..1].to_ascii_uppercase(),
-                &name[1..]
-            );
-            let symbol = self.arena.symbol_or_intern(&candidate);
-            let free = self.definitions.rules(symbol).is_empty()
-                && !self
-                    .arena
-                    .symbol_attributes(symbol)
-                    .has(Attributes::PROTECTED);
-            if free {
-                return symbol;
-            }
-            counter += 1;
-            suffix = counter.to_string();
-        }
+    fn private_symbol(&mut self, module: &str, name: &str) -> SymbolId {
+        self.arena
+            .intern_symbol_in_context(module, name, Attributes::new())
     }
 
     fn protect(&mut self, symbol: SymbolId) {
@@ -135,11 +136,12 @@ impl Session {
 
     /// Parse a single statement.
     pub fn parse_statement(&mut self, source: &str) -> Result<ExprId, Diagnostic> {
-        if let Some(expression) = self.parse_cache.get(source) {
+        let key = (source.to_string(), self.arena.context_version());
+        if let Some(expression) = self.parse_cache.get(&key) {
             return Ok(*expression);
         }
         let expression = syntax::parse_statement(&mut self.arena, source)?;
-        self.parse_cache.insert(source.to_string(), expression);
+        self.parse_cache.insert(key, expression);
         Ok(expression)
     }
 
@@ -152,6 +154,102 @@ impl Session {
     pub fn eval_statement(&mut self, source: &str) -> Result<ExprId, Diagnostic> {
         let expression = self.parse_statement(source)?;
         self.eval(expression)
+    }
+
+    /// Load a package once by name or path.
+    #[cfg(feature = "std")]
+    pub fn needs(&mut self, name: &str) -> Result<ExprId, Diagnostic> {
+        self.load_package(name, true)
+    }
+
+    /// Evaluate a package file without the once-only guard.
+    #[cfg(feature = "std")]
+    pub fn get(&mut self, path: &str) -> Result<ExprId, Diagnostic> {
+        self.load_package(path, false)
+    }
+
+    fn load_package(&mut self, name: &str, once: bool) -> Result<ExprId, Diagnostic> {
+        if bundled_module(name) {
+            return Ok(self.arena.builtin_head("null"));
+        }
+        #[cfg(feature = "std")]
+        {
+            let path = self.resolve_package_path(name).ok_or_else(|| {
+                Diagnostic::eval(
+                    ErrorCode::EvalPackage,
+                    format!("cannot find package {name}"),
+                )
+            })?;
+            let key = std::fs::canonicalize(&path)
+                .unwrap_or_else(|_| path.clone())
+                .to_string_lossy()
+                .into_owned();
+            if once && self.loaded_packages.contains(&key) {
+                return Ok(self.arena.builtin_head("null"));
+            }
+            if self.loading_packages.iter().any(|loading| loading == &key) {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalPackage,
+                    format!("package import cycle at {}", path.display()),
+                ));
+            }
+            self.loading_packages.push(key.clone());
+            let source = std::fs::read_to_string(&path).map_err(|error| {
+                Diagnostic::eval(
+                    ErrorCode::EvalPackage,
+                    format!("cannot read {}: {error}", path.display()),
+                )
+            });
+            let result = match source {
+                Ok(source) => self.eval_named_source(&path.to_string_lossy(), &source),
+                Err(error) => Err(error),
+            };
+            self.loading_packages.pop();
+            if result.is_ok() {
+                self.loaded_packages.insert(key);
+            }
+            result
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let _ = once;
+            Err(Diagnostic::eval(
+                ErrorCode::EvalPackage,
+                format!("cannot load package {name} without std"),
+            ))
+        }
+    }
+
+    #[cfg(feature = "std")]
+    fn resolve_package_path(&self, name: &str) -> Option<std::path::PathBuf> {
+        let direct = std::path::PathBuf::from(name);
+        if direct.exists() {
+            return Some(direct);
+        }
+        if let Some(source) = &self.source_name
+            && let Some(parent) = std::path::Path::new(source).parent()
+        {
+            let candidate = parent.join(name);
+            if candidate.exists() {
+                return Some(candidate);
+            }
+            if !name.contains('/') && !name.ends_with(".mith") {
+                let candidate = parent.join(format!("{name}.mith"));
+                if candidate.exists() {
+                    return Some(candidate);
+                }
+            }
+        }
+        if name.contains('/') || name.ends_with(".mith") {
+            return None;
+        }
+        for directory in &self.package_path {
+            let candidate = std::path::Path::new(directory).join(format!("{name}.mith"));
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+        None
     }
 
     /// Parse and evaluate a complete surface language module.
@@ -170,6 +268,11 @@ impl Session {
                     ErrorCode::EvalDefinition,
                     format!("module exports undefined function {name}"),
                 ));
+            }
+        }
+        for statement in &program.body {
+            if let Stmt::Import { module } = statement {
+                self.load_package(module, true)?;
             }
         }
         let previous_source = self.definition_source;
@@ -859,7 +962,8 @@ impl Session {
             return Err(stale_handle());
         }
         let version = self.definitions.version();
-        if let Some(value) = self.eval_cache.get(&(expression, version)) {
+        let context_version = self.arena.context_version();
+        if let Some(value) = self.eval_cache.get(&(expression, version, context_version)) {
             self.last_result = Some(*value);
             return Ok(*value);
         }
@@ -870,7 +974,8 @@ impl Session {
             self.config.max_steps,
             self.config.max_depth,
         )?;
-        self.eval_cache.insert((expression, version), value);
+        self.eval_cache
+            .insert((expression, version, context_version), value);
         self.last_result = Some(value);
         self.maybe_collect();
         Ok(value)
@@ -882,7 +987,11 @@ impl Session {
             return Err(stale_handle());
         }
         let version = self.definitions.version();
-        if let Some(value) = self.compiled_results.get(&(expression, version)) {
+        let context_version = self.arena.context_version();
+        if let Some(value) = self
+            .compiled_results
+            .get(&(expression, version, context_version))
+        {
             self.last_result = Some(*value);
             return Ok(*value);
         }
@@ -900,7 +1009,8 @@ impl Session {
             self.config.max_steps,
             self.config.max_depth,
         )?;
-        self.compiled_results.insert((expression, version), value);
+        self.compiled_results
+            .insert((expression, version, context_version), value);
         self.last_result = Some(value);
         self.maybe_collect();
         Ok(value)
@@ -949,11 +1059,14 @@ impl Session {
             Node::Int(value) => ExprView::Integer(value),
             Node::Rat(value) => ExprView::Rational(value),
             Node::Real(value) => ExprView::Real(value),
+            Node::String(value) => ExprView::String(value),
+            Node::Bytes(value) => ExprView::Bytes(value),
             Node::Symbol(symbol) => ExprView::Symbol(self.arena.symbol_name(*symbol)),
             Node::Call { head, args } => ExprView::Call {
                 head: *head,
                 args: args.as_ref(),
             },
+            Node::Association(entries) => ExprView::Association(entries),
         })
     }
 
@@ -980,10 +1093,33 @@ impl Session {
         self.arena.len()
     }
 
+    /// Move emitted messages out of the session.
+    pub fn take_messages(&mut self) -> Vec<Message> {
+        self.arena.take_messages()
+    }
+
     /// The value of the most recent evaluation.
     pub fn last_result(&self) -> Option<ExprId> {
         self.last_result
     }
+}
+
+fn default_package_path() -> Vec<String> {
+    let mut path = Vec::new();
+    path.push(".".to_string());
+    #[cfg(feature = "std")]
+    if let Ok(extra) = std::env::var("MITHQAL_PATH") {
+        for entry in extra.split(':') {
+            if !entry.is_empty() && !path.iter().any(|known| known == entry) {
+                path.push(entry.to_string());
+            }
+        }
+    }
+    path
+}
+
+fn bundled_module(name: &str) -> bool {
+    stdlib::MODULES.iter().any(|module| module.name == name)
 }
 
 fn defined_names(program: &syntax::Program) -> Vec<String> {

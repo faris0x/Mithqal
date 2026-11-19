@@ -60,6 +60,9 @@ fn evaluate(source: &str) -> i32 {
     let mut session = Session::new();
     match session.eval_source(source) {
         Ok(value) => {
+            for message in session.take_messages() {
+                eprintln!("message: {message}");
+            }
             let output = session.take_output();
             let printed = !output.is_empty();
             for line in output {

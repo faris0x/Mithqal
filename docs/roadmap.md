@@ -56,15 +56,21 @@ Included:
 - Structured diagnostics with stable codes and source spans.
 - Public library API and documentation.
 - A feature-gated command line frontend with a persistent session, assignments, commands, completion, and history.
+- Strings, byte arrays, associations, indexing, part assignment, and mutation helpers.
+- Contexts, qualified names, package loading, and user attributes.
+- Typed patterns, alternatives, tests, optionals, repetitions, orderless multiset matching, and up values.
+- Non-fatal messages, message controls, and session message collection.
+- File text, CSV, TSV, and JSON import and export under the `std` feature.
 
 Excluded:
 
 - Full multivariate factorization beyond the staged coverage and interpolation above eight variables.
 - Further matrix decompositions and wider assumption domains.
-- Strings, file loading, and infinite sets.
-- Unicode source and LaTeX rendering.
+- Infinite sets.
+- Unicode source identifiers and LaTeX rendering.
 - Parallel evaluation and a JIT.
 - Windows and macOS builds.
+- A graphical or notebook frontend.
 
 ## Implementation order
 
@@ -98,7 +104,7 @@ The test suite covers these areas:
 
 ## Remaining work
 
-Remaining work includes broader improper integration, general multivariate factorization beyond the staged bounds, further matrix decompositions, wider assumption domains, proofs, qualified names, and notation declarations. A graphical interface follows once the language surface is stable.
+Remaining work includes broader improper integration, general multivariate factorization beyond the staged bounds, further matrix decompositions, wider assumption domains, proofs, notation declarations, multi-module source files, nested same-head `flat` pattern grouping, and deeper up value dispatch. A graphical interface follows once the language surface is stable.
 
 The engine remains a small core. Mathematics lives in Mithqal modules. Frontends consume the public API and the language contract.
 

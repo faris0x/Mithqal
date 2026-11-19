@@ -212,6 +212,18 @@ The calculus module expresses differentiation and integration rules in Mithqal. 
 | `derive(expression,variable)` | derivative from the Mithqal rule layer |
 | `antiderivative(expression,variable)` | indefinite integral from the Mithqal rule layer |
 
+## Package files and loading
+
+A package file is a module source. `import "path.mith"` loads a file relative to
+the importing source and then through `$MithqalPath`. `Session::needs` loads a
+package once, and `Session::get` re-evaluates it. Import cycles and missing
+packages are rejected.
+
+A strict module's private definitions are installed in a context named after the
+module. Exported definitions stay visible under their source names. A private
+name is not callable by its short name, but remains reachable with a qualified
+name such as `statistics;helper`.
+
 ## Notes
 
 `setOf` and `relationOf` canonicalize their input, so equal sets and relations are the same term. Membership uses structural equality. The finite law checkers use closures and finite quantification, so a law that fails over the carrier is reported as `false`.

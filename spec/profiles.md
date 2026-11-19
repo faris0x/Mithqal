@@ -1,6 +1,6 @@
 # Conformance Profiles
 
-> Spec version: 0.0.1 (draft)
+> Spec version: 0.0.2 (draft)
 
 A profile names a set of language features. An implementation declares the
 profiles it supports and MUST pass every corpus case in each declared profile,

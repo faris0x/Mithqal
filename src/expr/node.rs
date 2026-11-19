@@ -57,6 +57,10 @@ impl Attributes {
     pub const PROTECTED: u16 = 1 << 6;
     /// The symbol is a constant for numeric evaluation.
     pub const CONSTANT: u16 = 1 << 7;
+    /// A one argument pattern can match a bare value.
+    pub const ONE_IDENTITY: u16 = 1 << 8;
+    /// Sequence arguments are held at this head.
+    pub const SEQUENCE_HOLD: u16 = 1 << 9;
 
     /// An attribute set with no flags.
     pub const fn new() -> Self {
@@ -73,10 +77,24 @@ impl Attributes {
         self.0 & flag != 0
     }
 
+    /// Remove a flag.
+    pub const fn without(self, flag: u16) -> Self {
+        Attributes(self.0 & !flag)
+    }
+
     /// Flat and orderless, the common case for arithmetic heads.
     pub const fn arithmetic() -> Self {
         Attributes::new().with(Self::FLAT).with(Self::ORDERLESS)
     }
+}
+
+/// One key and value pair in an association.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct AssociationEntry {
+    /// The association key.
+    pub key: ExprId,
+    /// The value associated with the key.
+    pub value: ExprId,
 }
 
 /// A node in the expression arena.
@@ -88,6 +106,10 @@ pub enum Node {
     Rat(Rat),
     /// An approximate real with a significance estimate.
     Real(Real),
+    /// A string value.
+    String(Box<str>),
+    /// An immutable byte array.
+    Bytes(Box<[u8]>),
     /// A symbol.
     Symbol(SymbolId),
     /// A call with a head and arguments.
@@ -97,4 +119,6 @@ pub enum Node {
         /// The argument expressions.
         args: Box<[ExprId]>,
     },
+    /// An ordered key and value mapping with unique canonical keys.
+    Association(Box<[AssociationEntry]>),
 }

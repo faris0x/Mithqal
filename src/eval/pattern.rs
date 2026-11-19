@@ -5,7 +5,7 @@ use crate::prelude::*;
 
 use crate::collections::{HashMap, HashSet};
 
-use crate::expr::{Arena, Attributes, ExprId, Node, SymbolId};
+use crate::expr::{Arena, AssociationEntry, Attributes, ExprId, Node, SymbolId};
 
 #[derive(Clone, Debug)]
 pub(crate) enum Binding {
@@ -28,20 +28,81 @@ impl Bindings {
     }
 }
 
+#[derive(Clone, Copy)]
+struct SequenceInfo {
+    name: Option<SymbolId>,
+    min: usize,
+    max: Option<usize>,
+    longest: bool,
+    optional_inner: Option<ExprId>,
+    default: Option<ExprId>,
+}
+
 pub(crate) fn match_pattern(
-    arena: &Arena,
+    arena: &mut Arena,
     pattern: ExprId,
     value: ExprId,
     bindings: &mut Bindings,
     conditions: &mut Vec<ExprId>,
 ) -> bool {
     match arena.node(pattern) {
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) | Node::Symbol(_) => pattern == value,
+        Node::Int(_)
+        | Node::Rat(_)
+        | Node::Real(_)
+        | Node::String(_)
+        | Node::Bytes(_)
+        | Node::Symbol(_)
+        | Node::Association(_) => pattern == value,
         Node::Call { head, args } => {
-            let name = head_name(arena, *head);
+            let head = *head;
+            let args = args.to_vec();
+            let name = head_name(arena, head);
             match name {
-                Some("blank") => true,
+                Some("blank") => blank_matches(arena, value, &args),
                 Some("blankSequence") | Some("blankNullSequence") => false,
+                Some("alternatives") => {
+                    for alternative in args.iter() {
+                        let mut next_bindings = bindings.clone();
+                        let mut next_conditions = conditions.clone();
+                        if match_pattern(
+                            arena,
+                            *alternative,
+                            value,
+                            &mut next_bindings,
+                            &mut next_conditions,
+                        ) {
+                            *bindings = next_bindings;
+                            *conditions = next_conditions;
+                            return true;
+                        }
+                    }
+                    false
+                }
+                Some("patternTest") if args.len() == 2 => {
+                    if !match_pattern(arena, args[0], value, bindings, conditions) {
+                        return false;
+                    }
+                    let test = arena.intern_call(args[1], &[value]);
+                    conditions.push(test);
+                    true
+                }
+                Some("except") if args.len() == 1 => {
+                    let mut ignored_bindings = bindings.clone();
+                    let mut ignored_conditions = conditions.clone();
+                    !match_pattern(
+                        arena,
+                        args[0],
+                        value,
+                        &mut ignored_bindings,
+                        &mut ignored_conditions,
+                    )
+                }
+                Some("verbatim") if args.len() == 1 => args[0] == value,
+                Some("optional" | "repeated" | "repeatedNull" | "longest" | "shortest")
+                    if !args.is_empty() =>
+                {
+                    match_pattern(arena, args[0], value, bindings, conditions)
+                }
                 Some("condition") if args.len() == 2 => {
                     if match_pattern(arena, args[0], value, bindings, conditions) {
                         conditions.push(args[1]);
@@ -70,25 +131,69 @@ pub(crate) fn match_pattern(
                     true
                 }
                 _ => {
-                    let Node::Call {
-                        head: value_head,
-                        args: value_args,
-                    } = arena.node(value)
-                    else {
-                        return false;
+                    let (value_head, value_args) = match arena.node(value) {
+                        Node::Call { head, args } => (*head, args.to_vec()),
+                        _ => {
+                            if arena.head_attributes(head).has(Attributes::ONE_IDENTITY)
+                                && args.len() == 1
+                            {
+                                return match_pattern(arena, args[0], value, bindings, conditions);
+                            }
+                            return false;
+                        }
                     };
-                    if *value_head != *head {
+                    if value_head != head {
                         return false;
                     }
-                    match_arguments(arena, *head, args, value_args, bindings, conditions)
+                    match_arguments(arena, head, &args, &value_args, bindings, conditions)
                 }
             }
         }
     }
 }
 
+fn blank_matches(arena: &Arena, value: ExprId, args: &[ExprId]) -> bool {
+    match args {
+        [] => true,
+        [head] => type_matches(arena, value, *head),
+        _ => false,
+    }
+}
+
+fn type_matches(arena: &Arena, value: ExprId, head: ExprId) -> bool {
+    let Some(symbol) = arena.symbol_id(head) else {
+        return false;
+    };
+    let name = arena.symbol_name(symbol);
+    let lower = name.to_ascii_lowercase();
+    match lower.as_str() {
+        "integer" => matches!(arena.node(value), Node::Int(_)),
+        "rational" => matches!(arena.node(value), Node::Rat(_)),
+        "real" => matches!(arena.node(value), Node::Real(_)),
+        "number" => matches!(
+            arena.node(value),
+            Node::Int(_) | Node::Rat(_) | Node::Real(_)
+        ),
+        "string" => matches!(arena.node(value), Node::String(_)),
+        "bytearray" => matches!(arena.node(value), Node::Bytes(_)),
+        "association" => matches!(arena.node(value), Node::Association(_)),
+        "symbol" => matches!(arena.node(value), Node::Symbol(_)),
+        "list" => matches!(
+            arena.node(value),
+            Node::Call { head, .. } if arena.symbol_id(*head).map(|id| arena.symbol_name(id)) == Some("list")
+        ),
+        "call" => matches!(arena.node(value), Node::Call { .. }),
+        _ => match arena.node(value) {
+            Node::Call {
+                head: value_head, ..
+            } => *value_head == head,
+            _ => false,
+        },
+    }
+}
+
 fn match_arguments(
-    arena: &Arena,
+    arena: &mut Arena,
     head: ExprId,
     patterns: &[ExprId],
     values: &[ExprId],
@@ -96,25 +201,15 @@ fn match_arguments(
     conditions: &mut Vec<ExprId>,
 ) -> bool {
     let orderless = arena.head_attributes(head).has(Attributes::ORDERLESS);
-    if !orderless {
-        return match_sequential(arena, patterns, values, bindings, conditions);
+    if orderless {
+        let mut used = vec![false; values.len()];
+        return match_orderless(arena, patterns, values, &mut used, bindings, conditions);
     }
-    if patterns
-        .iter()
-        .any(|pattern| sequence_info(arena, *pattern).is_some())
-    {
-        let mut patterns = patterns.to_vec();
-        let mut values = values.to_vec();
-        patterns.sort_by(|left, right| arena.canonical_cmp(*left, *right));
-        values.sort_by(|left, right| arena.canonical_cmp(*left, *right));
-        return match_sequential(arena, &patterns, &values, bindings, conditions);
-    }
-    let mut used = vec![false; values.len()];
-    match_orderless(arena, patterns, values, &mut used, bindings, conditions)
+    match_sequential(arena, patterns, values, bindings, conditions)
 }
 
 fn match_orderless(
-    arena: &Arena,
+    arena: &mut Arena,
     patterns: &[ExprId],
     values: &[ExprId],
     used: &mut [bool],
@@ -124,16 +219,68 @@ fn match_orderless(
     let Some((pattern, rest)) = patterns.split_first() else {
         return used.iter().all(|value| *value);
     };
-    for (index, value) in values.iter().enumerate() {
-        if used[index] {
-            continue;
+    let unused: Vec<usize> = used
+        .iter()
+        .enumerate()
+        .filter_map(|(index, used)| (!used).then_some(index))
+        .collect();
+    if let Some(info) = sequence_info(arena, *pattern) {
+        let maximum = info.max.unwrap_or(unused.len()).min(unused.len());
+        if unused.len() < info.min {
+            return false;
         }
+        let mut counts: Vec<usize> = (info.min..=maximum).collect();
+        if info.longest {
+            counts.reverse();
+        }
+        for count in counts {
+            let mut selected = Vec::with_capacity(count);
+            let found = combinations(&unused, count, 0, &mut selected, &mut |selected| {
+                let mut next_bindings = bindings.clone();
+                let mut next_conditions = conditions.clone();
+                if !bind_sequence(
+                    arena,
+                    &info,
+                    selected,
+                    values,
+                    &mut next_bindings,
+                    &mut next_conditions,
+                ) {
+                    return false;
+                }
+                for index in selected {
+                    used[*index] = true;
+                }
+                let matched = match_orderless(
+                    arena,
+                    rest,
+                    values,
+                    used,
+                    &mut next_bindings,
+                    &mut next_conditions,
+                );
+                for index in selected {
+                    used[*index] = false;
+                }
+                if matched {
+                    *bindings = next_bindings;
+                    *conditions = next_conditions;
+                }
+                matched
+            });
+            if found {
+                return true;
+            }
+        }
+        return false;
+    }
+    for &index in &unused {
         let mut next_bindings = bindings.clone();
         let mut next_conditions = conditions.clone();
         if match_pattern(
             arena,
             *pattern,
-            *value,
+            values[index],
             &mut next_bindings,
             &mut next_conditions,
         ) {
@@ -157,7 +304,7 @@ fn match_orderless(
 }
 
 fn match_sequential(
-    arena: &Arena,
+    arena: &mut Arena,
     patterns: &[ExprId],
     values: &[ExprId],
     bindings: &mut Bindings,
@@ -166,18 +313,27 @@ fn match_sequential(
     let Some((pattern, rest)) = patterns.split_first() else {
         return values.is_empty();
     };
-    if let Some((name, minimum)) = sequence_info(arena, *pattern) {
-        let remaining = values.len();
-        if remaining < minimum {
+    if let Some(info) = sequence_info(arena, *pattern) {
+        let maximum = info.max.unwrap_or(values.len()).min(values.len());
+        if values.len() < info.min {
             return false;
         }
-        for count in minimum..=remaining {
+        let mut counts: Vec<usize> = (info.min..=maximum).collect();
+        if info.longest {
+            counts.reverse();
+        }
+        for count in counts {
             let mut next_bindings = bindings.clone();
             let mut next_conditions = conditions.clone();
-            if let Some(symbol) = name {
-                next_bindings
-                    .map
-                    .insert(symbol, Binding::Seq(values[..count].to_vec()));
+            if !bind_sequence(
+                arena,
+                &info,
+                &(0..count).collect::<Vec<_>>(),
+                values,
+                &mut next_bindings,
+                &mut next_conditions,
+            ) {
+                continue;
             }
             if match_sequential(
                 arena,
@@ -219,17 +375,113 @@ fn match_sequential(
     }
 }
 
-fn sequence_info(arena: &Arena, pattern: ExprId) -> Option<(Option<SymbolId>, usize)> {
+fn bind_sequence(
+    arena: &mut Arena,
+    info: &SequenceInfo,
+    selected: &[usize],
+    values: &[ExprId],
+    bindings: &mut Bindings,
+    conditions: &mut Vec<ExprId>,
+) -> bool {
+    if let Some(inner) = info.optional_inner {
+        if selected.len() == 1 {
+            if !match_pattern(arena, inner, values[selected[0]], bindings, conditions) {
+                return false;
+            }
+        } else if let Some(symbol) = info.name
+            && let Some(default) = info.default
+        {
+            bindings.map.insert(symbol, Binding::One(default));
+        }
+        return true;
+    }
+    if let Some(symbol) = info.name {
+        if selected.is_empty() {
+            if let Some(default) = info.default {
+                bindings.map.insert(symbol, Binding::One(default));
+            } else {
+                bindings.map.insert(symbol, Binding::Seq(Vec::new()));
+            }
+        } else {
+            let bound: Vec<ExprId> = selected.iter().map(|index| values[*index]).collect();
+            bindings.map.insert(symbol, Binding::Seq(bound));
+        }
+    }
+    true
+}
+
+fn combinations(
+    indices: &[usize],
+    count: usize,
+    start: usize,
+    current: &mut Vec<usize>,
+    callback: &mut impl FnMut(&[usize]) -> bool,
+) -> bool {
+    if count == 0 {
+        return callback(current);
+    }
+    for index in start..=indices.len().saturating_sub(count) {
+        current.push(indices[index]);
+        if combinations(indices, count - 1, index + 1, current, callback) {
+            return true;
+        }
+        current.pop();
+    }
+    false
+}
+
+fn pattern_name(arena: &Arena, pattern: ExprId) -> Option<SymbolId> {
     let Node::Call { head, args } = arena.node(pattern) else {
         return None;
     };
+    if head_name(arena, *head) == Some("pattern") && args.len() == 2 {
+        arena.symbol_id(args[0])
+    } else {
+        None
+    }
+}
+
+fn sequence_info(arena: &Arena, pattern: ExprId) -> Option<SequenceInfo> {
+    let Node::Call { head, args } = arena.node(pattern) else {
+        return None;
+    };
+    let info = |name, min, max, longest| SequenceInfo {
+        name,
+        min,
+        max,
+        longest,
+        optional_inner: None,
+        default: None,
+    };
     match head_name(arena, *head) {
-        Some("blankSequence") => Some((None, 1)),
-        Some("blankNullSequence") => Some((None, 0)),
+        Some("blankSequence") => Some(info(None, 1, None, false)),
+        Some("blankNullSequence") => Some(info(None, 0, None, false)),
+        Some("repeated") => Some(info(pattern_name(arena, args[0]), 1, None, false)),
+        Some("repeatedNull") => Some(info(pattern_name(arena, args[0]), 0, None, false)),
+        Some("longest") if args.len() == 1 => sequence_info(arena, args[0]).map(|mut info| {
+            info.longest = true;
+            info
+        }),
+        Some("shortest") if args.len() == 1 => sequence_info(arena, args[0]).map(|mut info| {
+            info.longest = false;
+            info
+        }),
+        Some("optional") if !args.is_empty() && args.len() <= 2 => Some(SequenceInfo {
+            name: pattern_name(arena, args[0]),
+            min: 0,
+            max: Some(1),
+            longest: false,
+            optional_inner: Some(args[0]),
+            default: args.get(1).copied(),
+        }),
         Some("pattern") if args.len() == 2 => {
             let symbol = arena.symbol_id(args[0]);
-            let inner = args[1];
-            sequence_info(arena, inner).map(|(_, minimum)| (symbol, minimum))
+            sequence_info(arena, args[1]).map(|mut info| {
+                if info.name.is_none() {
+                    info.name = symbol;
+                }
+                info
+            })
         }
         _ => None,
     }
@@ -258,7 +510,20 @@ fn substitute_in(
             Some(Binding::One(value)) => *value,
             _ => expression,
         },
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) => expression,
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) | Node::String(_) | Node::Bytes(_) => {
+            expression
+        }
+        Node::Association(entries) => {
+            let entries = entries.to_vec();
+            let entries = entries
+                .iter()
+                .map(|entry| AssociationEntry {
+                    key: substitute_in(arena, entry.key, bindings, blocked),
+                    value: substitute_in(arena, entry.value, bindings, blocked),
+                })
+                .collect();
+            arena.intern_association(entries).unwrap_or(expression)
+        }
         Node::Call { head, args } => {
             let head = *head;
             let args = args.to_vec();
@@ -560,7 +825,20 @@ fn rename_free(arena: &mut Arena, expression: ExprId, from: SymbolId, to: Symbol
                 expression
             }
         }
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) => expression,
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) | Node::String(_) | Node::Bytes(_) => {
+            expression
+        }
+        Node::Association(entries) => {
+            let entries = entries.to_vec();
+            let entries = entries
+                .iter()
+                .map(|entry| AssociationEntry {
+                    key: rename_free(arena, entry.key, from, to),
+                    value: rename_free(arena, entry.value, from, to),
+                })
+                .collect();
+            arena.intern_association(entries).unwrap_or(expression)
+        }
         Node::Call { head, args } => {
             let head = *head;
             let args = args.to_vec();
@@ -692,7 +970,13 @@ fn collect_free(
                 free.insert(*symbol);
             }
         }
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) => {}
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) | Node::String(_) | Node::Bytes(_) => {}
+        Node::Association(entries) => {
+            for entry in entries {
+                collect_free(arena, entry.key, bound, free);
+                collect_free(arena, entry.value, bound, free);
+            }
+        }
         Node::Call { head, args } => {
             let head = *head;
             match head_name(arena, head) {
@@ -884,7 +1168,13 @@ pub(crate) fn all_symbols(arena: &Arena, expression: ExprId, symbols: &mut HashS
         Node::Symbol(symbol) => {
             symbols.insert(*symbol);
         }
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) => {}
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) | Node::String(_) | Node::Bytes(_) => {}
+        Node::Association(entries) => {
+            for entry in entries {
+                all_symbols(arena, entry.key, symbols);
+                all_symbols(arena, entry.value, symbols);
+            }
+        }
         Node::Call { head, args } => {
             all_symbols(arena, *head, symbols);
             for argument in args {
@@ -935,7 +1225,20 @@ fn rename_symbol(arena: &mut Arena, expression: ExprId, from: SymbolId, to: Symb
                 expression
             }
         }
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) => expression,
+        Node::Int(_) | Node::Rat(_) | Node::Real(_) | Node::String(_) | Node::Bytes(_) => {
+            expression
+        }
+        Node::Association(entries) => {
+            let entries = entries.to_vec();
+            let entries = entries
+                .iter()
+                .map(|entry| AssociationEntry {
+                    key: rename_symbol(arena, entry.key, from, to),
+                    value: rename_symbol(arena, entry.value, from, to),
+                })
+                .collect();
+            arena.intern_association(entries).unwrap_or(expression)
+        }
         Node::Call { head, args } => {
             let head = *head;
             let args = args.to_vec();
@@ -962,6 +1265,9 @@ fn contains_binder(arena: &Arena, expression: ExprId) -> bool {
             }
             contains_binder(arena, head) || args.iter().any(|arg| contains_binder(arena, *arg))
         }
+        Node::Association(entries) => entries
+            .iter()
+            .any(|entry| contains_binder(arena, entry.key) || contains_binder(arena, entry.value)),
         _ => false,
     }
 }
@@ -1036,7 +1342,8 @@ pub(crate) fn rename_definition(
 }
 
 fn head_expr(arena: &mut Arena, name: &str) -> ExprId {
-    let symbol = arena.symbol_or_intern(name);
+    let attrs = crate::builtins::attributes(name).unwrap_or_default();
+    let symbol = arena.intern_symbol(name, attrs);
     arena.symbol_expr(symbol)
 }
 

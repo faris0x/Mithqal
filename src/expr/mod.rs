@@ -13,4 +13,4 @@ mod node;
 mod order;
 
 pub use arena::Arena;
-pub use node::{Attributes, ExprId, Node, SymbolId};
+pub use node::{AssociationEntry, Attributes, ExprId, Node, SymbolId};

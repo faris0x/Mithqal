@@ -856,10 +856,16 @@ fn parse_import(rest: &str, line: &Line<'_>, base: usize) -> Result<Stmt, Diagno
     let offset = rest.len() - rest.trim_start().len();
     let module = rest.trim();
     let column = line.column + base + offset;
-    validate_identifier(module, line.number, column)?;
-    Ok(Stmt::Import {
-        module: module.to_string(),
-    })
+    let module = if let Some(path) = module
+        .strip_prefix('"')
+        .and_then(|text| text.strip_suffix('"'))
+    {
+        path.to_string()
+    } else {
+        validate_identifier(module, line.number, column)?;
+        module.to_string()
+    };
+    Ok(Stmt::Import { module })
 }
 
 fn parse_if<'a>(lines: &[Line<'a>], cursor: &mut usize) -> Result<Stmt, Diagnostic> {

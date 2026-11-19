@@ -29,6 +29,13 @@ This document records the support level of each public area. Stable areas follow
 | Information theory | Experimental | Entropy, marginals, mutual information, and divergences over exact distributions. |
 | Calculus rule layer | Experimental | Mithqal differentiation and integration rules with native fallback. |
 | Canonical binders and structure declarations | Experimental | `forall`, `exists`, `setBuilder`, and structure and instance declarations with finite law checks. |
+| Strings, byte arrays, associations, and text functions | Experimental | Exact string, byte, and association operations. |
+| File text, CSV, TSV, and JSON I/O | Experimental | `std` only and unsandboxed in this version. |
+| Contexts, qualified names, and packages | Experimental | Semicolon-qualified names, module contexts, relative package imports, once-only loading, and cycle detection. |
+| User attributes and definition introspection | Experimental | Attribute controls, protection, own values, down values, and up values. |
+| Advanced pattern matching | Experimental | Typed blanks, alternatives, tests, optionals, repetitions, orderless multiset matching, and `oneIdentity`. |
+| Up values | Experimental | Tagged definitions and dispatch before down values and built in implementations. |
+| Messages | Experimental | Non-fatal messages, `check`, `quiet`, `off`, and `on`. |
 
 ## Process gates
 

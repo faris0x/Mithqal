@@ -608,7 +608,8 @@ impl<'a> Evaluator<'a> {
     }
 
     pub(super) fn call_evaluated(&mut self, name: &str, args: &[ExprId]) -> Option<ExprId> {
-        let symbol = self.arena.symbol_or_intern(name);
+        let attrs = crate::builtins::attributes(name).unwrap_or_default();
+        let symbol = self.arena.intern_symbol(name, attrs);
         let head = self.arena.symbol_expr(symbol);
         let call = self.arena.intern_call(head, args);
         self.eval(call).ok()
@@ -646,8 +647,7 @@ impl<'a> Evaluator<'a> {
     }
 
     pub(super) fn infinity_expression(&mut self) -> ExprId {
-        let symbol = self.arena.symbol_or_intern("inf");
-        self.arena.symbol_expr(symbol)
+        self.arena.builtin_head("inf")
     }
 
     pub(super) fn rat_expression(&mut self, value: &Rat) -> ExprId {

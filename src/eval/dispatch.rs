@@ -1,4 +1,4 @@
-//! Kernel head dispatch for algebra, calculus, logic, and numeric families.
+//! Kernel head dispatch for algebra, calculus, logic, numeric, list, text, and file families.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -7,6 +7,15 @@ use super::*;
 
 impl<'a> Evaluator<'a> {
     pub(super) fn apply(&mut self, head: ExprId, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if let Some(value) = self.apply_upvalues(head, args)? {
+            return Ok(value);
+        }
+        if head == self.heads.part {
+            return self.apply_part(args);
+        }
+        if head == self.heads.evaluate && args.len() == 1 {
+            return Ok(args[0]);
+        }
         if head == self.heads.plus {
             return self.plus(args);
         }
@@ -209,6 +218,36 @@ impl<'a> Evaluator<'a> {
                 }
                 let original = self.arena.intern_call(head, args);
                 Ok(self.apply_list(function, args).unwrap_or(original))
+            }
+            KernelFunction::Text(function) => {
+                let (minimum, maximum) = function.arity();
+                if args.len() < minimum || args.len() > maximum {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalArity,
+                        "text function received the wrong number of arguments",
+                    ));
+                }
+                let original = self.arena.intern_call(head, args);
+                Ok(self.apply_text(function, args).unwrap_or(original))
+            }
+            KernelFunction::Io(function) => {
+                let (minimum, maximum) = function.arity();
+                if args.len() < minimum || args.len() > maximum {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalArity,
+                        "file function received the wrong number of arguments",
+                    ));
+                }
+                let original = self.arena.intern_call(head, args);
+                #[cfg(feature = "std")]
+                {
+                    Ok(self.apply_io(function, args)?.unwrap_or(original))
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    let _ = function;
+                    Ok(original)
+                }
             }
         }
     }
@@ -1002,8 +1041,8 @@ impl<'a> Evaluator<'a> {
             if !rule.delayed {
                 return Ok(Some(rhs));
             }
-            return match self.eval(rhs) {
-                Ok(value) => Ok(Some(value)),
+            let value = match self.eval(rhs) {
+                Ok(value) => value,
                 Err(mut diagnostic) => {
                     if let Some(site) = rule.site {
                         let name = self.arena.symbol_name(symbol).to_string();
@@ -1014,9 +1053,13 @@ impl<'a> Evaluator<'a> {
                             source: Some(self.definitions.source_name(site.source).to_string()),
                         });
                     }
-                    Err(diagnostic)
+                    return Err(diagnostic);
                 }
             };
+            if let Some(value) = self.take_return() {
+                return Ok(Some(value));
+            }
+            return Ok(Some(value));
         }
         Ok(None)
     }

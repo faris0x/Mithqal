@@ -1,6 +1,6 @@
 # Abstract Terms
 
-> Spec version: 0.0.1 (draft)
+> Spec version: 0.0.2 (draft)
 
 ## Terms
 
@@ -9,13 +9,17 @@ An expression is one of the following:
 - an exact integer;
 - an exact rational;
 - an approximate real;
+- a string;
+- an immutable byte array;
 - a symbol;
-- a call, consisting of a head term and an ordered sequence of argument terms.
+- a call, consisting of a head term and an ordered sequence of argument terms;
+- an association, an ordered mapping of canonical keys to values.
 
 Every expression is a term. Terms are immutable. A session interns terms, so
 two equal terms have the same identity within that session.
 
-Strings and byte sequences are reserved for a later version.
+Association keys are unique and sorted into canonical order. Association entries
+are part of the term identity.
 
 ## Values
 
@@ -45,13 +49,18 @@ The order compares term kinds first:
 1. exact integer
 2. exact rational
 3. approximate real
-4. symbol
-5. call
+4. string
+5. byte array
+6. symbol
+7. call
+8. association
 
 Within a kind, the order compares content. Integers compare by value.
-Rationals compare by value. Approximate reals compare by value. Symbols compare
-by name. Calls compare by head, then by arguments from left to right. A shorter
-argument list sorts before a longer list that has it as a prefix.
+Rationals compare by value. Approximate reals compare by value. Strings and
+byte arrays compare lexicographically. Symbols compare by context, then by
+short name. Calls compare by head, then by arguments from left to right. A
+shorter argument list sorts before a longer list that has it as a prefix.
+Associations compare by entries in canonical key order.
 
 Arguments of an `orderless` head are sorted into canonical order before
 interning.

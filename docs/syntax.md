@@ -6,7 +6,7 @@ This document defines the source language for the current version.
 
 ## Source layout
 
-Source is ASCII. Non ASCII input produces a diagnostic in this version.
+Source is ASCII except inside string literals, which may contain Unicode text. Non ASCII input outside a string produces a diagnostic in this version.
 
 A program is a sequence of statements. A newline ends a statement. A statement must fit on one line. An empty line is ignored.
 
@@ -34,14 +34,25 @@ Trailing spaces on a code line are invalid. Leading spaces on a code line are in
 
 ## Identifiers
 
-An identifier starts with an ASCII letter and continues with ASCII letters or digits. Underscores are reserved for pattern syntax. Built in names use dromedaryCase.
+An identifier starts with an ASCII letter and continues with ASCII letters or digits. Underscores are reserved for pattern syntax. Built in names use dromedaryCase. System names such as `$Context` begin with `$` and continue with letters or digits; a bare `$` is not an identifier.
 
 ```text
 x
 fooBar
 setDelayed
 blankSequence
+$Context
+$ContextPath
 ```
+
+A context-qualified name uses a semicolon separator and contains no whitespace.
+
+```text
+ctx;name
+a;b;name
+```
+
+The final segment is the short name. The preceding segments form the context. Semicolons are reserved for qualified names in this version; they are not statement separators.
 
 A pattern suffix follows an identifier or stands alone:
 
@@ -76,6 +87,27 @@ A decimal literal requires a digit before and after the decimal point. `.5` and 
 
 Division is the `/` operator. It evaluates to an exact rational when both operands are exact and the divisor is nonzero.
 
+## Strings, bytes, and associations
+
+A string literal uses double quotes and the escapes `\"`, `\\`, `\n`, `\r`, `\t`, and `\0`.
+
+```text
+"hello"
+"line\nbreak"
+```
+
+A byte array uses `byteArray(...)` with integers from 0 through 255.
+
+```text
+byteArray(0,1,255)
+```
+
+An association literal uses `<|...|>` with `->` entries. Keys are unique and sorted canonically.
+
+```text
+<|a->1,b->2|>
+```
+
 ## Lists
 
 A list literal uses square brackets.
@@ -101,7 +133,35 @@ sin(x)
 
 The head is any expression that evaluates to a callable value. A symbol head can refer to a built in function or a user definition.
 
-Square brackets after a completed expression are reserved for indexing. The current version does not implement indexing and produces a diagnostic. Use a function call such as `part(x,1)` when indexing is added.
+Double square brackets index a completed expression. Indexing is one based, and negative indices count from the end.
+
+```text
+[10,20,30][[2]]
+"abc"[[-1]]
+<|a->1|>[[a]]
+[10,20,30][[span(2,3)]]
+```
+
+## Contexts
+
+Short names resolve through the current context and `$ContextPath`. A qualified name bypasses the path and names a symbol in a specific context.
+
+```text
+foo
+foo;bar
+a;b;bar
+```
+
+The context forms are `begin`, `end`, `context`, and `contexts`. `$Context` and `$ContextPath` report the current context and the search path.
+
+```text
+begin(foo)
+x=1
+context(x)
+end()
+```
+
+The expression is whitespace free, including qualified names.
 
 ## Operators
 
@@ -167,8 +227,8 @@ The following rules resolve the ambiguous cases:
 - `2x^2` is `2*(x^2)`.
 - `x2` is one identifier. It is not `x*2`.
 - `23` is one number. It is not `2*3`.
-- `[` after a completed expression starts indexing. `2[1,2]` is an indexing form and produces a diagnostic in the current version. Write `2*[1,2]` for scalar multiplication of a list.
-- `[1,2][3]` is indexing and produces a diagnostic in the current version.
+- `[[` after a completed expression starts indexing. `2[[1,2]]` indexes the expression `2`. Write `2*[1,2]` for scalar multiplication of a list.
+- `[1,2][[3]]` is indexing.
 - A comma separates arguments or list elements. It never implies multiplication.
 
 Implicit multiplication has the same precedence as explicit `*` and associates to the left.
@@ -300,6 +360,94 @@ a||b
 !a
 ```
 
+## Messages
+
+Messages are ordinary call forms:
+
+```text
+message(foo,1)
+message(messageName(f,tag),1)
+check(message(foo,1),2)
+quiet(message(foo,1))
+off(foo)
+on(foo)
+```
+
+Messages are non-fatal and are collected separately from diagnostics. The CLI
+prints them before the result.
+
+## Package imports and up values
+
+An import names a bundled module or a quoted package path.
+
+```text
+import lists
+import "packages/stats.mith"
+```
+
+Up values are installed with `upSet`, `upSetDelayed`, `tagSet`, and
+`tagSetDelayed`.
+
+```text
+tagSet(f,g(f(x_)),x+1)
+upSet(g(f(x_)),x+10)
+upValues(f)
+```
+
+## Attributes and definitions
+
+`setAttributes`, `clearAttributes`, `attributes`, `protect`, and `unprotect`
+manage symbol attributes. `ownValues`, `downValues`, `subValues`, `upValues`,
+`definition`, and `fullDefinition` inspect definitions.
+
+```text
+setAttributes(f,orderless)
+attributes(f)
+protect(f)
+downValues(f)
+```
+
+## Pattern forms
+
+Typed blanks, alternatives, tests, optionals, and repetitions are call forms:
+
+```text
+x_Integer
+alternatives(1,2)
+patternTest(x_Integer,isEven)
+optional(y_,10)
+repeated(x__)
+repeatedNull(x___)
+longest(x__)
+shortest(x__)
+except(1)
+verbatim(2)
+```
+
+Orderless heads match sequence patterns by multiset. A head with `oneIdentity`
+allows a one argument call pattern to match a bare value.
+
+## Assignment, evaluation control, and control flow
+
+Part assignment is immediate:
+
+```text
+x=[1,2,3]
+x[[2]]=9
+```
+
+`appendTo`, `prependTo`, `addTo`, `subtractFrom`, `timesBy`, and `divideBy`
+update a value in place. `unset`, `clear`, `clearAll`, and `remove` remove
+definitions.
+
+`hold` prevents evaluation, `evaluate` escapes `hold`, `holdForm` and
+`holdPattern` are held forms, `unevaluated` suppresses one argument evaluation,
+and `sequence` splices into the enclosing call.
+
+`which`, `switch`, `do`, `while`, `for`, `return`, `break`, `continue`,
+`throw`, and `catch` provide control flow. All are ordinary call forms and
+remain whitespace free.
+
 ## Comments and whitespace diagnostics
 
 A code line with whitespace produces a diagnostic with a stable code and a source span.
@@ -325,4 +473,4 @@ error TGN-PARSE-0002: comments must occupy their own lines
 
 ## File fixtures
 
-The expression reader has no file interface of its own. Library modules are bundled into the binary and loaded by the session; user supplied source files are not part of the current surface.
+The expression reader has no file interface of its own. A session can evaluate a file with `Session::eval_file`, and package sources can be loaded with `import "path.mith"`, `Session::needs`, or `Session::get`. The CLI evaluates source passed with `--eval`.

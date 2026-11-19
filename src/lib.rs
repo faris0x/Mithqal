@@ -26,6 +26,8 @@ pub mod eval;
 #[doc(hidden)]
 pub mod expr;
 mod hash;
+#[cfg(feature = "std")]
+pub mod io;
 pub mod ir;
 mod kernel;
 mod linalg;

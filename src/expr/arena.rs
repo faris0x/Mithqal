@@ -6,10 +6,11 @@ use crate::prelude::*;
 use crate::collections::HashMap;
 use core::cmp::Ordering;
 
+use crate::diag::{Diagnostic, ErrorCode, Message};
 use crate::hash::FnvBuildHasher;
 use crate::num::{Int, Rat, Real};
 
-use super::node::{Attributes, ExprId, Node, SymbolId};
+use super::node::{AssociationEntry, Attributes, ExprId, Node, SymbolId};
 use super::order::canonical_cmp;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -30,15 +31,29 @@ enum Key {
         limbs: Box<[u8]>,
         error: u64,
     },
+    String(Box<str>),
+    Bytes(Box<[u8]>),
     Symbol(SymbolId),
     Call {
         head: ExprId,
         args: Box<[ExprId]>,
     },
+    Association(Box<[AssociationEntry]>),
+}
+
+const GLOBAL_CONTEXT: &str = "Global";
+
+fn symbol_key(context: &str, name: &str) -> String {
+    let mut key = String::with_capacity(context.len() + name.len() + 1);
+    key.push_str(context);
+    key.push(';');
+    key.push_str(name);
+    key
 }
 
 struct SymbolInfo {
     name: String,
+    context: String,
     attrs: Attributes,
     node: Option<ExprId>,
 }
@@ -55,6 +70,14 @@ pub struct Arena {
     builtin_heads: HashMap<&'static str, ExprId, FnvBuildHasher>,
     heads: Option<crate::kernel::Heads>,
     fresh: u64,
+    current_context: String,
+    context_stack: Vec<String>,
+    context_path: Vec<String>,
+    contexts: Vec<String>,
+    context_version: u64,
+    messages: Vec<Message>,
+    message_suppression: usize,
+    disabled_messages: Vec<String>,
 }
 
 impl Arena {
@@ -76,6 +99,14 @@ impl Arena {
             builtin_heads: HashMap::default(),
             heads: None,
             fresh: 0,
+            current_context: GLOBAL_CONTEXT.to_string(),
+            context_stack: Vec::new(),
+            context_path: vec![GLOBAL_CONTEXT.to_string()],
+            contexts: vec![GLOBAL_CONTEXT.to_string()],
+            context_version: 0,
+            messages: Vec::new(),
+            message_suppression: 0,
+            disabled_messages: Vec::new(),
         }
     }
 
@@ -122,35 +153,193 @@ impl Arena {
         self.intern_node(Node::Real(value))
     }
 
-    /// Intern a symbol name and set its attributes.
+    /// Intern a string value.
+    pub fn intern_string(&mut self, value: &str) -> ExprId {
+        self.intern_node(Node::String(value.into()))
+    }
+
+    /// Intern an immutable byte array.
+    pub fn intern_bytes(&mut self, value: &[u8]) -> ExprId {
+        self.intern_node(Node::Bytes(value.into()))
+    }
+
+    /// Intern an association.
+    ///
+    /// Keys are sorted into canonical order. Duplicate keys are rejected.
+    pub fn intern_association(
+        &mut self,
+        mut entries: Vec<AssociationEntry>,
+    ) -> Result<ExprId, Diagnostic> {
+        entries.sort_by(|left, right| {
+            self.canonical_cmp(left.key, right.key)
+                .then_with(|| self.canonical_cmp(left.value, right.value))
+        });
+        for pair in entries.windows(2) {
+            if pair[0].key == pair[1].key {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    "an association cannot contain duplicate keys",
+                ));
+            }
+        }
+        Ok(self.intern_node(Node::Association(entries.into_boxed_slice())))
+    }
+
+    /// Intern a symbol name in the global context and set its attributes.
     pub fn intern_symbol(&mut self, name: &str, attrs: Attributes) -> SymbolId {
-        if let Some(&id) = self.symbol_names.get(name) {
+        self.intern_symbol_in_context(GLOBAL_CONTEXT, name, attrs)
+    }
+
+    /// Intern a symbol in a specific context and set its attributes.
+    pub fn intern_symbol_in_context(
+        &mut self,
+        context: &str,
+        name: &str,
+        attrs: Attributes,
+    ) -> SymbolId {
+        let key = symbol_key(context, name);
+        if let Some(&id) = self.symbol_names.get(&key) {
             self.symbols[id as usize].attrs = attrs;
             return id;
         }
         let id = self.symbols.len() as SymbolId;
         self.symbols.push(SymbolInfo {
             name: name.to_string(),
+            context: context.to_string(),
             attrs,
             node: None,
         });
-        self.symbol_names.insert(name.to_string(), id);
+        self.symbol_names.insert(key, id);
+        if !self.contexts.iter().any(|known| known == context) {
+            self.contexts.push(context.to_string());
+        }
         id
     }
 
-    /// Return an existing symbol or create it without changing attributes.
+    /// Intern a symbol in the current context without changing attributes.
     pub fn symbol_or_intern(&mut self, name: &str) -> SymbolId {
-        if let Some(&id) = self.symbol_names.get(name) {
+        let context = self.current_context.clone();
+        if let Some(&id) = self.symbol_names.get(&symbol_key(&context, name)) {
             return id;
         }
-        let id = self.symbols.len() as SymbolId;
-        self.symbols.push(SymbolInfo {
-            name: name.to_string(),
-            attrs: Attributes::new(),
-            node: None,
-        });
-        self.symbol_names.insert(name.to_string(), id);
-        id
+        self.intern_symbol_in_context(&context, name, Attributes::new())
+    }
+
+    /// Resolve a short name through the current context and context path.
+    ///
+    /// The current context is searched first, followed by `$ContextPath`.
+    /// A name that is not found is created in the current context.
+    pub fn resolve_symbol(&mut self, name: &str) -> SymbolId {
+        let mut contexts = Vec::with_capacity(self.context_path.len() + 1);
+        contexts.push(self.current_context.clone());
+        for context in &self.context_path {
+            if !contexts.iter().any(|known| known == context) {
+                contexts.push(context.clone());
+            }
+        }
+        for context in &contexts {
+            if let Some(&id) = self.symbol_names.get(&symbol_key(context, name)) {
+                return id;
+            }
+        }
+        let context = self.current_context.clone();
+        self.intern_symbol_in_context(&context, name, Attributes::new())
+    }
+
+    /// Intern a symbol in an explicit context.
+    pub fn intern_qualified_symbol(
+        &mut self,
+        context: &str,
+        name: &str,
+        attrs: Attributes,
+    ) -> SymbolId {
+        self.intern_symbol_in_context(context, name, attrs)
+    }
+
+    /// The current context.
+    pub fn current_context(&self) -> &str {
+        &self.current_context
+    }
+
+    /// The ordered context path searched for short names.
+    pub fn context_path(&self) -> &[String] {
+        &self.context_path
+    }
+
+    /// Every context that has been used in this arena.
+    pub fn contexts(&self) -> Vec<String> {
+        let mut contexts = self.contexts.clone();
+        contexts.sort();
+        contexts.dedup();
+        contexts
+    }
+
+    /// Emit a non-fatal message.
+    pub(crate) fn push_message(&mut self, message: Message) {
+        if self.message_suppression == 0
+            && !self
+                .disabled_messages
+                .iter()
+                .any(|name| name == &message.name)
+        {
+            self.messages.push(message);
+        }
+    }
+
+    /// Number of emitted messages.
+    pub(crate) fn message_count(&self) -> usize {
+        self.messages.len()
+    }
+
+    /// Move emitted messages out of the arena.
+    pub(crate) fn take_messages(&mut self) -> Vec<Message> {
+        core::mem::take(&mut self.messages)
+    }
+
+    /// Suppress messages until the matching unsuppress call.
+    pub(crate) fn suppress_messages(&mut self) {
+        self.message_suppression += 1;
+    }
+
+    /// End one message suppression.
+    pub(crate) fn unsuppress_messages(&mut self) {
+        self.message_suppression = self.message_suppression.saturating_sub(1);
+    }
+
+    /// Disable a named message.
+    pub(crate) fn disable_message(&mut self, name: &str) {
+        if !self.disabled_messages.iter().any(|known| known == name) {
+            self.disabled_messages.push(name.to_string());
+        }
+    }
+
+    /// Enable a named message.
+    pub(crate) fn enable_message(&mut self, name: &str) {
+        self.disabled_messages.retain(|known| known != name);
+    }
+
+    /// A monotonically increasing context generation.
+    pub fn context_version(&self) -> u64 {
+        self.context_version
+    }
+
+    /// Enter a context and return its name.
+    pub fn begin_context(&mut self, context: &str) -> String {
+        self.context_stack.push(self.current_context.clone());
+        self.current_context = context.to_string();
+        if !self.contexts.iter().any(|known| known == context) {
+            self.contexts.push(context.to_string());
+        }
+        self.context_version = self.context_version.wrapping_add(1);
+        self.current_context.clone()
+    }
+
+    /// Leave the current context and return its name.
+    pub fn end_context(&mut self) -> Option<String> {
+        let previous = self.context_stack.pop()?;
+        let ended = core::mem::replace(&mut self.current_context, previous);
+        self.context_version = self.context_version.wrapping_add(1);
+        Some(ended)
     }
 
     /// Create a deterministic fresh symbol derived from an existing name.
@@ -159,11 +348,12 @@ impl Arena {
     /// source identifiers and printed expressions round trip.
     pub(crate) fn fresh_symbol(&mut self, base: SymbolId) -> SymbolId {
         let base_name = self.symbols[base as usize].name.clone();
+        let context = self.symbols[base as usize].context.clone();
         loop {
             self.fresh = self.fresh.wrapping_add(1);
             let name = format!("{base_name}{}", self.fresh);
-            if !self.symbol_names.contains_key(&name) {
-                return self.intern_symbol(&name, Attributes::new());
+            if !self.symbol_names.contains_key(&symbol_key(&context, &name)) {
+                return self.intern_symbol_in_context(&context, &name, Attributes::new());
             }
         }
     }
@@ -178,9 +368,34 @@ impl Arena {
         node
     }
 
-    /// The symbol name.
+    /// The symbol short name.
     pub fn symbol_name(&self, id: SymbolId) -> &str {
         &self.symbols[id as usize].name
+    }
+
+    /// The symbol context.
+    pub fn symbol_context(&self, id: SymbolId) -> &str {
+        &self.symbols[id as usize].context
+    }
+
+    /// The symbol name including its context when it is not global.
+    pub fn symbol_full_name(&self, id: SymbolId) -> String {
+        let info = &self.symbols[id as usize];
+        if info.context == GLOBAL_CONTEXT {
+            info.name.clone()
+        } else {
+            format!("{};{}", info.context, info.name)
+        }
+    }
+
+    /// The symbol name for human display in the current context.
+    pub fn symbol_display_name(&self, id: SymbolId) -> String {
+        let info = &self.symbols[id as usize];
+        if info.context == GLOBAL_CONTEXT || info.context == self.current_context {
+            info.name.clone()
+        } else {
+            format!("{};{}", info.context, info.name)
+        }
     }
 
     /// The symbol attributes.
@@ -294,9 +509,18 @@ impl Arena {
                 continue;
             };
             marked[index] = true;
-            if let Node::Call { head, args } = node {
-                stack.push(*head);
-                stack.extend(args.iter().copied());
+            match node {
+                Node::Call { head, args } => {
+                    stack.push(*head);
+                    stack.extend(args.iter().copied());
+                }
+                Node::Association(entries) => {
+                    for entry in entries {
+                        stack.push(entry.key);
+                        stack.push(entry.value);
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -381,10 +605,13 @@ fn key_for(node: &Node) -> Key {
                 error,
             }
         }
+        Node::String(value) => Key::String(value.clone()),
+        Node::Bytes(value) => Key::Bytes(value.clone()),
         Node::Symbol(symbol) => Key::Symbol(*symbol),
         Node::Call { head, args } => Key::Call {
             head: *head,
             args: args.clone(),
         },
+        Node::Association(entries) => Key::Association(entries.clone()),
     }
 }

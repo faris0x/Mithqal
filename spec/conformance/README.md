@@ -1,6 +1,6 @@
 # Conformance Corpus
 
-> Spec version: 0.0.1 (draft)
+> Spec version: 0.0.2 (draft)
 
 The corpus is the executable form of the specification. A corpus case is
 normative. An implementation conforms to a profile when it passes every case in

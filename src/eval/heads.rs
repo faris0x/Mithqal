@@ -367,6 +367,147 @@ impl ListHead {
 }
 
 #[derive(Copy, Clone)]
+pub(crate) enum TextHead {
+    StringLength,
+    StringJoin,
+    StringSplit,
+    StringReplace,
+    StringTake,
+    StringDrop,
+    StringContains,
+    StringReverse,
+    Characters,
+    CharacterCode,
+    FromCharacterCode,
+    ToString,
+    ByteArrayLength,
+    ByteArrayToList,
+    ByteArrayFromList,
+    ByteArrayToString,
+    StringToByteArray,
+    AssociationLength,
+    AssociationKeys,
+    AssociationValues,
+    Lookup,
+    KeyExistsQ,
+    AssociationMerge,
+    AssociationKeyTake,
+    AssociationKeyDrop,
+    AssociationFromPairs,
+    AssociationToPairs,
+    AssociationMap,
+}
+
+impl TextHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "stringLength" => Self::StringLength,
+            "stringJoin" => Self::StringJoin,
+            "stringSplit" => Self::StringSplit,
+            "stringReplace" => Self::StringReplace,
+            "stringTake" => Self::StringTake,
+            "stringDrop" => Self::StringDrop,
+            "stringContains" => Self::StringContains,
+            "stringReverse" => Self::StringReverse,
+            "characters" => Self::Characters,
+            "characterCode" => Self::CharacterCode,
+            "fromCharacterCode" => Self::FromCharacterCode,
+            "toString" => Self::ToString,
+            "byteArrayLength" => Self::ByteArrayLength,
+            "byteArrayToList" => Self::ByteArrayToList,
+            "byteArrayFromList" => Self::ByteArrayFromList,
+            "byteArrayToString" => Self::ByteArrayToString,
+            "stringToByteArray" => Self::StringToByteArray,
+            "associationLength" => Self::AssociationLength,
+            "associationKeys" => Self::AssociationKeys,
+            "associationValues" => Self::AssociationValues,
+            "lookup" => Self::Lookup,
+            "keyExistsQ" => Self::KeyExistsQ,
+            "associationMerge" => Self::AssociationMerge,
+            "associationKeyTake" => Self::AssociationKeyTake,
+            "associationKeyDrop" => Self::AssociationKeyDrop,
+            "associationFromPairs" => Self::AssociationFromPairs,
+            "associationToPairs" => Self::AssociationToPairs,
+            "associationMap" => Self::AssociationMap,
+            _ => return None,
+        })
+    }
+
+    pub(super) fn arity(self) -> (usize, usize) {
+        match self {
+            Self::StringJoin | Self::AssociationMerge => (0, usize::MAX),
+            Self::StringSplit => (1, 2),
+            Self::Lookup => (2, 3),
+            Self::StringReplace => (3, 3),
+            Self::StringTake
+            | Self::StringDrop
+            | Self::StringContains
+            | Self::KeyExistsQ
+            | Self::AssociationKeyTake
+            | Self::AssociationKeyDrop
+            | Self::AssociationMap => (2, 2),
+            _ => (1, 1),
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum IoHead {
+    ReadString,
+    WriteString,
+    FileExistsQ,
+    FileNames,
+    DirectoryName,
+    FileNameJoin,
+    CreateDirectory,
+    DeleteFile,
+    ImportText,
+    ExportText,
+    ImportCsv,
+    ExportCsv,
+    ImportTsv,
+    ExportTsv,
+    ImportJson,
+    ExportJson,
+}
+
+impl IoHead {
+    pub(super) fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "readString" => Self::ReadString,
+            "writeString" => Self::WriteString,
+            "fileExistsQ" => Self::FileExistsQ,
+            "fileNames" => Self::FileNames,
+            "directoryName" => Self::DirectoryName,
+            "fileNameJoin" => Self::FileNameJoin,
+            "createDirectory" => Self::CreateDirectory,
+            "deleteFile" => Self::DeleteFile,
+            "importText" => Self::ImportText,
+            "exportText" => Self::ExportText,
+            "importCsv" => Self::ImportCsv,
+            "exportCsv" => Self::ExportCsv,
+            "importTsv" => Self::ImportTsv,
+            "exportTsv" => Self::ExportTsv,
+            "importJson" => Self::ImportJson,
+            "exportJson" => Self::ExportJson,
+            _ => return None,
+        })
+    }
+
+    pub(super) fn arity(self) -> (usize, usize) {
+        match self {
+            Self::WriteString
+            | Self::ExportText
+            | Self::ExportCsv
+            | Self::ExportTsv
+            | Self::ExportJson => (2, 2),
+            Self::FileNames => (0, 1),
+            _ => (1, 1),
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
 pub(crate) enum KernelFunction {
     Algebra(AlgebraHead),
     Calculus(CalculusHead),
@@ -375,6 +516,8 @@ pub(crate) enum KernelFunction {
     NumberTheory(NumberTheoryHead),
     Logic(LogicHead),
     List(ListHead),
+    Text(TextHead),
+    Io(IoHead),
 }
 
 impl KernelFunction {
@@ -397,6 +540,12 @@ impl KernelFunction {
         if let Some(function) = LogicHead::from_name(name) {
             return Some(Self::Logic(function));
         }
-        ListHead::from_name(name).map(Self::List)
+        if let Some(function) = ListHead::from_name(name) {
+            return Some(Self::List(function));
+        }
+        if let Some(function) = TextHead::from_name(name) {
+            return Some(Self::Text(function));
+        }
+        IoHead::from_name(name).map(Self::Io)
     }
 }

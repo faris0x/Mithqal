@@ -259,7 +259,12 @@ impl<'a> Evaluator<'a> {
         }
         match self.arena.node(expression) {
             Node::Symbol(_) => expression == variable,
-            Node::Int(_) | Node::Rat(_) | Node::Real(_) => true,
+            Node::Int(_)
+            | Node::Rat(_)
+            | Node::Real(_)
+            | Node::String(_)
+            | Node::Bytes(_)
+            | Node::Association(_) => true,
             Node::Call { head, args } => {
                 let head = *head;
                 let args = args.to_vec();

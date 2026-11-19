@@ -13,8 +13,11 @@ fn rank(node: &Node) -> u8 {
         Node::Int(_) => 0,
         Node::Rat(_) => 1,
         Node::Real(_) => 2,
-        Node::Symbol(_) => 3,
-        Node::Call { .. } => 4,
+        Node::String(_) => 3,
+        Node::Bytes(_) => 4,
+        Node::Symbol(_) => 5,
+        Node::Call { .. } => 6,
+        Node::Association(_) => 7,
     }
 }
 
@@ -34,7 +37,12 @@ pub(crate) fn canonical_cmp(arena: &Arena, left: ExprId, right: ExprId) -> Order
         (Node::Int(a), Node::Int(b)) => a.cmp(b),
         (Node::Rat(a), Node::Rat(b)) => a.cmp(b),
         (Node::Real(a), Node::Real(b)) => a.cmp(b),
-        (Node::Symbol(a), Node::Symbol(b)) => arena.symbol_name(*a).cmp(arena.symbol_name(*b)),
+        (Node::String(a), Node::String(b)) => a.cmp(b),
+        (Node::Bytes(a), Node::Bytes(b)) => a.cmp(b),
+        (Node::Symbol(a), Node::Symbol(b)) => arena
+            .symbol_context(*a)
+            .cmp(arena.symbol_context(*b))
+            .then_with(|| arena.symbol_name(*a).cmp(arena.symbol_name(*b))),
         (
             Node::Call {
                 head: left_head,
@@ -62,6 +70,22 @@ pub(crate) fn canonical_cmp(arena: &Arena, left: ExprId, right: ExprId) -> Order
                 other => other,
             }
         }
+        (Node::Association(left), Node::Association(right)) => match left.len().cmp(&right.len()) {
+            Ordering::Equal => {
+                for (left_entry, right_entry) in left.iter().zip(right.iter()) {
+                    let order = canonical_cmp(arena, left_entry.key, right_entry.key);
+                    if order != Ordering::Equal {
+                        return order;
+                    }
+                    let order = canonical_cmp(arena, left_entry.value, right_entry.value);
+                    if order != Ordering::Equal {
+                        return order;
+                    }
+                }
+                Ordering::Equal
+            }
+            other => other,
+        },
         _ => Ordering::Equal,
     }
 }

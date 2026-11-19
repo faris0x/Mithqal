@@ -149,6 +149,24 @@ fn main() {
     check_budget("cold factor bivariate hensel", per, 250.0);
 
     let mut cold_arena = Arena::new();
+    measure("cold string join", 20_000, || {
+        let parsed = parse_statement(&mut cold_arena, "stringJoin(\"a\",\"b\")").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold association lookup", 20_000, || {
+        let parsed = parse_statement(&mut cold_arena, "lookup(<|a->1,b->2|>,b)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
+    measure("cold typed pattern call", 20_000, || {
+        let parsed = parse_statement(&mut cold_arena, "f(3)").unwrap();
+        black_box(evaluate(&mut cold_arena, parsed).unwrap());
+    });
+
+    let mut cold_arena = Arena::new();
     let per = measure("cold factor wide hensel", 1_000, || {
         let parsed = parse_statement(
             &mut cold_arena,

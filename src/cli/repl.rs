@@ -100,6 +100,9 @@ pub(super) fn run() -> i32 {
                 let started = Instant::now();
                 match session.eval_source(&source) {
                     Ok(value) => {
+                        for message in session.take_messages() {
+                            eprintln!("message: {message}");
+                        }
                         for line in session.take_output() {
                             println!("{line}");
                         }

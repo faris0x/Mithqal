@@ -13,7 +13,10 @@ use crate::expr::Attributes;
 pub fn attributes(name: &str) -> Option<Attributes> {
     use Attributes as A;
     let attrs = match name {
-        "plus" | "times" => A::arithmetic().with(A::LISTABLE).with(A::PROTECTED),
+        "plus" | "times" => A::arithmetic()
+            .with(A::LISTABLE)
+            .with(A::PROTECTED)
+            .with(A::ONE_IDENTITY),
         "power" | "negate" => A::new().with(A::LISTABLE).with(A::PROTECTED),
         "list" => A::new().with(A::PROTECTED),
         "seriesSum" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
@@ -38,6 +41,56 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "assume" | "assuming" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
+        "begin" | "context" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
+        "end" | "contexts" => A::new().with(A::PROTECTED),
+        "$Context" | "$ContextPath" => A::new().with(A::PROTECTED).with(A::CONSTANT),
+        "$MithqalPath" => A::new().with(A::CONSTANT),
+        "byteArray" | "part" | "span" | "evaluate" => A::new().with(A::PROTECTED),
+        "unset" | "clear" | "clearAll" | "remove" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
+        "compound" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
+        "hold" | "holdForm" | "holdPattern" | "unevaluated" | "sequence" => {
+            A::new().with(A::HOLD_ALL).with(A::PROTECTED)
+        }
+        "which" | "switch" | "do" | "while" | "for" | "catch" => {
+            A::new().with(A::HOLD_ALL).with(A::PROTECTED)
+        }
+        "return" | "break" | "continue" | "throw" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
+        "appendTo" | "prependTo" | "addTo" | "subtractFrom" | "timesBy" | "divideBy" => {
+            A::new().with(A::HOLD_FIRST).with(A::PROTECTED)
+        }
+        "stringLength"
+        | "stringJoin"
+        | "stringSplit"
+        | "stringReplace"
+        | "stringTake"
+        | "stringDrop"
+        | "stringContains"
+        | "stringReverse"
+        | "characters"
+        | "characterCode"
+        | "fromCharacterCode"
+        | "toString"
+        | "byteArrayLength"
+        | "byteArrayToList"
+        | "byteArrayFromList"
+        | "byteArrayToString"
+        | "stringToByteArray"
+        | "associationLength"
+        | "associationKeys"
+        | "associationValues"
+        | "lookup"
+        | "keyExistsQ"
+        | "associationMerge"
+        | "associationKeyTake"
+        | "associationKeyDrop"
+        | "associationFromPairs"
+        | "associationToPairs"
+        | "associationMap" => A::new().with(A::PROTECTED),
+        "readString" | "writeString" | "fileExistsQ" | "fileNames" | "directoryName"
+        | "fileNameJoin" | "createDirectory" | "deleteFile" | "importText" | "exportText"
+        | "importCsv" | "exportCsv" | "importTsv" | "exportTsv" | "importJson" | "exportJson" => {
+            A::new().with(A::PROTECTED)
+        }
         "gcd" | "lcm" | "factorial" | "binomial" | "floor" | "ceil" | "round" | "gamma"
         | "lgamma" | "erf" | "erfc" | "erfi" => A::new().with(A::PROTECTED),
         "det" | "rank" | "transpose" | "inverse" | "rref" | "trace" | "matmul" | "identity"

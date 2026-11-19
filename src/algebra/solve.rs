@@ -98,8 +98,7 @@ fn quadratic_solutions(
 
     let magnitude = discriminant.neg();
     let square_root = sqrt_value_expression(arena, &magnitude, context)?;
-    let symbol = arena.symbol_or_intern("i");
-    let imaginary_unit = arena.symbol_expr(symbol);
+    let imaginary_unit = arena.builtin_head("i");
     let imaginary = arena.intern_call(context.times, &[imaginary_unit, square_root]);
     push_quadratic_root(
         arena,
@@ -197,7 +196,6 @@ fn push_quadratic_root(
 
 fn sqrt_expression(arena: &mut Arena, value: &Rat) -> ExprId {
     let value = expression_from_rat(arena, value);
-    let symbol = arena.symbol_or_intern("sqrt");
-    let head = arena.symbol_expr(symbol);
+    let head = arena.builtin_head("sqrt");
     arena.intern_call(head, &[value])
 }

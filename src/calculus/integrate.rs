@@ -308,7 +308,12 @@ fn is_polynomial_in(
     }
     match arena.node(expression) {
         Node::Symbol(_) => expression == variable,
-        Node::Int(_) | Node::Rat(_) | Node::Real(_) => true,
+        Node::Int(_)
+        | Node::Rat(_)
+        | Node::Real(_)
+        | Node::String(_)
+        | Node::Bytes(_)
+        | Node::Association(_) => true,
         Node::Call { head, args } => {
             if *head == context.plus || *head == context.times || *head == context.negate {
                 return args

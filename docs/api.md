@@ -6,7 +6,7 @@ This document defines the stable library surface for the current version.
 
 ## Implementation status
 
-The session, parsing, printing, exact arithmetic, comparisons, logic, error values, definitions, pattern matching, lexical `let`, closures, the typed instruction virtual machine, and the explicit collector are active. The example at the end of this document works with the current definition and pattern implementation.
+The session, parsing, printing, exact arithmetic, comparisons, logic, error values, definitions, attributes, pattern matching, lexical `let`, closures, contexts, package loading, up values, messages, the typed instruction virtual machine, and the explicit collector are active. The example at the end of this document works with the current definition and pattern implementation.
 
 ## Design rules
 
@@ -34,6 +34,10 @@ impl Session {
     pub fn eval_source(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval_named_source(&mut self, name: &str, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval_file(&mut self, path: &str) -> Result<ExprId, Diagnostic>;
+    #[cfg(feature = "std")]
+    pub fn needs(&mut self, name: &str) -> Result<ExprId, Diagnostic>;
+    #[cfg(feature = "std")]
+    pub fn get(&mut self, path: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval_language(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval(&mut self, expr: ExprId) -> Result<ExprId, Diagnostic>;
     pub fn eval_compiled(&mut self, expr: ExprId) -> Result<ExprId, Diagnostic>;
@@ -50,6 +54,7 @@ impl Session {
     pub fn collect_garbage(&mut self, roots: &[ExprId]);
     pub fn live_expressions(&self) -> usize;
     pub fn last_result(&self) -> Option<ExprId>;
+    pub fn take_messages(&mut self) -> Vec<Message>;
 }
 ```
 
@@ -57,7 +62,7 @@ impl Session {
 
 `eval_named_source` is `eval_source` with a source name attached to every diagnostic and trace frame. `eval_file` reads a file and calls `eval_named_source` with the path.
 
-`Session::new()` and `Session::with_config` load the bundled standard library before returning. Modules load in dependency order. A strict module, one with an `export` statement, exposes only its exports; other definitions are private and are installed under internal names. Exported names are protected and carry a declared arity. Descriptive statistics is implemented this way; see [Statistics](statistics.md).
+`Session::new()` and `Session::with_config` load the bundled standard library before returning. Modules load in dependency order. A strict module, one with an `export` statement, exposes only its exports; other definitions are private and are installed in a module context. Exported names are protected and carry a declared arity. Descriptive statistics is implemented this way; see [Statistics](statistics.md).
 
 `eval_language` parses and evaluates a surface language module, including exports, imports, structure and instance declarations, and local definitions. `output` returns the text collected by `prt` statements, and `take_output` moves that text out of the session.
 
@@ -92,8 +97,11 @@ pub enum ExprView<'a> {
     Integer(&'a Int),
     Rational(&'a Rat),
     Real(&'a Real),
+    String(&'a str),
+    Bytes(&'a [u8]),
     Symbol(&'a str),
     Call { head: ExprId, args: &'a [ExprId] },
+    Association(&'a [AssociationEntry]),
 }
 ```
 
@@ -121,6 +129,18 @@ pub struct Real { /* Mithqalite Float, binary precision, absolute error */ }
 Intervals are expressions with the protected `interval(low,high)` head. Their endpoints are exact values or `Real` values. The evaluator supplies addition, multiplication, negation, and integer powers for intervals.
 
 Approximate complex values are expressions with the protected `complex(real,imaginary)` head. Their components are exact values or `Real` values. Numeric approximation supplies complex arithmetic, integer powers, reciprocals, and absolute value.
+
+## Messages
+
+`message(name, args...)` records a non-fatal `Message` instead of returning a `Diagnostic`. Messages carry a stable code such as `TGN-MSG-0001`, a name such as `f::tag`, and formatted text. `Session::take_messages` drains them. `check`, `quiet`, `off`, and `on` control message handling.
+
+```rust
+pub struct Message {
+    pub code: &'static str,
+    pub name: String,
+    pub text: String,
+}
+```
 
 ## Diagnostics
 
@@ -200,6 +220,8 @@ impl Default for Config {
 The step budget counts evaluator and matcher steps. The depth limit protects the Rust stack. `initial_arena_capacity` preallocates arena slots. `gc_threshold_nodes` sets the live node count that triggers automatic collection after a top level evaluation.
 
 Configuration does not introduce randomness or wall clock dependence.
+
+`$MithqalPath` is initialized from the current directory and, under `std`, the colon separated `MITHQAL_PATH` environment variable. `Session::needs` and `Session::get` load package files.
 
 ## Error values
 

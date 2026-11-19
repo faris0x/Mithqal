@@ -57,7 +57,7 @@ enum Instr {
 
 `Eval` evaluates the value on the top of the stack through the symbolic evaluator. It is the bridge for dynamically constructed expressions.
 
-`CallSymbol` builds a call from the symbol head and the values on the stack, then runs the symbolic evaluator. The evaluator checks built in implementations and user down values. Dedicated call and built in instructions are future work.
+`CallSymbol` builds a call from the symbol head and the values on the stack, then runs the symbolic evaluator. The evaluator checks up values, built in implementations, and user down values. Dedicated call and built in instructions are future work.
 
 ## Code objects
 

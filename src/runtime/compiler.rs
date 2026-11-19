@@ -27,7 +27,12 @@ struct Compiler<'a> {
 impl Compiler<'_> {
     fn compile_value(&mut self, expression: ExprId) -> Result<(), Diagnostic> {
         let (head, args) = match self.arena.node(expression) {
-            Node::Int(_) | Node::Rat(_) | Node::Real(_) => {
+            Node::Int(_)
+            | Node::Rat(_)
+            | Node::Real(_)
+            | Node::String(_)
+            | Node::Bytes(_)
+            | Node::Association(_) => {
                 let constant = self.constant(expression)?;
                 self.emit(Instr::Const(constant))?;
                 return Ok(());
