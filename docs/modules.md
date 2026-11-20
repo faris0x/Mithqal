@@ -203,6 +203,90 @@ Information quantities are in bits. `log2` is exact when the probability is an i
 | `crossEntropy(p,q)` | cross entropy |
 
 
+## numbertheory
+
+Classical and computational number theory. The kernel supplies primality, factorization, divisors, modular powers, modular inverses, Jacobi symbols, Fibonacci numbers, and exact arithmetic. This module supplies the broader classical layer over those primitives.
+
+| Function | Meaning |
+|---|---|
+| `coprime` | true when the gcd is one (``coprime(a,b)``) |
+| `extendedGcd` | Bezout coefficients `[g,x,y]` with `a*x+b*y=g` (``extendedGcd(a,b)``) |
+| `quotient` | floor of the integer quotient (``quotient(a,b)``) |
+| `remainder` | nonnegative remainder (``remainder(a,b)``) |
+| `crt` | two-modulus Chinese remainder solution (``crt(a1,m1,a2,m2)``) |
+| `modAdd` | modular addition (``modAdd(a,b,m)``) |
+| `modSub` | modular subtraction (``modSub(a,b,m)``) |
+| `modMul` | modular multiplication (``modMul(a,b,m)``) |
+| `modPow` | modular exponentiation (``modPow(a,e,m)``) |
+| `legendreSymbol` | Legendre symbol through the Jacobi algorithm (``legendreSymbol(a,p)``) |
+| `isQuadraticResidue` | quadratic residue test for odd primes (``isQuadraticResidue(a,p)``) |
+| `multiplicativeOrder` | least positive exponent with `a^k=1 mod n` (``multiplicativeOrder(a,n)``) |
+| `primitiveRoot` | least primitive root modulo a prime (``primitiveRoot(p)``) |
+| `discreteLog` | brute-force discrete logarithm modulo a prime (``discreteLog(g,h,p)``) |
+| `carmichaelLambda` | Carmichael lambda function (``carmichaelLambda(n)``) |
+| `jordanTotient` | Jordan totient `J_k(n)` (``jordanTotient(n,k)``) |
+| `dedekindPsi` | Dedekind psi function (``dedekindPsi(n)``) |
+| `liouville` | Liouville lambda function (``liouville(n)``) |
+| `omega` | number of distinct prime factors (``omega(n)``) |
+| `bigOmega` | number of prime factors with multiplicity (``bigOmega(n)``) |
+| `divisorSigma` | sum of the `k`th powers of the divisors (``divisorSigma(k,n)``) |
+| `unitaryDivisors` | divisors whose gcd with their cofactor is one (``unitaryDivisors(n)``) |
+| `unitaryDivisorCount` | number of unitary divisors (``unitaryDivisorCount(n)``) |
+| `aliquotSum` | sum of proper divisors (``aliquotSum(n)``) |
+| `isPerfect` | perfect number test (``isPerfect(n)``) |
+| `isAbundant` | abundant number test (``isAbundant(n)``) |
+| `isDeficient` | deficient number test (``isDeficient(n)``) |
+| `isAmicable` | amicable pair test (``isAmicable(a,b)``) |
+| `primeFactors` | prime factors with multiplicity (``primeFactors(n)``) |
+| `distinctPrimeFactors` | distinct prime factors (``distinctPrimeFactors(n)``) |
+| `primeExponent` | exponent of `p` in the factorization of `n` (``primeExponent(n,p)``) |
+| `valuation` | p-adic valuation (``valuation(n,p)``) |
+| `nthPrime` | the `n`th prime, one based (``nthPrime(n)``) |
+| `primeGap` | distance from `n` to the next prime (``primeGap(n)``) |
+| `isTwinPrime` | prime with a prime gap of two (``isTwinPrime(p)``) |
+| `isCousinPrime` | prime with a prime gap of four (``isCousinPrime(p)``) |
+| `isSexyPrime` | prime with a prime gap of six (``isSexyPrime(p)``) |
+| `isSophieGermainPrime` | prime `p` with `2p+1` prime (``isSophieGermainPrime(p)``) |
+| `isSafePrime` | prime `p` with `(p-1)/2` prime (``isSafePrime(p)``) |
+| `isMersennePrime` | Mersenne prime test (``isMersennePrime(n)``) |
+| `mersenneNumber` | `2^n-1` (``mersenneNumber(n)``) |
+| `fermatNumber` | `2^(2^n)+1` (``fermatNumber(n)``) |
+| `isFermatPrime` | Fermat prime test (``isFermatPrime(n)``) |
+| `isPrimePower` | prime power test (``isPrimePower(n)``) |
+| `isPerfectPower` | perfect power test (``isPerfectPower(n)``) |
+| `lucasNumber` | Lucas number (``lucasNumber(n)``) |
+| `tribonacci` | tribonacci number (``tribonacci(n)``) |
+| `pellNumber` | Pell number (``pellNumber(n)``) |
+| `jacobsthalNumber` | Jacobsthal number (``jacobsthalNumber(n)``) |
+| `triangularNumber` | triangular number (``triangularNumber(n)``) |
+| `pentagonalNumber` | pentagonal number (``pentagonalNumber(n)``) |
+| `hexagonalNumber` | hexagonal number (``hexagonalNumber(n)``) |
+| `polygonalNumber` | `s`-gonal number (``polygonalNumber(s,n)``) |
+| `bellNumber` | Bell number (``bellNumber(n)``) |
+| `partitionNumber` | integer partition count (``partitionNumber(n)``) |
+| `harmonicNumber` | exact harmonic number (``harmonicNumber(n)``) |
+| `mertens` | Mertens function (``mertens(n)``) |
+| `summatoryTotient` | sum of totients through `n` (``summatoryTotient(n)``) |
+| `summatorySigma` | sum of divisor sums through `n` (``summatorySigma(n)``) |
+| `pythagoreanTriples` | primitive Pythagorean triples with hypotenuse at most `limit` (``pythagoreanTriples(limit)``) |
+| `isPythagorean` | Pythagorean triple test (``isPythagorean(a,b,c)``) |
+| `solveLinearDiophantine` | one solution of `a*x+b*y=c` (``solveLinearDiophantine(a,b,c)``) |
+| `sumOfTwoSquares` | one representation as a sum of two squares (``sumOfTwoSquares(n)``) |
+| `isSumOfTwoSquares` | sum of two squares test (``isSumOfTwoSquares(n)``) |
+| `egyptianFraction` | greedy Egyptian fraction expansion (``egyptianFraction(a,b)``) |
+| `continuedFraction` | continued fraction of an exact rational (``continuedFraction(a,b)``) |
+| `convergents` | convergents of a continued fraction (``convergents(cf)``) |
+| `gaussianNorm` | Gaussian integer norm (``gaussianNorm(a,b)``) |
+| `gaussianMultiply` | Gaussian integer product (``gaussianMultiply(a,b,c,d)``) |
+| `gaussianIsPrime` | Gaussian prime test (``gaussianIsPrime(a,b)``) |
+| `floorSqrt` | integer square root (``floorSqrt(n)``) |
+| `primeList` | primes below `n` (``primeList(n)``) |
+| `primeSum` | sum of primes below `n` (``primeSum(n)``) |
+| `primeProduct` | product of primes below `n` (``primeProduct(n)``) |
+| `radicalList` | distinct prime factors (``radicalList(n)``) |
+| `mobiusSum` | Mertens function alias (``mobiusSum(n)``) |
+| `divisorSum` | sum of positive divisors (``divisorSum(n)``) |
+
 ## calculus
 
 The calculus module expresses differentiation and integration rules in Mithqal. Forms that the rules do not handle fall back to the native `differentiate` and `integrate` kernels.

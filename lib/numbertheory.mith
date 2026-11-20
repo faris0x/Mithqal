@@ -1,0 +1,340 @@
+// Classical and computational number theory.
+//
+// The kernel exposes the performance-critical primitives: primality,
+// factorization, divisors, modular powers, modular inverses, Jacobi symbols,
+// Fibonacci numbers, and exact integer arithmetic. This module builds the
+// broader classical theory on top of them.
+
+mod numbertheory
+
+import lists
+import logic
+
+export coprime, extendedGcd, quotient, remainder, crt, modAdd, modSub, modMul, modPow, legendreSymbol, isQuadraticResidue, multiplicativeOrder, primitiveRoot, discreteLog, carmichaelLambda, jordanTotient, dedekindPsi, liouville, omega, bigOmega, divisorSigma, unitaryDivisors, unitaryDivisorCount, aliquotSum, isPerfect, isAbundant, isDeficient, isAmicable, primeFactors, distinctPrimeFactors, primeExponent, valuation, nthPrime, primeGap, isTwinPrime, isCousinPrime, isSexyPrime, isSophieGermainPrime, isSafePrime, isMersennePrime, mersenneNumber, fermatNumber, isFermatPrime, isPrimePower, isPerfectPower, lucasNumber, tribonacci, pellNumber, jacobsthalNumber, triangularNumber, pentagonalNumber, hexagonalNumber, polygonalNumber, bellNumber, partitionNumber, harmonicNumber, mertens, summatoryTotient, summatorySigma, pythagoreanTriples, isPythagorean, solveLinearDiophantine, sumOfTwoSquares, isSumOfTwoSquares, egyptianFraction, continuedFraction, convergents, gaussianNorm, gaussianMultiply, gaussianIsPrime, floorSqrt, primeList, primeSum, primeProduct, radicalList, mobiusSum, divisorSum
+
+// ---
+
+def quotient(a,b)=floor(a/b)
+def remainder(a,b)=mod(a,b)
+def coprime(a,b)=gcd(a,b)==1
+
+def extendedGcd(a,b) when b==0=
+let sign=if(a<0,-1,if(a==0,0,1))
+[abs(a),sign,0]
+end
+
+def extendedGcd(a,b)=
+let q=floor(a/b)
+let e=extendedGcd(b,mod(a,b))
+[nth(e,0),nth(e,2),nth(e,1)-q*nth(e,2)]
+end
+
+def floorSqrt(n) when n<2=n
+def floorSqrt(n)=floorSqrtStep(n,0,n)
+
+def floorSqrtStep(n,low,high) when low>high=high
+def floorSqrtStep(n,low,high)=
+let middle=floor((low+high)/2)
+if(middle*middle<=n,floorSqrtStep(n,middle+1,high),floorSqrtStep(n,low,middle-1))
+end
+
+def repeat(item,count) when count<=0=[]
+def repeat(item,count)=cons(item,repeat(item,count-1))
+
+// ---
+
+def modAdd(a,b,m)=mod(a+b,m)
+def modSub(a,b,m)=mod(a-b,m)
+def modMul(a,b,m)=mod(a*b,m)
+def modPow(a,e,m)=powerMod(a,e,m)
+
+def crt(a1,m1,a2,m2)=
+let g=gcd(m1,m2)
+let difference=a2-a1
+if(mod(difference,g)=/=0,undefined,crtStep(a1,m1,a2,m2,g,difference))
+end
+
+def crtStep(a1,m1,a2,m2,g,difference)=
+let modulus=m1/g*m2
+let inverse=modInverse(m1/g,m2/g)
+let step=mod((difference/g)*inverse,m2/g)
+[mod(a1+m1*step,modulus),modulus]
+end
+
+def crtList(congruences) when length(congruences)==0=[0,1]
+def crtList(congruences)=
+let firstPair=first(congruences)
+crtListStep(rest(congruences),nth(firstPair,0),nth(firstPair,1))
+end
+
+def crtListStep(congruences,a,m) when length(congruences)==0=[mod(a,m),m]
+def crtListStep(congruences,a,m)=
+let pair=first(congruences)
+let next=crt(a,m,nth(pair,0),nth(pair,1))
+if(same(next,undefined),undefined,crtListStep(rest(congruences),nth(next,0),nth(next,1)))
+end
+
+def legendreSymbol(a,p)=jacobi(a,p)
+def isQuadraticResidue(a,p)=jacobi(a,p)==1
+
+def multiplicativeOrder(a,n)=multiplicativeOrderStep(mod(a,n),n,1)
+
+def multiplicativeOrderStep(a,n,k) when k>n=undefined
+def multiplicativeOrderStep(a,n,k)=
+if(powerMod(a,k,n)==1,k,multiplicativeOrderStep(a,n,k+1))
+end
+
+def primitiveRoot(p) when p==2=1
+def primitiveRoot(p)=primitiveRootStep(2,p)
+
+def primitiveRootStep(g,p) when g>=p=undefined
+def primitiveRootStep(g,p)=
+if(multiplicativeOrder(g,p)==p-1,g,primitiveRootStep(g+1,p))
+end
+
+def discreteLog(g,h,p)=discreteLogStep(mod(g,p),mod(h,p),p,0)
+
+def discreteLogStep(g,h,p,k) when k>=p=undefined
+def discreteLogStep(g,h,p,k)=
+if(powerMod(g,k,p)==h,k,discreteLogStep(g,h,p,k+1))
+end
+
+// ---
+
+def primeFactors(n)=
+let factors=factorInteger(n)
+concat(map(factors,fn(pe)=>repeat(nth(pe,0),nth(pe,1))))
+end
+
+def distinctPrimeFactors(n)=map(factorInteger(n),fn(pe)=>nth(pe,0))
+
+def primeExponent(n,p)=
+let factors=filter(factorInteger(n),fn(pe)=>nth(pe,0)==p)
+if(length(factors)==0,0,nth(first(factors),1))
+end
+
+def valuation(n,p)=primeExponent(n,p)
+def omega(n)=length(distinctPrimeFactors(n))
+def bigOmega(n)=length(primeFactors(n))
+def liouville(n)=if(isEven(bigOmega(n)),1,-1)
+
+def divisorSigma(k,n)=
+fold(fn(acc,pe)=>acc*sumOfPowers(nth(pe,0),nth(pe,1),k),1,factorInteger(n))
+end
+
+def sumOfPowers(p,e,k)=
+fold(fn(acc,j)=>acc+power(p,j*k),0,rangeList(e+1))
+end
+
+def jordanTotient(n,k)=
+fold(fn(acc,pe)=>acc*jordanFactor(pe,k),1,factorInteger(n))
+end
+
+def jordanFactor(pe,k)=
+let p=nth(pe,0)
+let e=nth(pe,1)
+power(p,k*e)-power(p,k*(e-1))
+end
+
+def dedekindPsi(n)=
+fold(fn(acc,pe)=>acc*dedekindFactor(pe),1,factorInteger(n))
+end
+
+def dedekindFactor(pe)=
+let p=nth(pe,0)
+let e=nth(pe,1)
+power(p,e-1)*(p+1)
+end
+
+def carmichaelLambda(n) when n==1=1
+def carmichaelLambda(n)=
+fold(fn(acc,pe)=>lcm(acc,primePowerLambda(nth(pe,0),nth(pe,1))),1,factorInteger(n))
+end
+
+def primePowerLambda(p,e)=if(p==2&&e>=3,power(2,e-2),if(e==1,p-1,power(p,e-1)*(p-1)))
+
+def unitaryDivisors(n)=unitaryDivisorsStep(factorInteger(n))
+
+def unitaryDivisorsStep(factors) when length(factors)==0=[1]
+def unitaryDivisorsStep(factors)=
+let pe=first(factors)
+let remaining=unitaryDivisorsStep(rest(factors))
+let primePower=power(nth(pe,0),nth(pe,1))
+concat([remaining,map(remaining,fn(d)=>d*primePower)])
+end
+
+def unitaryDivisorCount(n)=power(2,omega(n))
+def aliquotSum(n)=sigma(n)-n
+def isPerfect(n)=aliquotSum(n)==n
+def isAbundant(n)=aliquotSum(n)>n
+def isDeficient(n)=aliquotSum(n)<n
+def isAmicable(a,b)=aliquotSum(a)==b&&aliquotSum(b)==a
+
+def divisorSum(n)=sigma(n)
+def radicalList(n)=distinctPrimeFactors(n)
+def mobiusSum(n)=mertens(n)
+
+// ---
+
+def primeList(n)=filter(rangeList(n),fn(k)=>isPrime(k))
+def primeSum(n)=fold(fn(acc,p)=>acc+p,0,primeList(n))
+def primeProduct(n)=fold(fn(acc,p)=>acc*p,1,primeList(n))
+
+def nthPrime(n)=nthPrimeStep(n,2)
+def nthPrimeStep(n,candidate) when n<=1=candidate
+def nthPrimeStep(n,candidate)=nthPrimeStep(n-1,nextPrime(candidate))
+
+def primeGap(n)=nextPrime(n)-n
+def isTwinPrime(p)=isPrime(p)&&isPrime(p+2)
+def isCousinPrime(p)=isPrime(p)&&isPrime(p+4)
+def isSexyPrime(p)=isPrime(p)&&isPrime(p+6)
+def isSophieGermainPrime(p)=isPrime(p)&&isPrime(2*p+1)
+def isSafePrime(p)=isPrime(p)&&isPrime((p-1)/2)
+
+def mersenneNumber(n)=2^n-1
+def isMersennePrime(n)=isPrime(n)&&isPrime(mersenneNumber(n))
+def fermatNumber(n)=2^(2^n)+1
+def isFermatPrime(n)=isPrime(fermatNumber(n))
+
+def isPrimePower(n)=n>1&&length(factorInteger(n))==1
+def isPerfectPower(n)=n>1&&gcdList(map(factorInteger(n),fn(pe)=>nth(pe,1)))>1
+
+def gcdList(xs) when length(xs)==0=0
+def gcdList(xs)=fold(fn(acc,x)=>gcd(acc,x),0,xs)
+
+// ---
+
+def lucasNumber(n) when n==0=2
+def lucasNumber(n) when n==1=1
+def lucasNumber(n)=lucasNumber(n-1)+lucasNumber(n-2)
+
+def tribonacci(n) when n==0=0
+def tribonacci(n) when n==1=0
+def tribonacci(n) when n==2=1
+def tribonacci(n)=tribonacci(n-1)+tribonacci(n-2)+tribonacci(n-3)
+
+def pellNumber(n) when n==0=0
+def pellNumber(n) when n==1=1
+def pellNumber(n)=2*pellNumber(n-1)+pellNumber(n-2)
+
+def jacobsthalNumber(n) when n==0=0
+def jacobsthalNumber(n) when n==1=1
+def jacobsthalNumber(n)=jacobsthalNumber(n-1)+2*jacobsthalNumber(n-2)
+
+def triangularNumber(n)=n*(n+1)/2
+def pentagonalNumber(n)=n*(3*n-1)/2
+def hexagonalNumber(n)=n*(2*n-1)
+def polygonalNumber(s,n)=((s-2)*n*n-(s-4)*n)/2
+
+def bellNumber(n) when n==0=1
+def bellNumber(n)=
+let terms=map(rangeList(n),fn(j)=>binomial(n-1,j)*bellNumber(j))
+fold(fn(acc,term)=>acc+term,0,terms)
+end
+
+def partitionNumber(n) when n<0=0
+def partitionNumber(n) when n==0=1
+def partitionNumber(n)=
+let terms=map(rangeList(n+1),fn(k)=>partitionTerm(n,k+1))
+fold(fn(acc,term)=>acc+term,0,terms)
+end
+
+def partitionTerm(n,k)=
+let g1=k*(3*k-1)/2
+let g2=k*(3*k+1)/2
+let sign=if(isEven(k),-1,1)
+if(g1>n,0,sign*(partitionNumber(n-g1)+if(g2<=n,partitionNumber(n-g2),0)))
+end
+
+def harmonicNumber(n)=
+fold(fn(acc,k)=>acc+1/k,0,map(rangeList(n),fn(k)=>k+1))
+end
+
+def mertens(n)=
+fold(fn(acc,k)=>acc+moebius(k),0,map(rangeList(n),fn(k)=>k+1))
+end
+
+def summatoryTotient(n)=
+fold(fn(acc,k)=>acc+totient(k),0,map(rangeList(n),fn(k)=>k+1))
+end
+
+def summatorySigma(n)=
+fold(fn(acc,k)=>acc+sigma(k),0,map(rangeList(n),fn(k)=>k+1))
+end
+
+// ---
+
+def isPythagorean(a,b,c)=a*a+b*b==c*c
+
+def pythagoreanTriples(limit)=
+concat(map(rangeList(floorSqrt(limit)),fn(i)=>pythagoreanM(i+2,limit)))
+end
+
+def pythagoreanM(m,limit)=
+concat(map(rangeList(m-1),fn(j)=>pythagoreanPair(m,j+1,limit)))
+end
+
+def pythagoreanPair(m,n,limit)=
+let a=m*m-n*n
+let b=2*m*n
+let c=m*m+n*n
+if(c>limit,[],pythagoreanCandidate(m,n,a,b,c))
+end
+
+def pythagoreanCandidate(m,n,a,b,c)=if(gcd(m,n)=/=1,[],pythagoreanPrimitive(m,n,a,b,c))
+
+def pythagoreanPrimitive(m,n,a,b,c)=if(isEven(m-n),[],[[nth(sort([a,b]),0),nth(sort([a,b]),1),c]])
+
+def solveLinearDiophantine(a,b,c)=
+let e=extendedGcd(a,b)
+let g=nth(e,0)
+if(mod(c,g)=/=0,undefined,[nth(e,1)*(c/g),nth(e,2)*(c/g)])
+end
+
+def sumOfTwoSquares(n)=
+if(n<0,undefined,sumOfTwoSquaresStep(n,0,floorSqrt(n)))
+end
+
+def sumOfTwoSquaresStep(n,a,limit) when a>limit=undefined
+def sumOfTwoSquaresStep(n,a,limit)=
+let b2=n-a*a
+if(isPerfectSquare(b2),[a,floorSqrt(b2)],sumOfTwoSquaresStep(n,a+1,limit))
+end
+
+def isSumOfTwoSquares(n)=not(same(sumOfTwoSquares(n),undefined))
+
+def egyptianFraction(a,b) when a==0=[]
+def egyptianFraction(a,b)=
+let q=ceil(b/a)
+cons(q,egyptianFraction(a*q-b,b*q))
+end
+
+def continuedFraction(a,b) when b==0=[]
+def continuedFraction(a,b)=cons(floor(a/b),continuedFraction(b,mod(a,b)))
+
+def convergents(cf)=convergentsStep(cf,0,1,1,0)
+
+def convergentsStep(cf,p0,q0,p1,q1) when length(cf)==0=[]
+def convergentsStep(cf,p0,q0,p1,q1)=
+let a=first(cf)
+let p=a*p1+p0
+let q=a*q1+q0
+cons(p/q,convergentsStep(rest(cf),p1,q1,p,q))
+end
+
+// ---
+
+def gaussianNorm(a,b)=a*a+b*b
+def gaussianMultiply(a,b,c,d)=[a*c-b*d,a*d+b*c]
+
+def gaussianIsPrime(a,b)=
+let n=a*a+b*b
+if(isPrime(n),true,if(isPerfectSquare(n),gaussianPrimeSquare(n),false))
+end
+
+def gaussianPrimeSquare(n)=
+let p=floorSqrt(n)
+p*p==n&&isPrime(p)&&mod(p,4)==3
+end
+
+end

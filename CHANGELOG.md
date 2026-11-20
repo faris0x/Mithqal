@@ -338,3 +338,4 @@ Initial kernel work.
 - Added runtime assumption coverage for modules loaded without restarting the session.
 - Added selective standard library loading with `Session::with_modules` and a domain dependency audit in `docs/domains.md`.
 - Integrated parity assumptions into `isEven` and `isOdd`.
+- Added a 77-function number theory domain covering modular arithmetic, congruences, multiplicative functions, prime families, integer sequences, Diophantine helpers, continued fractions, and Gaussian integers.

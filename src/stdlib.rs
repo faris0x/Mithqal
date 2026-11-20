@@ -54,6 +54,10 @@ pub(crate) const MODULES: &[Module] = &[
         source: include_str!("../lib/combinatorics.mith"),
     },
     Module {
+        name: "numbertheory",
+        source: include_str!("../lib/numbertheory.mith"),
+    },
+    Module {
         name: "probability",
         source: include_str!("../lib/probability.mith"),
     },

@@ -17,6 +17,7 @@ Mithqal separates kernel mathematics from the bundled standard library. Kernel c
 | `information` | lists, sets, probability, relations | 10 |
 | `lists` | none | 6 |
 | `logic` | lists | 3 |
+| `numbertheory` | lists, logic | 77 |
 | `probability` | lists, logic, sets, relations, statistics | 9 |
 | `relations` | lists, logic, sets | 11 |
 | `sets` | lists, logic | 12 |
@@ -45,7 +46,7 @@ The current audit indicates that the following areas still contain substantial k
 - integer number theory
 - approximate numeric dispatch and special functions
 
-The existing library already covers descriptive statistics, finite sets and relations, structure dictionaries, combinatorics, probability, decision theory, games, graphs, information theory, and calculus rules.
+The existing library already covers descriptive statistics, finite sets and relations, structure dictionaries, combinatorics, probability, decision theory, games, graphs, information theory, calculus rules, and a broad classical and computational number theory layer.
 
 ## Domain manifests
 
@@ -61,10 +62,22 @@ embedded = true
 
 The manifest will drive dependency resolution, size estimates, compatibility checks, and website build options. The current implementation derives dependencies from `import` declarations and uses `Session::with_modules` for selection.
 
+## Current limits
+
+The number theory domain is broad but not a research-level computer algebra system for the entire field. Current limits include:
+
+- primality and factorization primitives operate on machine-sized integers
+- primitive-root, multiplicative-order, and discrete-log searches are brute force
+- partition and Bell computations use direct recurrences
+- analytic number theory, zeta and L-functions, class field theory, and general algebraic number theory are not yet implemented
+- Gaussian integers cover basic arithmetic and primality, not full ideal theory
+
+The classical layer is intended to grow without pulling more definitions into the kernel.
+
 ## Migration order
 
 1. Keep `statistics` as the first selective-loading proof because it has no library imports.
-2. Move number theory from the kernel into a library domain once the necessary integer primitives are exposed.
+2. Keep `numbertheory` as the first large selectable mathematical domain. Its classical layer is in `lib/numbertheory.mith`; performance-critical primality, factorization, divisor, modular, Jacobi, and Fibonacci primitives remain in the kernel.
 3. Move linear algebra and polynomial algebra only after the manifest and size-reporting path exists.
 4. Keep calculus kernels in the kernel until the library has a stable numeric and symbolic interface for series, limits, and branch conditions.
 
