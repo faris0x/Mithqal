@@ -1,0 +1,68 @@
+// Analytic number theory.
+//
+// Arithmetic sums, Chebyshev functions, Bernoulli numbers, and truncated
+// Dirichlet series. These are exact where the underlying quantities are
+// exact and remain symbolic where logarithms appear.
+
+mod analyticnumbertheory
+
+import lists
+
+export bernoulliNumber, bernoulliPolynomial, vonMangoldt, mangoldt, chebyshevTheta, chebyshevPsi, summatoryLiouville, summatoryMobius, zetaInteger, dirichletEta, eulerNumber, primeHarmonic
+
+def bernoulliNumber(n) when n==0=1
+def bernoulliNumber(n)=
+let terms=map(rangeList(n),fn(k)=>binomial(n+1,k)*bernoulliNumber(k))
+-1/(n+1)*fold(fn(acc,term)=>acc+term,0,terms)
+end
+
+def bernoulliPolynomial(n,x)=
+let terms=map(rangeList(n+1),fn(k)=>binomial(n,k)*bernoulliNumber(k)*power(x,n-k))
+fold(fn(acc,term)=>acc+term,0,terms)
+end
+
+def vonMangoldt(n) when n<2=0
+def vonMangoldt(n)=
+let factors=factorInteger(n)
+if(length(factors)==1,ln(nth(first(factors),0)),0)
+end
+
+def mangoldt(n)=vonMangoldt(n)
+
+def primesBelow(n)=filter(rangeList(n),fn(k)=>isPrime(k))
+
+def chebyshevTheta(n)=
+fold(fn(acc,p)=>acc+ln(p),0,primesBelow(n+1))
+end
+
+def chebyshevPsi(n)=
+fold(fn(acc,k)=>acc+vonMangoldt(k),0,map(rangeList(n+1),fn(k)=>k))
+end
+
+def summatoryLiouville(n)=
+fold(fn(acc,k)=>acc+liouville(k),0,map(rangeList(n),fn(k)=>k+1))
+end
+
+def summatoryMobius(n)=mertens(n)
+
+def zetaInteger(s,terms)=
+fold(fn(acc,k)=>acc+1/power(k,s),0,map(rangeList(terms),fn(k)=>k+1))
+end
+
+def dirichletEta(s,terms)=
+fold(fn(acc,k)=>acc+if(isEven(k),1,-1)/power(k+1,s),0,rangeList(terms))
+end
+
+def eulerNumber(n) when n==0=1
+def eulerNumber(n) when isOdd(n)=0
+def eulerNumber(n)=
+let ks=filter(rangeList(n),fn(k)=>isEven(k))
+let terms=map(ks,fn(k)=>binomial(n,k)*eulerNumber(k))
+-fold(fn(acc,term)=>acc+term,0,terms)
+end
+
+def primeHarmonic(n)=
+fold(fn(acc,p)=>acc+1/p,0,primesBelow(n+1))
+end
+
+end

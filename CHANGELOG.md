@@ -339,3 +339,8 @@ Initial kernel work.
 - Added selective standard library loading with `Session::with_modules` and a domain dependency audit in `docs/domains.md`.
 - Integrated parity assumptions into `isEven` and `isOdd`.
 - Added a 77-function number theory domain covering modular arithmetic, congruences, multiplicative functions, prime families, integer sequences, Diophantine helpers, continued fractions, and Gaussian integers.
+- Added analytic number theory: Bernoulli and Euler numbers, Chebyshev functions, von Mangoldt, summatory functions, and truncated zeta and eta series.
+- Added elliptic curve arithmetic over the rationals and prime fields, point counting, order search, twists, and elliptic-curve Diffie-Hellman.
+- Added quadratic field and Eisenstein integer arithmetic, p-adic valuations, norms, units, and truncated expansions.
+- Added binary quadratic form reduction, class-number counting by reduced forms, and representation search.
+- Added cryptographic number theory: Miller-Rabin witnesses, Carmichael and pseudoprime tests, Lucas-Lehmer, RSA, finite-field Diffie-Hellman, and Wieferich and Wilson prime tests.

@@ -1,0 +1,72 @@
+// Number theory with a cryptographic and certification flavor.
+//
+// Pseudoprime tests, Carmichael numbers, Lucas-Lehmer, RSA, and finite-field
+// Diffie-Hellman. These are teaching and small-parameter implementations, not
+// hardened cryptographic primitives.
+
+mod cryptonumbertheory
+
+import lists
+import logic
+import numbertheory
+
+export millerRabinWitness, isStrongPseudoprime, isCarmichael, isPoulet, lucasLehmer, isMersennePrimeLucasLehmer, trialDivisionFactor, rsaEncrypt, rsaDecrypt, diffieHellman, isWieferichPrime, isWilsonPrime, isEulerPseudoprime, orderOfElement
+
+def millerRabinWitness(a,n)=
+if(n<3||isEven(n),false,mrWitnessStep(mod(a,n),n))
+end
+
+def mrWitnessStep(a,n)=
+let d=n-1
+let s=valuation(d,2)
+let odd=d/power(2,s)
+let x=powerMod(a,odd,n)
+if(x==1||x==n-1,false,mrWitnessLoop(x,s,n,1))
+end
+
+def mrWitnessLoop(x,s,n,index) when index>=s=true
+def mrWitnessLoop(x,s,n,index)=
+let next=mod(x*x,n)
+if(next==n-1,false,mrWitnessLoop(next,s,n,index+1))
+end
+
+def isStrongPseudoprime(a,n)=n>2&&isOdd(n)&&!isPrime(n)&&!millerRabinWitness(a,n)
+
+def isCarmichael(n)=
+let factors=factorInteger(n)
+if(length(factors)<2,false,isCarmichaelFactors(factors,n))
+end
+
+def isCarmichaelFactors(factors,n)=if(not(all(map(factors,fn(pe)=>nth(pe,1)==1))),false,all(map(factors,fn(pe)=>divides(nth(pe,0)-1,n-1))))
+
+def isPoulet(n)=n>1&&!isPrime(n)&&powerMod(2,n-1,n)==1
+
+def lucasLehmer(p) when p==2=true
+def lucasLehmer(p)=
+let m=power(2,p)-1
+lucasLehmerStep(4,p-2,m)
+end
+
+def lucasLehmerStep(s,count,m) when count<=0=s==0
+def lucasLehmerStep(s,count,m)=lucasLehmerStep(mod(s*s-2,m),count-1,m)
+
+def isMersennePrimeLucasLehmer(p)=isPrime(p)&&lucasLehmer(p)
+
+def trialDivisionFactor(n)=trialDivisionStep(n,2)
+
+def trialDivisionStep(n,p) when p*p>n=undefined
+def trialDivisionStep(n,p)=if(mod(n,p)==0,p,trialDivisionStep(n,nextPrime(p)))
+
+def rsaEncrypt(message,exponent,modulus)=powerMod(message,exponent,modulus)
+def rsaDecrypt(ciphertext,exponent,modulus)=powerMod(ciphertext,exponent,modulus)
+def diffieHellman(generator,alice,bob,prime)=powerMod(generator,alice*bob,prime)
+
+def isWieferichPrime(p)=isPrime(p)&&p>2&&powerMod(2,p-1,p*p)==1
+
+def isWilsonPrime(p)=isPrime(p)&&mod(factorial(p-1)+1,p*p)==0
+
+def isEulerPseudoprime(a,n)=n>2&&isOdd(n)&&!isPrime(n)&&mod(powerMod(a,(n-1)/2,n),n)==jacobi(a,n)
+
+def orderOfElement(a,n)=multiplicativeOrder(a,n)
+
+end

@@ -98,7 +98,11 @@ fn code(error: &mithqal::Diagnostic) -> String {
 }
 
 fn run_case(case: &Case) -> Result<(), String> {
-    let mut session = Session::new();
+    let mut session = match case.profile.as_str() {
+        "exact" => Session::with_modules(&["statistics"]),
+        "modules" => Session::new(),
+        _ => Session::with_modules(&[]),
+    };
     match case.kind.as_str() {
         "value" | "unevaluated" => {
             let value = session

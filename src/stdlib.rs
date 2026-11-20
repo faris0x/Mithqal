@@ -58,6 +58,26 @@ pub(crate) const MODULES: &[Module] = &[
         source: include_str!("../lib/numbertheory.mith"),
     },
     Module {
+        name: "analyticnumbertheory",
+        source: include_str!("../lib/analyticnumbertheory.mith"),
+    },
+    Module {
+        name: "ellipticcurves",
+        source: include_str!("../lib/ellipticcurves.mith"),
+    },
+    Module {
+        name: "algebraicnumbertheory",
+        source: include_str!("../lib/algebraicnumbertheory.mith"),
+    },
+    Module {
+        name: "quadraticforms",
+        source: include_str!("../lib/quadraticforms.mith"),
+    },
+    Module {
+        name: "cryptonumbertheory",
+        source: include_str!("../lib/cryptonumbertheory.mith"),
+    },
+    Module {
         name: "probability",
         source: include_str!("../lib/probability.mith"),
     },

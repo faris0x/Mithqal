@@ -287,6 +287,96 @@ Classical and computational number theory. The kernel supplies primality, factor
 | `mobiusSum` | Mertens function alias (``mobiusSum(n)``) |
 | `divisorSum` | sum of positive divisors (``divisorSum(n)``) |
 
+## analyticnumbertheory
+
+| Function | Meaning |
+|---|---|
+| `bernoulliNumber` | Bernoulli number `B_n` in the `B_1=-1/2` convention |
+| `bernoulliPolynomial` | Bernoulli polynomial `B_n(x)` |
+| `vonMangoldt` | von Mangoldt function |
+| `mangoldt` | Alias for `vonMangoldt` |
+| `chebyshevTheta` | Chebyshev theta sum of `log p` |
+| `chebyshevPsi` | Chebyshev psi sum of von Mangoldt values |
+| `summatoryLiouville` | summatory Liouville function |
+| `summatoryMobius` | summatory Moebius function |
+| `zetaInteger` | partial sum of the zeta series at an integer exponent |
+| `dirichletEta` | truncated Dirichlet eta series |
+| `eulerNumber` | Euler secant number |
+| `primeHarmonic` | sum of reciprocals of primes below a bound |
+
+## ellipticcurves
+
+| Function | Meaning |
+|---|---|
+| `ellipticDiscriminant` | discriminant `-16(4a^3+27b^2)` |
+| `ellipticJInvariant` | j-invariant |
+| `ellipticIsOnCurve` | rational point test |
+| `ellipticIsOnCurveMod` | finite-field point test |
+| `ellipticIsSingular` | singular curve test |
+| `ellipticNegate` | negation of a point |
+| `ellipticAdd` | affine point addition over the rationals |
+| `ellipticDouble` | point doubling over the rationals |
+| `ellipticScalarMul` | scalar multiplication over the rationals |
+| `ellipticPointOrder` | order search for a rational point |
+| `ellipticPointCount` | point count over a prime field |
+| `ellipticAddMod` | point addition modulo a prime |
+| `ellipticDoubleMod` | point doubling modulo a prime |
+| `ellipticScalarMulMod` | scalar multiplication modulo a prime |
+| `ellipticCurveDiffieHellman` | elliptic-curve Diffie-Hellman shared point |
+| `ellipticTwist` | quadratic twist of a short Weierstrass curve |
+
+## algebraicnumbertheory
+
+| Function | Meaning |
+|---|---|
+| `quadraticConjugate` | conjugate in a quadratic field |
+| `quadraticNorm` | field norm |
+| `quadraticTrace` | field trace |
+| `quadraticAdd` | addition of quadratic field elements |
+| `quadraticMultiply` | multiplication of quadratic field elements |
+| `quadraticInverse` | inverse of a quadratic field element |
+| `quadraticIsUnit` | unit test from the norm |
+| `quadraticPower` | power of a quadratic field element |
+| `eisensteinNorm` | Eisenstein integer norm |
+| `eisensteinMultiply` | Eisenstein integer product |
+| `eisensteinIsPrime` | Eisenstein prime test |
+| `padicValuation` | p-adic valuation |
+| `padicNorm` | p-adic norm |
+| `padicUnit` | p-adic unit part |
+| `padicExpansion` | truncated p-adic digit expansion |
+| `padicDigit` | one p-adic digit |
+
+## quadraticforms
+
+| Function | Meaning |
+|---|---|
+| `binaryFormDiscriminant` | discriminant of a binary quadratic form |
+| `isReducedBinaryForm` | reduced positive definite form test |
+| `reduceBinaryForm` | Gauss reduction |
+| `reducedForms` | reduced forms of a negative discriminant |
+| `binaryFormClassNumber` | class number by counting reduced forms |
+| `binaryFormValue` | value of a binary quadratic form |
+| `binaryFormRepresents` | small-value representation search |
+
+## cryptonumbertheory
+
+| Function | Meaning |
+|---|---|
+| `millerRabinWitness` | Miller-Rabin witness test |
+| `isStrongPseudoprime` | strong pseudoprime test |
+| `isCarmichael` | Carmichael number test |
+| `isPoulet` | Fermat pseudoprime base two |
+| `lucasLehmer` | Lucas-Lehmer test |
+| `isMersennePrimeLucasLehmer` | Lucas-Lehmer Mersenne prime test |
+| `trialDivisionFactor` | smallest factor by trial division |
+| `rsaEncrypt` | RSA encryption exponentiation |
+| `rsaDecrypt` | RSA decryption exponentiation |
+| `diffieHellman` | finite-field Diffie-Hellman shared value |
+| `isWieferichPrime` | Wieferich prime test |
+| `isWilsonPrime` | Wilson prime test |
+| `isEulerPseudoprime` | Euler pseudoprime test |
+| `orderOfElement` | multiplicative order alias |
+
 ## calculus
 
 The calculus module expresses differentiation and integration rules in Mithqal. Forms that the rules do not handle fall back to the native `differentiate` and `integrate` kernels.

@@ -1,0 +1,79 @@
+// Binary quadratic forms.
+//
+// Positive definite forms ax^2+bxy+cy^2 with discriminant D=b^2-4ac.
+// The reduction and class-number functions are exact and intended for
+// negative discriminants.
+
+mod quadraticforms
+
+import lists
+import numbertheory
+
+export binaryFormDiscriminant, isReducedBinaryForm, reduceBinaryForm, reducedForms, binaryFormClassNumber, binaryFormValue, binaryFormRepresents
+
+def binaryFormDiscriminant(a,b,c)=b*b-4*a*c
+
+def isReducedBinaryForm(a,b,c)=
+a>0&&abs(b)<=a&&a<=c&&(b>=0||(abs(b)<a&&a<c))
+end
+
+def reduceBinaryForm(a,b,c) when isReducedBinaryForm(a,b,c)=[a,b,c]
+def reduceBinaryForm(a,b,c)=
+if(a>c,reduceBinaryForm(c,-b,a),reduceStep(a,b,c))
+end
+
+def reduceStep(a,b,c)=
+if(b<0&&(abs(b)==a||a==c),reduceBinaryForm(a,-b,c),reduceAdjust(a,b,c))
+end
+
+def reduceAdjust(a,b,c)=
+let d=binaryFormDiscriminant(a,b,c)
+let adjustment=round(b/(2*a))
+let nextB=b-2*a*adjustment
+let nextC=(nextB*nextB-d)/(4*a)
+reduceBinaryForm(a,nextB,nextC)
+end
+
+def reducedForms(d)=
+if(d>=0,[],reducedFormsA(d,1,floorSqrt(-d/3)))
+end
+
+def reducedFormsA(d,a,limit) when a>limit=[]
+def reducedFormsA(d,a,limit)=
+append(reducedFormsB(d,a,-a,a),reducedFormsA(d,a+1,limit))
+end
+
+def reducedFormsB(d,a,b,limit) when b>limit=[]
+def reducedFormsB(d,a,b,limit)=
+let candidate=reducedFormCandidate(d,a,b)
+append(candidate,reducedFormsB(d,a,b+1,limit))
+end
+
+def reducedFormCandidate(d,a,b)=
+if(mod(b*b-d,4*a)=/=0,[],reducedFormBuild(d,a,b,(b*b-d)/(4*a)))
+end
+
+def reducedFormBuild(d,a,b,c)=
+if(isReducedBinaryForm(a,b,c),[[a,b,c]],[])
+end
+
+def binaryFormClassNumber(d)=length(reducedForms(d))
+
+def binaryFormValue(a,b,c,x,y)=a*x*x+b*x*y+c*y*y
+
+def binaryFormRepresents(n,a,b,c)=
+let limit=floorSqrt(abs(n))+abs(a)+abs(c)
+binaryFormRepresentsStep(n,a,b,c,-limit,limit)
+end
+
+def binaryFormRepresentsStep(n,a,b,c,x,limit) when x>limit=false
+def binaryFormRepresentsStep(n,a,b,c,x,limit)=
+if(binaryFormRepresentsY(n,a,b,c,x,-limit,limit),true,binaryFormRepresentsStep(n,a,b,c,x+1,limit))
+end
+
+def binaryFormRepresentsY(n,a,b,c,x,y,limit) when y>limit=false
+def binaryFormRepresentsY(n,a,b,c,x,y,limit)=
+if(binaryFormValue(a,b,c,x,y)==n,true,binaryFormRepresentsY(n,a,b,c,x,y+1,limit))
+end
+
+end

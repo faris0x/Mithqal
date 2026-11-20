@@ -6,7 +6,7 @@ fn text(session: &mut Session, source: &str) -> String {
 }
 
 fn defined(source: &str) -> Session {
-    let mut session = Session::new();
+    let mut session = Session::with_modules(&[]);
     session.eval_source(source).unwrap();
     session
 }

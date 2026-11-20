@@ -69,7 +69,6 @@ pub struct Arena {
     symbol_names: HashMap<String, SymbolId, FnvBuildHasher>,
     builtin_heads: HashMap<&'static str, ExprId, FnvBuildHasher>,
     heads: Option<crate::kernel::Heads>,
-    fresh: u64,
     current_context: String,
     context_stack: Vec<String>,
     context_path: Vec<String>,
@@ -98,7 +97,6 @@ impl Arena {
             symbol_names: HashMap::default(),
             builtin_heads: HashMap::default(),
             heads: None,
-            fresh: 0,
             current_context: GLOBAL_CONTEXT.to_string(),
             context_stack: Vec::new(),
             context_path: vec![GLOBAL_CONTEXT.to_string()],
@@ -349,9 +347,10 @@ impl Arena {
     pub(crate) fn fresh_symbol(&mut self, base: SymbolId) -> SymbolId {
         let base_name = self.symbols[base as usize].name.clone();
         let context = self.symbols[base as usize].context.clone();
+        let mut counter = 0u64;
         loop {
-            self.fresh = self.fresh.wrapping_add(1);
-            let name = format!("{base_name}{}", self.fresh);
+            counter = counter.wrapping_add(1);
+            let name = format!("{base_name}{counter}");
             if !self.symbol_names.contains_key(&symbol_key(&context, &name)) {
                 return self.intern_symbol_in_context(&context, &name, Attributes::new());
             }

@@ -9,6 +9,11 @@ Mithqal separates kernel mathematics from the bundled standard library. Kernel c
 | Domain | Imports | Exported names |
 |---|---|---:|
 | `calculus` | none | 2 |
+| `algebraicnumbertheory` | lists, numbertheory | 16 |
+| `analyticnumbertheory` | lists | 12 |
+| `cryptonumbertheory` | lists, logic, numbertheory | 14 |
+| `ellipticcurves` | lists | 16 |
+| `quadraticforms` | lists, numbertheory | 7 |
 | `combinatorics` | lists, sets | 7 |
 | `decision` | lists, logic, sets, statistics | 5 |
 | `foundations` | lists, logic, sets | 7 |
@@ -46,7 +51,7 @@ The current audit indicates that the following areas still contain substantial k
 - integer number theory
 - approximate numeric dispatch and special functions
 
-The existing library already covers descriptive statistics, finite sets and relations, structure dictionaries, combinatorics, probability, decision theory, games, graphs, information theory, calculus rules, and a broad classical and computational number theory layer.
+The existing library already covers descriptive statistics, finite sets and relations, structure dictionaries, combinatorics, probability, decision theory, games, graphs, information theory, calculus rules, classical and computational number theory, analytic number theory, elliptic curves, quadratic fields, p-adic expansions, binary quadratic forms, and cryptographic number theory.
 
 ## Domain manifests
 
@@ -64,13 +69,16 @@ The manifest will drive dependency resolution, size estimates, compatibility che
 
 ## Current limits
 
-The number theory domain is broad but not a research-level computer algebra system for the entire field. Current limits include:
+The number theory domains are broad but not a research-level computer algebra system for the entire field. Current limits include:
 
 - primality and factorization primitives operate on machine-sized integers
 - primitive-root, multiplicative-order, and discrete-log searches are brute force
 - partition and Bell computations use direct recurrences
-- analytic number theory, zeta and L-functions, class field theory, and general algebraic number theory are not yet implemented
-- Gaussian integers cover basic arithmetic and primality, not full ideal theory
+- analytic number theory is limited to exact arithmetic sums, Bernoulli and Euler numbers, Chebyshev functions, and truncated Dirichlet series
+- class field theory, general number fields, and ideal arithmetic are not implemented
+- elliptic curves cover affine arithmetic, point counting, and small-parameter Diffie-Hellman, not modularity, ranks, or descent
+- p-adic support covers valuations, norms, units, and truncated expansions, not a general p-adic field
+- quadratic forms cover positive definite reduction and class-number counting, not composition or general indefinite forms
 
 The classical layer is intended to grow without pulling more definitions into the kernel.
 
