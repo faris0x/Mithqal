@@ -1,9 +1,12 @@
 # Mithqal Language v2 Design
 
 > Status: Experimental. Introduced in 0.0.2.
+>
+> Current language reference. Archived: [0.0.1](language-0.0.1.md).
 
 This document records the language-generalisation work for version 0.0.2. The
-normative surface grammar remains in `spec/`. The language version is recorded separately from the Mithqal crate version.
+normative surface grammar remains in `spec/`. The language version is recorded
+separately from the Mithqal crate version.
 
 ## Scope
 

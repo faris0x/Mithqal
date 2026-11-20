@@ -1,14 +1,14 @@
 # Mithqal Language
 
-> Status: Experimental. See [Maturity](maturity.md).
+> Status: Experimental. See [Maturity](../maturity.md).
+>
+> Archived language reference for 0.0.1. Current: [latest.md](latest.md).
 >
 > This page teaches the language. The normative definition is in `spec/`.
 
 The Mithqal language is a line based surface language with lowercase keywords. It is not Mathematica compatible.
 
 The language provides modules with exports and imports, definitions with single-line or block bodies, local definitions, lexical bindings, conditionals, match blocks, canonical binders, structure and instance declarations, print statements, comments, and a strict whitespace rule for expressions.
-
-Version 0.0.2 adds strings, byte arrays, associations, indexing, part assignment, contexts, qualified names, package loading, user attributes, up values, messages, and the control forms `which`, `switch`, `do`, `while`, `for`, `return`, `break`, `continue`, `throw`, and `catch`. See [Language v2 design](language-v2.md) and [Syntax](syntax.md) for the full surface.
 
 ## Keywords
 
@@ -278,9 +278,9 @@ def sum(xs)=fold(fn(a,b)=>a+b,0,xs)
 end
 ```
 
-A module with at least one `export` statement is **strict**. Exported definitions keep their source names and are protected. Every other definition is private to the module: it is installed in a module context, so two modules can use the same helper name without colliding. A module without an `export` statement keeps every definition visible, which is the compatibility behavior for small snippets.
+A module with at least one `export` statement is **strict**. Exported definitions keep their source names and are protected. Every other definition is private to the module: it is installed under a deterministic internal name, so two modules can use the same helper name without colliding. A module without an `export` statement keeps every definition visible, which is the compatibility behavior for small snippets.
 
-`import` declares a dependency on another bundled module or a package file. Modules load in dependency order; an unknown module or an import cycle is rejected. Imported names are not gated per module yet: every exported name from every loaded module is visible. Context-qualified access such as `ctx;name` is available in expressions.
+`import` declares a dependency on another bundled module. Modules load in dependency order; an unknown module or an import cycle is rejected. Imported names are not gated per module yet: every exported name from every loaded module is visible. Qualified access such as `module::name` is future work.
 
 Exporting a name that the module does not define is an error. Two modules cannot export the same name; the second definition reports a protected-symbol diagnostic.
 
@@ -334,16 +334,15 @@ Library modules are part of the crate source and are not user editable at run ti
 ## Current limits
 
 - One module per source.
-- Definition parameters support names, literal patterns, typed blanks, alternatives, tests, optionals, repetitions, sequence patterns, and nested constructor patterns.
+- Definition parameters support names, literal patterns, sequence patterns, and nested constructor patterns.
 - Guards are single expressions.
-- Match blocks support literal and binding cases; general patterns are available in rule and definition parameters.
+- Match patterns support literals and binding names.
 - `prt` is the only output statement.
 - Definition bodies support local `def`, `let`, `if`, and one final expression.
 - Local definitions are lexically scoped, mutually recursive, and cannot shadow protected symbols.
 - Strict modules export a declared set of names and keep the rest private.
-- Imports declare bundled-module or package-file dependencies and are resolved in dependency order. Package files resolve relative to the importing source, then through `$MithqalPath`.
-- Qualified names use a semicolon separator, as in `ctx;name`.
-- Contexts are managed with `begin`, `end`, `context`, and `contexts`.
+- Imports declare bundled-module dependencies and are resolved in dependency order.
+- Qualified names such as `module::name` are future work.
 - Structure laws must decide to `true` or `false` over the carrier, or the instance must be declared `assumed`.
 
 ## Session entry points

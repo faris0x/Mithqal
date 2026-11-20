@@ -68,8 +68,8 @@ The module prints:
 
 ## Documentation
 
-- [Language](./docs/language.md)
-- [Language v2 design](./docs/language-v2.md)
+- [Language (latest)](./docs/language/latest.md)
+- [Language 0.0.1 archive](./docs/language/language-0.0.1.md)
 - [Migrating to 0.0.2](./docs/migration-0.0.2.md)
 - [Language specification](./spec/README.md)
 - [Command line interface](./docs/cli.md)
