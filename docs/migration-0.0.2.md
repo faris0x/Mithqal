@@ -1,6 +1,6 @@
 # Migrating to 0.0.2
 
-> Status: Experimental. See [Maturity](maturity.md).
+> Status: Current migration guide for 0.0.2. See [Maturity](maturity.md).
 
 Version 0.0.2 keeps the 0.0.1 whitespace rule: expressions contain no
 whitespace. A statement still occupies one line.

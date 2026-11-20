@@ -331,3 +331,6 @@ Initial kernel work.
 - Fixed real gamma returning a domain error for negative arguments between -1 and 0.
 - Fixed complex acosh selecting the wrong branch when the principal logarithm had a negative real part.
 - Ordered multivariate interpolation by increasing degree in the horizontal variable, cutting the four-variable factor benchmark from about 323 us to 22 us and the six-variable case from about 539 us to 53 us.
+- Split the Mithqalite float and nz suites into routine gates and stress runs, with environment-controlled property counts and ignored huge-precision cases.
+- Documented the full float suite runtime, the coverage exclusions, and the unmeasured nz coverage gap.
+- Audited documentation and comments for drift after the 0.0.2 language layer and the no_std migration.

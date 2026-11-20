@@ -22,10 +22,10 @@ pub(super) fn factor_integer_polynomial(coefficients: &[Rat]) -> Option<Vec<Vec<
     if let Some(factors) = super::hensel_fast::factor_integer_polynomial(coefficients) {
         return Some(factors);
     }
-    factor_integer_polynomial_gmp(coefficients)
+    factor_integer_polynomial_big(coefficients)
 }
 
-fn factor_integer_polynomial_gmp(coefficients: &[Rat]) -> Option<Vec<Vec<Rat>>> {
+fn factor_integer_polynomial_big(coefficients: &[Rat]) -> Option<Vec<Vec<Rat>>> {
     let coefficients = trim(coefficients.to_vec());
     let degree = coefficients.len().checked_sub(1)?;
     if !(4..=MAX_DEGREE).contains(&degree) {

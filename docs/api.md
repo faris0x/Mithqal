@@ -33,6 +33,7 @@ impl Session {
     pub fn eval_statement(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval_source(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn eval_named_source(&mut self, name: &str, src: &str) -> Result<ExprId, Diagnostic>;
+    #[cfg(feature = "std")]
     pub fn eval_file(&mut self, path: &str) -> Result<ExprId, Diagnostic>;
     #[cfg(feature = "std")]
     pub fn needs(&mut self, name: &str) -> Result<ExprId, Diagnostic>;

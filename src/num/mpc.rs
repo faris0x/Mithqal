@@ -1,4 +1,4 @@
-//! Complex arithmetic over dashu-backed reals.
+//! Complex arithmetic over Mithqalite-backed reals.
 //!
 //! Every unary operation propagates the input significance error through a
 //! first order derivative magnitude estimate. The estimate is deliberately

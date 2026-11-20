@@ -26,7 +26,7 @@ pub enum ErrorKind {
     Parse,
     /// An evaluation failure.
     Eval,
-    /// A numeric or FFI failure.
+    /// A numeric failure.
     Numeric,
     /// An internal invariant failure.
     Internal,

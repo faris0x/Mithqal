@@ -95,7 +95,7 @@ The module prints:
 
 ## Status
 
-The current version targets Linux on x86-64. The project is named Mithqal. The project has no product name at this stage.
+Mithqal is in early development at version 0.0.2. The supported desktop build target is Linux on x86-64. The library also builds without the standard library for `wasm32-unknown-unknown` and `thumbv7m-none-eabi`; those targets are compile-checked, not full product targets. Windows and macOS desktop builds are not yet supported. See [no_std](./docs/no_std.md).
 
 ## License
 

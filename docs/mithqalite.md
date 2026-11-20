@@ -62,3 +62,17 @@ Run Mithqalite's tests, then run Mithqal's full test suite and conformance corpu
 ## CI
 
 CI checks out submodules recursively. If the fork is not initialized, the build fails rather than silently using a registry copy.
+
+## Test gates
+
+Mithqalite uses separate routine and stress suites. The float gate runs the
+selected numeric tests in roughly three to four minutes with a warm build and
+ignores the huge-pi and heavy-precision stress cases. The nz gate runs the
+selected natural, integer, and modular tests in roughly three minutes and
+ignores one large-multiplication stress case. The full stress suites remain
+available through `scripts/test-stress.sh` and `scripts/test-nz-stress.sh`.
+
+The float suite is not meant to run end to end on every change. A four-core
+stress run took 5 hours 49 minutes because extreme-precision cases compute
+constants such as pi to about 2^30 bits. See the Mithqalite README for the gate
+commands, the current coverage figures, and the remaining nz coverage gap.

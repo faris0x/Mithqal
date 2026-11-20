@@ -1,6 +1,6 @@
 # Mithqal Language v2 Design
 
-> Status: Experimental. Target version 0.0.2.
+> Status: Experimental. Introduced in 0.0.2.
 
 This document records the language-generalisation work for version 0.0.2. The
 normative surface grammar remains in `spec/`. The language version and the

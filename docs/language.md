@@ -8,6 +8,8 @@ The Mithqal language is a line based surface language with lowercase keywords. I
 
 The language provides modules with exports and imports, definitions with single-line or block bodies, local definitions, lexical bindings, conditionals, match blocks, canonical binders, structure and instance declarations, print statements, comments, and a strict whitespace rule for expressions.
 
+Version 0.0.2 adds strings, byte arrays, associations, indexing, part assignment, contexts, qualified names, package loading, user attributes, up values, messages, and the control forms `which`, `switch`, `do`, `while`, `for`, `return`, `break`, `continue`, `throw`, and `catch`. See [Language v2 design](language-v2.md) and [Syntax](syntax.md) for the full surface.
+
 ## Keywords
 
 | Purpose | Keyword |

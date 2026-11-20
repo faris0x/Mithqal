@@ -1,7 +1,11 @@
 //! A symbolic math engine.
 //!
 //! The current version defines the expression kernel, source reader, evaluator,
-//! virtual machine, garbage collector, and public library API.
+//! virtual machine, garbage collector, public library API, and the 0.0.2 data
+//! and control layer.
+//!
+//! The library builds with `core` and `alloc` when the `std` feature is
+//! disabled.
 //!
 //! The project is named Mithqal.
 

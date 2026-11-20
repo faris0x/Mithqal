@@ -110,7 +110,7 @@ The engine remains a small core. Mathematics lives in Mithqal modules. Frontends
 
 ## Constraints
 
-- Target Linux on x86 64 for the current version.
+- Support Linux on x86-64 as the desktop build target and compile-check the library for `wasm32-unknown-unknown` and `thumbv7m-none-eabi` without the standard library.
 - Link Mithqalite from the Mithqalite fork.
 - Keep external Rust crates limited to the numeric core and optional frontends.
 - Keep `unsafe` confined to arena internals.

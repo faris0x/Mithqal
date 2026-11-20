@@ -1105,8 +1105,10 @@ impl Session {
 }
 
 fn default_package_path() -> Vec<String> {
-    let mut path = Vec::new();
-    path.push(".".to_string());
+    #[cfg(feature = "std")]
+    let mut path = vec![".".to_string()];
+    #[cfg(not(feature = "std"))]
+    let path = vec![".".to_string()];
     #[cfg(feature = "std")]
     if let Ok(extra) = std::env::var("MITHQAL_PATH") {
         for entry in extra.split(':') {
