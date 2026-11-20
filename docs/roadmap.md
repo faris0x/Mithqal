@@ -31,7 +31,7 @@ Included:
 - Exact integer number theory with primality, factorization, divisors, totients, sigma, modular arithmetic, and modular powers.
 - Broader number theory with previous primes, prime counting, divisor counts, Moebius values, radicals, square-free tests, Fibonacci numbers, modular inverses, and Jacobi symbols.
 - Exact descriptive statistics with means, medians, extrema, ranges, totals, variances, deviations, frequencies, and modes.
-- A standard library written in Mithqal and loaded when a session is constructed, covering statistics, finite sets and relations, structures, foundations, combinatorics, probability, decision theory, games, graphs, information theory, and calculus rules.
+- A standard library written in Mithqal and loaded by default when a session is constructed, covering statistics, finite sets and relations, structures, foundations, combinatorics, probability, decision theory, games, graphs, information theory, and calculus rules. Selected domains can be loaded with `Session::with_modules`.
 - Generic list primitives for library code: length, sort, first, rest, cons, nth, reverse, and a number predicate.
 - Inferred arities for definitions, with arity diagnostics on mismatched fixed-arity calls.
 - Definition bodies that span lines with `let` and `if` statements ending in one expression.

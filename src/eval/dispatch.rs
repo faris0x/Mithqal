@@ -3,6 +3,7 @@
 #[allow(unused_imports)]
 use crate::prelude::*;
 
+use super::assumptions;
 use super::*;
 
 impl<'a> Evaluator<'a> {
@@ -789,6 +790,13 @@ impl<'a> Evaluator<'a> {
         function: NumberTheoryHead,
         args: &[ExprId],
     ) -> Option<ExprId> {
+        if matches!(function, NumberTheoryHead::IsEven | NumberTheoryHead::IsOdd)
+            && let Node::Symbol(symbol) = self.arena.node(args[0])
+            && let Some(parity) = assumptions::parity(&self.assumptions, *symbol)
+        {
+            let is_even = parity == assumptions::Parity::Even;
+            return Some(self.boolean(matches!(function, NumberTheoryHead::IsEven) == is_even));
+        }
         match function {
             NumberTheoryHead::IsPrime => crate::numbertheory::is_prime(self.arena, args[0]),
             NumberTheoryHead::NextPrime => crate::numbertheory::next_prime(self.arena, args[0]),

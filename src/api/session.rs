@@ -21,6 +21,30 @@ impl Session {
     /// Panics if a bundled standard library module fails to parse or evaluate.
     /// The modules are part of the crate and are exercised by the test suite.
     pub fn with_config(config: Config) -> Self {
+        Self::with_optional_modules(config, None)
+    }
+
+    /// Create a session with only the selected standard library domains.
+    ///
+    /// Dependencies declared by imports are loaded automatically.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a selected module is unknown or fails to parse or evaluate.
+    pub fn with_modules(modules: &[&str]) -> Self {
+        Self::with_optional_modules(Config::default(), Some(modules))
+    }
+
+    /// Create a session with explicit limits and selected standard library domains.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a selected module is unknown or fails to parse or evaluate.
+    pub fn with_config_and_modules(config: Config, modules: &[&str]) -> Self {
+        Self::with_optional_modules(config, Some(modules))
+    }
+
+    fn with_optional_modules(config: Config, modules: Option<&[&str]>) -> Self {
         let mut session = Session {
             arena: Arena::with_capacity(config.initial_arena_capacity),
             definitions: SessionDefinitions::new(),
@@ -39,7 +63,7 @@ impl Session {
             loading_packages: Vec::new(),
             config,
         };
-        session.load_standard_library();
+        session.load_standard_library(modules);
         session.install_package_path();
         session
     }
@@ -58,9 +82,13 @@ impl Session {
         let _ = self.definitions.define(&self.arena, lhs, list, false);
     }
 
-    fn load_standard_library(&mut self) {
-        let order = stdlib::resolve_order(stdlib::MODULES)
-            .unwrap_or_else(|error| panic!("standard library: {error}"));
+    fn load_standard_library(&mut self, modules: Option<&[&str]>) {
+        let order = match modules {
+            Some(modules) => stdlib::select_order(stdlib::MODULES, modules)
+                .unwrap_or_else(|error| panic!("standard library: {error}")),
+            None => stdlib::resolve_order(stdlib::MODULES)
+                .unwrap_or_else(|error| panic!("standard library: {error}")),
+        };
         for index in order {
             let module = &stdlib::MODULES[index];
             self.eval_named_source(module.name, module.source)

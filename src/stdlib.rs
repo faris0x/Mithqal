@@ -79,6 +79,55 @@ pub(crate) const MODULES: &[Module] = &[
     },
 ];
 
+/// Resolve a selected module closure in dependency order.
+pub(crate) fn select_order(modules: &[Module], names: &[&str]) -> Result<Vec<usize>, String> {
+    let mut index = HashMap::new();
+    for (position, module) in modules.iter().enumerate() {
+        if index.insert(module.name, position).is_some() {
+            return Err(format!("duplicate module {}", module.name));
+        }
+    }
+    let mut imports = vec![Vec::new(); modules.len()];
+    for (position, module) in modules.iter().enumerate() {
+        let program = parse_program(module.source)
+            .map_err(|error| format!("module {} is invalid: {error}", module.name))?;
+        for statement in &program.body {
+            if let Stmt::Import { module: dependency } = statement {
+                let Some(&target) = index.get(dependency.as_str()) else {
+                    return Err(format!(
+                        "module {} imports unknown module {dependency}",
+                        module.name
+                    ));
+                };
+                if !imports[position].contains(&target) {
+                    imports[position].push(target);
+                }
+            }
+        }
+    }
+    let mut selected = vec![false; modules.len()];
+    fn mark(node: usize, imports: &[Vec<usize>], selected: &mut [bool]) {
+        if selected[node] {
+            return;
+        }
+        selected[node] = true;
+        for dependency in &imports[node] {
+            mark(*dependency, imports, selected);
+        }
+    }
+    for name in names {
+        let Some(&position) = index.get(*name) else {
+            return Err(format!("unknown module {name}"));
+        };
+        mark(position, &imports, &mut selected);
+    }
+    let order = resolve_order(modules)?;
+    Ok(order
+        .into_iter()
+        .filter(|position| selected[*position])
+        .collect())
+}
+
 /// Resolve module load order from import declarations.
 pub(crate) fn resolve_order(modules: &[Module]) -> Result<Vec<usize>, String> {
     let mut programs = Vec::with_capacity(modules.len());
@@ -204,6 +253,17 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn selected_order_includes_dependencies_only() {
+        let order = select_order(MODULES, &["combinatorics"]).unwrap();
+        let names: Vec<&str> = order.iter().map(|index| MODULES[*index].name).collect();
+        assert!(names.contains(&"combinatorics"));
+        assert!(names.contains(&"lists"));
+        assert!(names.contains(&"sets"));
+        assert!(!names.contains(&"statistics"));
+        assert!(!names.contains(&"graphs"));
     }
 
     #[test]

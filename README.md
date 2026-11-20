@@ -75,6 +75,7 @@ The module prints:
 - [Command line interface](./docs/cli.md)
 - [Function capabilities](./docs/functions.md)
 - [Library modules](./docs/modules.md)
+- [Mathematical domains](./docs/domains.md)
 - [Algebra](./docs/algebra.md)
 - [Assumptions](./docs/assumptions.md)
 - [Limits and series](./docs/limits.md)

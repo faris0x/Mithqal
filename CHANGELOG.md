@@ -336,3 +336,5 @@ Initial kernel work.
 - Audited documentation and comments for drift after the 0.0.2 language layer and the no_std migration.
 - Expanded assumptions to interned symbol identity, qualified-name targets, ordered and equality facts, domains, parity, conjunction, disjunction, negation, introspection, and contradiction diagnostics.
 - Added runtime assumption coverage for modules loaded without restarting the session.
+- Added selective standard library loading with `Session::with_modules` and a domain dependency audit in `docs/domains.md`.
+- Integrated parity assumptions into `isEven` and `isOdd`.

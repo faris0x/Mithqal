@@ -2,7 +2,7 @@
 
 > Status: Experimental. See [Maturity](maturity.md).
 
-The standard library is written in Mithqal and loaded when a session is created. Each module is strict: exported names are protected and the remaining definitions are private. The core capability matrix is in [Functions](functions.md). This page documents the definitional modules.
+The standard library is written in Mithqal and loaded when a session is created. A session can instead load selected domains with `Session::with_modules`. The dependency graph and selection rules are documented in [Mathematical domains](domains.md). Each module is strict: exported names are protected and the remaining definitions are private. The core capability matrix is in [Functions](functions.md). This page documents the definitional modules.
 
 Finite sets are represented by canonical sorted lists without duplicates. Set equality is structural equality of the canonical list. Use `setOf` to build a set from arbitrary items. A relation is a set of two item lists. A structure is a dictionary whose first item is a tag and whose remaining items are the structure data.
 

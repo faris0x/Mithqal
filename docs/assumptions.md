@@ -66,6 +66,8 @@ Parity facts:
 - `even(x)`
 - `odd(x)`
 
+Parity facts also drive `isEven` and `isOdd` when the argument is symbolic.
+
 Conjunctions use `and` or `&&`. Disjunctions use `or` or `||`. Negation uses
 `not`. Negated comparisons are normalized, so `not(x>0)` is treated as
 `x<=0`, and `not(x==0)` is treated as `x=/=0`.

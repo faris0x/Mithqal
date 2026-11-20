@@ -233,6 +233,24 @@ pub(crate) fn sign(frames: &[Assumption], symbol: SymbolId) -> Option<Sign> {
     result
 }
 
+pub(crate) fn parity(frames: &[Assumption], symbol: SymbolId) -> Option<Parity> {
+    let branches = branches(frames)?;
+    let mut result = None;
+    for atoms in branches {
+        let mut branch = Branch::from_atoms(&atoms);
+        if !branch.is_consistent() {
+            continue;
+        }
+        let value = branch.parity(symbol)?;
+        result = Some(match result {
+            None => value,
+            Some(previous) if previous == value => previous,
+            Some(_) => return None,
+        });
+    }
+    result
+}
+
 pub(crate) fn sources(frames: &[Assumption], symbol: Option<SymbolId>) -> Vec<ExprId> {
     frames
         .iter()
@@ -656,6 +674,30 @@ impl Branch {
             (Some(false), None) => Some(Sign::NonNegative),
             (None, Some(false)) => Some(Sign::NonPositive),
             _ => None,
+        }
+    }
+
+    fn parity(&self, symbol: SymbolId) -> Option<Parity> {
+        let index = self
+            .terms
+            .iter()
+            .position(|term| matches!(term, Term::Symbol(candidate) if *candidate == symbol))?;
+        let root = self.root(index);
+        let mut bits = 0u8;
+        let mut excluded = 0u8;
+        for (index, _) in self.terms.iter().enumerate() {
+            if self.root(index) == root {
+                bits |= self.parity[index];
+                excluded |= self.parity_excluded[index];
+            }
+        }
+        let bits = bits & !excluded;
+        if bits == PARITY_EVEN {
+            Some(Parity::Even)
+        } else if bits == PARITY_ODD {
+            Some(Parity::Odd)
+        } else {
+            None
         }
     }
 

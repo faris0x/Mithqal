@@ -110,6 +110,13 @@ fn disjunction_and_negation_are_supported() {
 }
 
 #[test]
+fn parity_facts_drive_number_theory_queries() {
+    assert_eq!(text("assume(even(x),isEven(x))"), "true");
+    assert_eq!(text("assume(odd(x),isEven(x))"), "false");
+    assert_eq!(text("assume(odd(x),isOdd(x))"), "true");
+}
+
+#[test]
 fn domain_and_parity_facts_are_recorded() {
     assert_eq!(
         text("assume(and(integer(x),even(x)),assumptions(x))"),

@@ -26,6 +26,8 @@ pub struct Session {
 impl Session {
     pub fn new() -> Self;
     pub fn with_config(config: Config) -> Self;
+    pub fn with_modules(modules: &[&str]) -> Self;
+    pub fn with_config_and_modules(config: Config, modules: &[&str]) -> Self;
 
     pub fn parse_statement(&mut self, src: &str) -> Result<ExprId, Diagnostic>;
     pub fn parse_source(&mut self, src: &str) -> Result<Vec<ExprId>, Diagnostic>;
@@ -63,7 +65,7 @@ impl Session {
 
 `eval_named_source` is `eval_source` with a source name attached to every diagnostic and trace frame. `eval_file` reads a file and calls `eval_named_source` with the path.
 
-`Session::new()` and `Session::with_config` load the bundled standard library before returning. Modules load in dependency order. A strict module, one with an `export` statement, exposes only its exports; other definitions are private and are installed in a module context. Exported names are protected and carry a declared arity. Descriptive statistics is implemented this way; see [Statistics](statistics.md).
+`Session::new()` and `Session::with_config` load the bundled standard library before returning. `Session::with_modules` loads only the selected domains and their import closure. `Session::with_config_and_modules` combines selective loading with explicit limits. Modules load in dependency order. A strict module, one with an `export` statement, exposes only its exports; other definitions are private and are installed in a module context. Exported names are protected and carry a declared arity. Descriptive statistics is implemented this way; see [Statistics](statistics.md).
 
 `eval_language` parses and evaluates a surface language module, including exports, imports, structure and instance declarations, and local definitions. `output` returns the text collected by `prt` statements, and `take_output` moves that text out of the session.
 
