@@ -1,0 +1,9 @@
+# id	profile	kind	expected	source	rationale
+assumptions.0001	assumptions	value	x	assume(x>0,abs(x))	Positive assumptions simplify absolute value.
+assumptions.0002	assumptions	value	foo;x	assume(foo;x>0,abs(foo;x))	Qualified symbol identity carries the assumption.
+assumptions.0003	assumptions	value	x	assume(x==y,assume(y>0,abs(x)))	Equality propagates order facts.
+assumptions.0004	assumptions	value	x	assume(or(x>0,x>=0),abs(x))	Disjunction preserves a common sign consequence.
+assumptions.0005	assumptions	value	0	assume(not(or(x>0,x<0)),abs(x))	Negation of a disjunction can imply zero.
+assumptions.0006	assumptions	diagnostic	TGN-EVAL-0021	assume(and(x>0,x<0),abs(x))	Contradictory assumptions are rejected.
+assumptions.0007	assumptions	value	list(greater(x,0))	assume(x>0,assumptions(x))	Assumption introspection reports active facts.
+assumptions.0008	assumptions	value	list(and(integer(x),even(x)))	assume(and(integer(x),even(x)),assumptions(x))	Domain and parity facts are recorded.

@@ -4,7 +4,14 @@ use std::path::PathBuf;
 
 use mithqal::{ErrorCode, Session};
 
-const PROFILES: &[&str] = &["core", "exact", "numeric", "modules", "embedded"];
+const PROFILES: &[&str] = &[
+    "core",
+    "exact",
+    "numeric",
+    "modules",
+    "embedded",
+    "assumptions",
+];
 
 #[derive(Debug)]
 struct Case {

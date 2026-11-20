@@ -3,6 +3,7 @@
 #[allow(unused_imports)]
 use crate::prelude::*;
 
+use super::assumptions;
 use super::*;
 
 #[derive(Clone, Copy, Debug)]
@@ -248,6 +249,9 @@ impl<'a> Evaluator<'a> {
         if head == self.heads.assume || head == self.heads.assuming {
             return self.eval_assume(args.as_slice());
         }
+        if head == self.heads.assumptions_head {
+            return self.eval_assumptions(args.as_slice());
+        }
         if head == self.heads.function {
             return self.eval_function(args.as_slice());
         }
@@ -361,59 +365,43 @@ impl<'a> Evaluator<'a> {
                 "assume expects an assumption and an expression",
             ));
         }
-        let Some(assumptions) = self.parse_assumptions(args[0]) else {
+        let Some(formula) = assumptions::parse(self.arena, args[0]) else {
             return Ok(self.arena.intern_call(self.heads.assume, args));
         };
+        let mut candidate = self.assumptions.clone();
+        candidate.push(Assumption {
+            formula,
+            source: args[0],
+        });
+        if !assumptions::is_consistent(&candidate) {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalAssumption,
+                "assumptions are inconsistent",
+            ));
+        }
         let length = self.assumptions.len();
-        self.assumptions.extend(assumptions);
+        self.assumptions = candidate;
         let result = self.eval(args[1]);
         self.assumptions.truncate(length);
         result
     }
 
-    pub(super) fn parse_assumptions(&self, expression: ExprId) -> Option<Vec<Assumption>> {
-        if let Node::Call { head, args } = self.arena.node(expression)
-            && *head == self.heads.and
-        {
-            let mut assumptions = Vec::new();
-            for argument in args.iter() {
-                assumptions.extend(self.parse_assumptions(*argument)?);
-            }
-            return (!assumptions.is_empty()).then_some(assumptions);
+    pub(super) fn eval_assumptions(&mut self, args: &[ExprId]) -> Result<ExprId, Diagnostic> {
+        if args.len() > 1 {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalArity,
+                "assumptions expects zero or one argument",
+            ));
         }
-        self.parse_assumption(expression)
-            .map(|assumption| vec![assumption])
-    }
-
-    pub(super) fn parse_assumption(&self, expression: ExprId) -> Option<Assumption> {
-        let Node::Call { head, args } = self.arena.node(expression) else {
-            return None;
+        let symbol = if args.is_empty() {
+            None
+        } else {
+            Some(self.arena.symbol_id(args[0]).ok_or_else(|| {
+                Diagnostic::eval(ErrorCode::EvalDefinition, "assumptions expects a symbol")
+            })?)
         };
-        if args.len() != 2 {
-            return None;
-        }
-        let name = self
-            .arena
-            .symbol_id(*head)
-            .map(|symbol| self.arena.symbol_name(symbol))?;
-        let symbol = self.arena.symbol_id(args[0])?;
-        let zero = match self.arena.node(args[1]) {
-            Node::Int(value) => value.is_zero(),
-            Node::Rat(value) => value.is_zero(),
-            _ => false,
-        };
-        if !zero {
-            return None;
-        }
-        let sign = match name {
-            "greater" => Sign::Positive,
-            "greaterEqual" => Sign::NonNegative,
-            "less" => Sign::Negative,
-            "lessEqual" => Sign::NonPositive,
-            "equal" => Sign::Zero,
-            _ => return None,
-        };
-        Some(Assumption { symbol, sign })
+        let sources = assumptions::sources(&self.assumptions, symbol);
+        Ok(self.arena.intern_call(self.heads.list, &sources))
     }
 
     pub(super) fn expression_sign(&self, expression: ExprId) -> Option<Sign> {
@@ -423,13 +411,7 @@ impl<'a> Evaluator<'a> {
             Node::Real(value) => Some(sign_of(value.sign())),
             Node::String(_) | Node::Bytes(_) | Node::Association(_) => None,
             Node::Symbol(symbol) => {
-                if let Some(sign) = self
-                    .assumptions
-                    .iter()
-                    .rev()
-                    .find(|assumption| assumption.symbol == *symbol)
-                    .map(|assumption| assumption.sign)
-                {
+                if let Some(sign) = assumptions::sign(&self.assumptions, *symbol) {
                     return Some(sign);
                 }
                 match self.arena.symbol_name(*symbol) {

@@ -15,7 +15,7 @@ This document records the support level of each public area. Stable areas follow
 | Number theory | Partial | Integer domains with documented limits. |
 | Statistics | Stable | Implemented in the Mithqal standard library (`lib/statistics.mith`). |
 | Standard library and list primitives | Experimental | Bundled Mithqal modules and the generic list primitives they use. |
-| Assumptions | Partial | Local sign facts and conjunctions against zero. |
+| Assumptions | Partial | Local sign, domain, parity, equality, and ordered facts over interned symbols, with conjunction, disjunction, and negation. |
 | Surface language, IR, VM, collector | Experimental | Internal surfaces may change while the language design settles. |
 | Arena internals | Experimental | Hidden from public documentation and not part of the stable contract. |
 | Command line frontend | Stable | REPL evaluation, assignments, commands, completion, history, and license reporting. |

@@ -101,6 +101,21 @@ or given new attributes. Attribute changes invalidate cached results.
 this version. `definition` returns the attribute list, own values, and down
 values. `fullDefinition` is an alias for the current definition view.
 
+## Assumptions
+
+`assume(fact,expr)` and `assuming(fact,expr)` evaluate `expr` under local facts.
+Facts are scoped to `expr` and nested assumptions combine. Facts are keyed by
+interned symbol identity, so a qualified name and a short name that resolve to
+the same symbol share facts.
+
+The fact language supports sign facts, nonzero facts, exact comparisons,
+equality and disequality, integer, rational, real, and complex domains, parity,
+conjunction, disjunction, and negation. A contradiction is a diagnostic. An
+unsupported fact leaves the `assume` call unevaluated.
+
+`assumptions()` returns the active source facts. `assumptions(symbol)` returns
+the active facts that mention that symbol.
+
 ## Scoping and hygiene
 
 All scoping is lexical.

@@ -12,6 +12,7 @@ together with the cases of every profile that profile depends on.
 | `exact` | `core` | `core.tsv`, `exact.tsv` |
 | `numeric` | `core` | `core.tsv`, `numeric.tsv` |
 | `modules` | `core` | `core.tsv`, `modules.tsv` |
+| `assumptions` | `core` | `core.tsv`, `assumptions.tsv` |
 | `embedded` | `core`, `exact` | `core.tsv`, `exact.tsv`, `embedded.tsv` |
 
 ## core
@@ -50,6 +51,12 @@ level restrictions on `export` and `import`.
 
 A `core` implementation may support modules. The `modules` profile records the
 additional conformance cases that exercise privacy and import behavior.
+
+## assumptions
+
+The `assumptions` profile adds local assumptions with symbol identity, signs,
+domains, parity, equality, ordering, conjunction, disjunction, negation, and
+assumption introspection. It does not require a general theorem prover.
 
 ## embedded
 

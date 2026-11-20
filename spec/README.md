@@ -54,5 +54,6 @@ diagnostics, or the corpus is unspecified.
 Version 0.0.2 describes the implemented language: reader, exact and approximate
 numbers, evaluation, definitions, scoping, hygiene, modules, binders, structures,
 instances, the structural primitives, strings, byte arrays, associations,
-contexts, qualified names, indexing, part assignment, evaluation control, and
-control flow. Proofs and notation declarations are reserved for later versions.
+contexts, qualified names, indexing, part assignment, evaluation control,
+control flow, and local assumptions. Proofs and notation declarations are
+reserved for later versions.

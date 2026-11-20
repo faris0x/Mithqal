@@ -43,6 +43,7 @@ Functions implemented by the bundled Mithqal standard library rather than the Ru
 | `converges` | calculus | symbolic | `converges(expr[,var],point)` | supported expressions in the documented domain | infix | `converges(1/x,inf)` | evaluates |
 | `assume` | calculus | language | `assume(fact,expr)` | language forms | infix | `assume(x>0,abs(x))` | symbolic |
 | `assuming` | calculus | language | `assuming(fact,expr)` | language forms | infix | `assuming(x<0,sqrt(x^2))` | symbolic |
+| `assumptions` | calculus | language | `assumptions([symbol])` | language forms | list | `assume(x>0,assumptions(x))` | symbolic |
 | `det` | linear algebra | exact | `det(matrix)` | exact rational and symbolic matrices | infix | `det([[1,2],[3,4]])` | evaluates |
 | `rank` | linear algebra | exact | `rank(matrix)` | exact rational and symbolic matrices | infix | `rank([[1,2],[2,4]])` | evaluates |
 | `transpose` | linear algebra | exact | `transpose(matrix)` | exact rational and symbolic matrices | infix | `transpose([[1,2],[3,4]])` | evaluates |

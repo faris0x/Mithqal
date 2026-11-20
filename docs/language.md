@@ -193,7 +193,7 @@ x+1
 f(x,y)
 [1,2,3]
 x==4
-x!=0
+x=/=0
 ```
 
 `=` belongs to `let` and `def`. `==` is an equation.

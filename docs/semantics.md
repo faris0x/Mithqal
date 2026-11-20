@@ -95,7 +95,7 @@ Attributes used in the current version:
 
 Protected symbols in the current version:
 
-- All kernel heads: `plus`, `times`, `power`, `negate`, `list`, `set`, `setDelayed`, `if`, `and`, `or`, `not`, `map`, `apply`, `fold`, `nest`, `function`, `let`, `forall`, `exists`, `setBuilder`, `pattern`, `blank`, `blankSequence`, `blankNullSequence`, `condition`, `rule`, `ruleDelayed`, `part`, `hold`, `holdForm`, `holdPattern`, `evaluate`, `unevaluated`, `sequence`, `compound`, `which`, `switch`, `do`, `while`, `for`, `return`, `break`, `continue`, `throw`, `catch`, `unset`, `clear`, `clearAll`, `remove`, `appendTo`, `prependTo`, `addTo`, `subtractFrom`, `timesBy`, `divideBy`.
+- All kernel heads: `plus`, `times`, `power`, `negate`, `list`, `set`, `setDelayed`, `if`, `and`, `or`, `not`, `map`, `apply`, `fold`, `nest`, `function`, `let`, `forall`, `exists`, `setBuilder`, `pattern`, `blank`, `blankSequence`, `blankNullSequence`, `condition`, `rule`, `ruleDelayed`, `part`, `hold`, `holdForm`, `holdPattern`, `evaluate`, `unevaluated`, `sequence`, `compound`, `which`, `switch`, `do`, `while`, `for`, `return`, `break`, `continue`, `throw`, `catch`, `unset`, `clear`, `clearAll`, `remove`, `appendTo`, `prependTo`, `addTo`, `subtractFrom`, `timesBy`, `divideBy`, `assume`, `assuming`, `assumptions`.
 - Context, attribute, message, text, association, and file heads registered by the current version.
 - Truth values: `true`, `false`.
 - Structural constants: `emptyset`, `inf`.
@@ -103,6 +103,16 @@ Protected symbols in the current version:
 - The no value result: `null`.
 
 `i`, `pi`, `e`, and ordinary user symbols are not protected.
+
+## Assumptions
+
+`assume(fact,expr)` and `assuming(fact,expr)` evaluate `expr` under local facts. Facts are scoped to the second argument and nested assumptions combine.
+
+Facts are keyed by interned symbol identity, so qualified names and short names that resolve to the same symbol share facts, while the same short name in different contexts does not.
+
+The fact language supports sign facts, nonzero facts, exact comparisons between symbols or constants, equality and disequality, integer, rational, real, and complex domains, parity, conjunction with `and` or `&&`, disjunction with `or` or `||`, and negation with `not`. A contradiction produces `TGN-EVAL-0021`. An unsupported fact leaves the `assume` call unevaluated.
+
+`assumptions()` returns the active source facts. `assumptions(symbol)` returns the active facts that mention that symbol.
 
 ## Evaluation
 

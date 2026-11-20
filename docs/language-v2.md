@@ -3,8 +3,7 @@
 > Status: Experimental. Introduced in 0.0.2.
 
 This document records the language-generalisation work for version 0.0.2. The
-normative surface grammar remains in `spec/`. The language version and the
-Mithqal crate version are the same number.
+normative surface grammar remains in `spec/`. The language version is recorded separately from the Mithqal crate version.
 
 ## Scope
 

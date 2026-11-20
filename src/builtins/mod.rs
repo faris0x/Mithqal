@@ -41,6 +41,7 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "assume" | "assuming" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
+        "assumptions" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "begin" | "context" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "end" | "contexts" => A::new().with(A::PROTECTED),
         "$Context" | "$ContextPath" => A::new().with(A::PROTECTED).with(A::CONSTANT),

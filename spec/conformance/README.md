@@ -14,6 +14,7 @@ Each profile has one tab separated file:
 - `exact.tsv`
 - `numeric.tsv`
 - `modules.tsv`
+- `assumptions.tsv`
 - `embedded.tsv`
 
 A runner MAY load the files in any order. The order of cases within a file is
@@ -24,7 +25,7 @@ not significant.
 Each non-comment line has six tab separated fields.
 
 1. `id`: a unique case identifier. The identifier begins with the profile name.
-2. `profile`: one of `core`, `exact`, `numeric`, `modules`, `embedded`.
+2. `profile`: one of `core`, `exact`, `numeric`, `modules`, `assumptions`, `embedded`.
 3. `kind`: one of the case kinds below.
 4. `expected`: the expected result.
 5. `source`: the Mithqal source for the case.

@@ -68,3 +68,29 @@ fn missing_packages_are_rejected() {
     let mut session = Session::new();
     assert!(session.needs("definitely_missing_package").is_err());
 }
+
+#[test]
+fn loaded_modules_evaluate_assumptions_without_restarting() {
+    let directory = std::env::current_dir()
+        .unwrap()
+        .join("target")
+        .join(format!("mithqal-assumption-pkg-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&directory);
+    fs::create_dir_all(&directory).unwrap();
+    let positive = write_package(
+        &directory,
+        "positive.mith",
+        "mod assumptionPositive\nexport positiveX\ndef positiveX()=assume(x>0,abs(x))\nend\n",
+    );
+    let negative = write_package(
+        &directory,
+        "negative.mith",
+        "mod assumptionNegative\nexport negativeX\ndef negativeX()=assume(x<0,abs(x))\nend\n",
+    );
+    let mut session = Session::new();
+    session.needs(&positive.to_string_lossy()).unwrap();
+    assert_eq!(eval(&mut session, "positiveX()"), "x");
+    session.needs(&negative.to_string_lossy()).unwrap();
+    assert_eq!(eval(&mut session, "negativeX()"), "-x");
+    let _ = fs::remove_dir_all(&directory);
+}

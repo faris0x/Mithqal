@@ -110,6 +110,8 @@ pub enum ErrorCode {
     EvalPackage,
     /// A pattern operation failed.
     EvalPattern,
+    /// Assumptions are inconsistent.
+    EvalAssumption,
 }
 
 impl ErrorCode {
@@ -138,6 +140,7 @@ impl ErrorCode {
             ErrorCode::EvalContext => "TGN-EVAL-0018",
             ErrorCode::EvalPackage => "TGN-EVAL-0019",
             ErrorCode::EvalPattern => "TGN-EVAL-0020",
+            ErrorCode::EvalAssumption => "TGN-EVAL-0021",
         }
     }
 
@@ -165,7 +168,8 @@ impl ErrorCode {
             | ErrorCode::EvalKey
             | ErrorCode::EvalContext
             | ErrorCode::EvalPackage
-            | ErrorCode::EvalPattern => ErrorKind::Eval,
+            | ErrorCode::EvalPattern
+            | ErrorCode::EvalAssumption => ErrorKind::Eval,
         }
     }
 }

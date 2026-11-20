@@ -47,11 +47,7 @@ fn assumptions_are_scoped() {
 
 #[test]
 fn malformed_assumptions_stay_unevaluated() {
-    for source in [
-        "assume(x+y,abs(x))",
-        "assume(x>1,abs(x))",
-        "assume(1,abs(x))",
-    ] {
+    for source in ["assume(x+y,abs(x))", "assume(1,abs(x))"] {
         let result = text(source);
         assert!(result.contains("assume"), "{source} => {result}");
     }
@@ -81,4 +77,77 @@ fn conjunctive_assumptions() {
     assert_eq!(text("assume(x>0&&y>0,abs(x*y))"), "x*y");
     assert_eq!(text("assume(and(x>0,y>0,z>0),abs(x*y*z))"), "x*y*z");
     assert_eq!(text("assuming(and(x<0,y<0),abs(x*y))"), "x*y");
+}
+
+#[test]
+fn qualified_names_are_distinct_assumption_targets() {
+    let mut session = Session::new();
+    let mut eval = |source: &str| {
+        let value = session.eval_statement(source).unwrap();
+        session.format_infix(value).unwrap()
+    };
+    assert_eq!(eval("assume(foo;x>0,abs(foo;x))"), "foo;x");
+    assert_eq!(eval("assume(bar;x<0,abs(bar;x))"), "-bar;x");
+    assert_eq!(eval("assume(foo;x>0,abs(bar;x))"), "abs(bar;x)");
+}
+
+#[test]
+fn relations_and_numeric_bounds_propagate() {
+    assert_eq!(text("assume(x>y,assume(y>0,abs(x)))"), "x");
+    assert_eq!(text("assume(x>y,assume(y>0,abs(y)))"), "y");
+    assert_eq!(text("assume(x>1,abs(x))"), "x");
+    assert_eq!(text("assume(x<-1,abs(x))"), "-x");
+    assert_eq!(text("assume(x>=y,assume(y>0,abs(x)))"), "x");
+}
+
+#[test]
+fn disjunction_and_negation_are_supported() {
+    assert_eq!(text("assume(or(x>0,x>=0),abs(x))"), "x");
+    assert_eq!(text("assume(or(x>0,x<0),abs(x))"), "abs(x)");
+    assert_eq!(text("assume(not(x>0),abs(x))"), "-x");
+    assert_eq!(text("assume(not(x>=0),abs(x))"), "-x");
+    assert_eq!(text("assume(not(or(x>0,x<0)),abs(x))"), "0");
+}
+
+#[test]
+fn domain_and_parity_facts_are_recorded() {
+    assert_eq!(
+        text("assume(and(integer(x),even(x)),assumptions(x))"),
+        "[integer(x)&&even(x)]"
+    );
+    assert_eq!(
+        text("assume(element(x,integers),assumptions(x))"),
+        "[element(x,integers)]"
+    );
+}
+
+#[test]
+fn equality_propagates_signs() {
+    assert_eq!(text("assume(x==y,assume(y>0,abs(x)))"), "x");
+    assert_eq!(text("assume(x==y,assume(x<0,abs(y)))"), "-y");
+}
+
+#[test]
+fn contradictory_assumptions_are_diagnostics() {
+    let mut session = Session::new();
+    for source in [
+        "assume(and(x>0,x<0),abs(x))",
+        "assume(and(even(x),odd(x)),abs(x))",
+        "assume(and(x>y,y>x),abs(x))",
+        "assume(and(x==y,x=/=y),abs(x))",
+    ] {
+        let error = session.eval_statement(source).unwrap_err();
+        assert_eq!(error.code, ErrorCode::EvalAssumption, "{source}");
+    }
+}
+
+#[test]
+fn assumptions_are_scoped_and_introspectable() {
+    let mut session = Session::new();
+    let value = session
+        .eval_statement("assume(x>0,assumptions(x))")
+        .unwrap();
+    assert_eq!(session.format_infix(value).unwrap(), "[x>0]");
+    let value = session.eval_statement("assumptions(x)").unwrap();
+    assert_eq!(session.format_infix(value).unwrap(), "[]");
 }

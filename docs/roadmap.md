@@ -23,7 +23,7 @@ Included:
 - Principal branch conventions for complex logarithms, powers, and inverse functions.
 - One-sided endpoint limits for improper integrals, transcendental interior singularity checks, and a staged multivariate factorization pipeline with binary, homogeneous, recursive quadratic, polynomial-leading, content extraction, specialization root lifting, bivariate Hensel lifting, generic multivariate interpolation through eight variables, and power extraction stages. It also includes bounded bivariate Hensel lifting to total degree sixteen.
 - Bounded Hensel lifting for univariate integer polynomials.
-- Local sign assumptions, conjunctive assumptions, and conditional simplification.
+- Local assumptions over interned symbol identity, including signs, domains, parity, equality, ordering, conjunction, disjunction, negation, introspection, and conditional simplification.
 - A line based surface language with modules, exports, imports, definitions with block bodies, local definitions, literal and constructor patterns, guards, lexical bindings, conditionals, match blocks, canonical binders, structure and instance declarations, and print statements.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
 - Exact rational and symbolic matrix linear algebra with determinants, rank, inverses, row reduction, matrix products, PLU factorization, characteristic polynomials, eigenvalues, eigenvectors, null spaces, QR factorization, and linear solving.
@@ -65,7 +65,7 @@ Included:
 Excluded:
 
 - Full multivariate factorization beyond the staged coverage and interpolation above eight variables.
-- Further matrix decompositions and wider assumption domains.
+- Further matrix decompositions and deeper assumption inference beyond the documented fact language.
 - Infinite sets.
 - Unicode source identifiers and LaTeX rendering.
 - Parallel evaluation and a JIT.
@@ -104,7 +104,7 @@ The test suite covers these areas:
 
 ## Remaining work
 
-Remaining work includes broader improper integration, general multivariate factorization beyond the staged bounds, further matrix decompositions, wider assumption domains, proofs, notation declarations, multi-module source files, nested same-head `flat` pattern grouping, and deeper up value dispatch. A graphical interface follows once the language surface is stable.
+Remaining work includes broader improper integration, general multivariate factorization beyond the staged bounds, further matrix decompositions, deeper assumption inference beyond the documented fact language, proofs, notation declarations, multi-module source files, nested same-head `flat` pattern grouping, and deeper up value dispatch. A graphical interface follows once the language surface is stable.
 
 The engine remains a small core. Mathematics lives in Mithqal modules. Frontends consume the public API and the language contract.
 

@@ -9,6 +9,7 @@
 use crate::prelude::*;
 
 mod arithmetic;
+mod assumptions;
 mod attributes;
 mod control;
 mod definitions;
@@ -42,6 +43,7 @@ use pattern::{Bindings, match_pattern, substitute};
 pub(crate) use pattern::{all_symbols, rename_definition, rename_expression};
 use support::*;
 
+pub(crate) use assumptions::Assumption;
 pub(crate) use definitions::DefinitionSite;
 pub(crate) use definitions::Definitions as SessionDefinitions;
 
@@ -163,12 +165,6 @@ enum Sign {
     Positive,
     NonNegative,
     NonPositive,
-}
-
-#[derive(Copy, Clone)]
-struct Assumption {
-    symbol: SymbolId,
-    sign: Sign,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

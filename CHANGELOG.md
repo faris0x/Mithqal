@@ -334,3 +334,5 @@ Initial kernel work.
 - Split the Mithqalite float and nz suites into routine gates and stress runs, with environment-controlled property counts and ignored huge-precision cases.
 - Documented the full float suite runtime, the coverage exclusions, and the unmeasured nz coverage gap.
 - Audited documentation and comments for drift after the 0.0.2 language layer and the no_std migration.
+- Expanded assumptions to interned symbol identity, qualified-name targets, ordered and equality facts, domains, parity, conjunction, disjunction, negation, introspection, and contradiction diagnostics.
+- Added runtime assumption coverage for modules loaded without restarting the session.
