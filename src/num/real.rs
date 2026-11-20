@@ -12,7 +12,7 @@ use core::fmt;
 use mithqalite::Float;
 use mithqalite::base::num::arithmetic::traits::{Abs, Sign};
 use mithqalite::base::num::conversion::string::options::ToSciOptions;
-use mithqalite::base::num::conversion::traits::{RoundingFrom, ToSci};
+use mithqalite::base::num::conversion::traits::{IsInteger, RoundingFrom, ToSci};
 use mithqalite::base::rounding_modes::RoundingMode;
 
 use super::int::natural_bytes;
@@ -717,7 +717,7 @@ impl Real {
         if !self.is_finite() || self.is_zero() {
             return Err(NumError::Domain);
         }
-        if self.sign() < 0 && self.inner.round_to_integer_ref().0.is_zero() {
+        if self.sign() < 0 && (&self.inner).is_integer() {
             return Err(NumError::Domain);
         }
         let digits = digits_for_bits(self.bits);

@@ -343,6 +343,16 @@ fn approximate_complex_branch_conformance() {
         (2.0 + 3f64.sqrt()).ln(),
         std::f64::consts::PI,
     );
+    check(
+        "approx(acosh(-2-i),30)",
+        1.4693517443681852,
+        -2.6342363503726486,
+    );
+    check(
+        "approx(acosh(-2+i),30)",
+        1.4693517443681852,
+        2.6342363503726486,
+    );
     check("approx(atanh(2)-((ln(3)-ln(-1))/2),30)", 0.0, 0.0);
     check(
         "approx(asin(1+i)+acos(1+i),30)",

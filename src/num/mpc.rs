@@ -241,7 +241,11 @@ impl Complex {
             let minus_one = square.sub(&one)?;
             let root = wrap_complex(minus_one.sqrt()?)?;
             let sum = value.add(&root)?;
-            sum.log()
+            let first = sum.log()?;
+            if first.0.sign() >= 0 {
+                return Some(first);
+            }
+            value.sub(&root)?.log()
         })
     }
 

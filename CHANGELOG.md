@@ -327,3 +327,7 @@ Initial kernel work.
 - Added complex erf and erfc, plus catalog, documentation, and test coverage for the error functions.
 - Added a `std` feature split and a no-std library build using `core`, `alloc`, `hashbrown`, and `libm`.
 - Added no-std checks for `wasm32-unknown-unknown` and `thumbv7m-none-eabi`, plus a no-std usage document.
+- Added an mpmath numeric oracle fixture suite covering real and complex elementary, gamma, and error functions at 50 digits.
+- Fixed real gamma returning a domain error for negative arguments between -1 and 0.
+- Fixed complex acosh selecting the wrong branch when the principal logarithm had a negative real part.
+- Ordered multivariate interpolation by increasing degree in the horizontal variable, cutting the four-variable factor benchmark from about 323 us to 22 us and the six-variable case from about 539 us to 53 us.

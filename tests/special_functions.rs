@@ -68,6 +68,16 @@ fn natural_log_of_e_is_exact() {
 }
 
 #[test]
+fn gamma_negative_arguments_between_minus_one_and_zero() {
+    let value = text("gamma(-1/3)");
+    assert!(value.starts_with("-4.062353"), "{value}");
+    let value = text("gamma(-0.2)");
+    assert!(value.starts_with("-5.821148"), "{value}");
+    let value = text("lgamma(-1/3)");
+    assert!(value.starts_with("1.401"), "{value}");
+}
+
+#[test]
 fn gamma_numeric_arguments_are_defined() {
     let value = text("gamma(1/3)");
     assert!(value.starts_with("2.678938"), "{value}");

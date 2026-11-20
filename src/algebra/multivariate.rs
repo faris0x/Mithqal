@@ -688,14 +688,19 @@ impl<'a> MultivariateFactorizer<'a> {
             return None;
         }
         let variables: Vec<SymbolId> = ordered_variables(self.arena, polynomial);
-        for horizontal in &variables {
+        let mut orientations: Vec<(usize, SymbolId)> = variables
+            .iter()
+            .map(|symbol| (x_degree(polynomial, *symbol), *symbol))
+            .collect();
+        orientations.sort_by_key(|(degree, symbol)| (*degree, *symbol));
+        for (_, horizontal) in orientations {
             let others: Vec<SymbolId> = variables
                 .iter()
-                .filter(|symbol| *symbol != horizontal)
                 .copied()
+                .filter(|symbol| *symbol != horizontal)
                 .collect();
             if let Some(factors) =
-                self.factor_multivariate_orientation(polynomial, *horizontal, &others)
+                self.factor_multivariate_orientation(polynomial, horizontal, &others)
             {
                 return Some(factors);
             }
