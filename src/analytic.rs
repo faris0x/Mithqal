@@ -301,6 +301,56 @@ impl DirichletCharacter {
         Some(total)
     }
 
+    /// The conductor by testing induced characters on divisors.
+    pub(crate) fn conductor(&self) -> Option<u64> {
+        (1..=self.modulus)
+            .find(|divisor| self.modulus.is_multiple_of(*divisor) && self.is_induced_by(*divisor))
+    }
+
+    /// True when the character is induced from the given modulus.
+    pub(crate) fn is_induced_by(&self, modulus: u64) -> bool {
+        if !self.modulus.is_multiple_of(modulus) {
+            return false;
+        }
+        for left in 1..self.modulus {
+            if gcd_u64(left, self.modulus) != 1 {
+                continue;
+            }
+            for right in left + 1..self.modulus {
+                if gcd_u64(right, self.modulus) == 1
+                    && left % modulus == right % modulus
+                    && self.value(left).sub(self.value(right)).abs() > 1e-12
+                {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    /// The primitive character inducing this one.
+    pub(crate) fn primitive_reduction(&self) -> Option<(Self, u64)> {
+        let conductor = self.conductor()?;
+        if conductor == self.modulus {
+            return Some((self.clone(), self.modulus));
+        }
+        let mut values = vec![Complex::zero(); conductor as usize];
+        for residue in 1..conductor {
+            if gcd_u64(residue, conductor) != 1 {
+                continue;
+            }
+            let mut lift = residue;
+            while gcd_u64(lift, self.modulus) != 1 {
+                lift += conductor;
+                if lift >= self.modulus * 2 {
+                    return None;
+                }
+            }
+            values[residue as usize] = self.value(lift);
+        }
+        Some((DirichletCharacter::new(conductor, values)?, self.modulus))
+    }
+
     /// The root number for a primitive character.
     pub(crate) fn root_number(&self) -> Option<Complex> {
         let parity = self.parity()?;
@@ -321,20 +371,42 @@ pub(crate) fn dirichlet_l(s: Complex, character: &DirichletCharacter) -> Option<
     if modulus == 1 {
         return zeta(s);
     }
+    if s.re == 1.0 && s.im == 0.0 {
+        let epsilon = 1e-4;
+        let first = dirichlet_l(Complex::new(1.0 + epsilon, 0.0), character)?;
+        let second = dirichlet_l(Complex::new(1.0 + epsilon / 2.0, 0.0), character)?;
+        return Some(second.mul(Complex::new(2.0, 0.0)).sub(first));
+    }
     if s.re < 0.5 {
-        let parity = character.parity()?;
-        let root = character.root_number()?;
-        let pi = core::f64::consts::PI;
-        let argument = Complex::new(pi * (s.re + parity as f64) / 2.0, pi * s.im / 2.0);
-        let reflected = dirichlet_l(Complex::one().sub(s), &character.conjugate())?;
-        return Some(
-            root.mul(power_real(2.0, s))
-                .mul(power_real(pi, s.sub(Complex::one())))
-                .mul(power_real(modulus as f64, Complex::new(0.5, 0.0).sub(s)))
-                .mul(argument.sin())
-                .mul(Complex::one().sub(s).gamma()?)
-                .mul(reflected),
-        );
+        let (primitive, original_modulus) = character.primitive_reduction()?;
+        let mut value = primitive_functional(s, &primitive)?;
+        if original_modulus != primitive.modulus() {
+            let mut remaining = original_modulus;
+            let mut divisor = 2u64;
+            while divisor * divisor <= remaining {
+                if remaining % divisor == 0 {
+                    let factor = Complex::one().sub(
+                        primitive
+                            .value(divisor)
+                            .mul(power_real(divisor as f64, s.neg())),
+                    );
+                    value = value.mul(factor);
+                    while remaining % divisor == 0 {
+                        remaining /= divisor;
+                    }
+                }
+                divisor += 1;
+            }
+            if remaining > 1 {
+                let factor = Complex::one().sub(
+                    primitive
+                        .value(remaining)
+                        .mul(power_real(remaining as f64, s.neg())),
+                );
+                value = value.mul(factor);
+            }
+        }
+        return Some(value);
     }
     let mut sum = Complex::zero();
     for residue in 1..modulus {
@@ -370,6 +442,34 @@ pub(crate) fn character_mod_three() -> DirichletCharacter {
         vec![Complex::zero(), Complex::one(), Complex::new(-1.0, 0.0)],
     )
     .unwrap()
+}
+
+fn primitive_functional(s: Complex, character: &DirichletCharacter) -> Option<Complex> {
+    let parity = character.parity()?;
+    let root = character.root_number()?;
+    let pi = core::f64::consts::PI;
+    let argument = Complex::new(pi * (s.re + parity as f64) / 2.0, pi * s.im / 2.0);
+    let reflected = dirichlet_l(Complex::one().sub(s), &character.conjugate())?;
+    Some(
+        root.mul(power_real(2.0, s))
+            .mul(power_real(pi, s.sub(Complex::one())))
+            .mul(power_real(
+                character.modulus() as f64,
+                Complex::new(0.5, 0.0).sub(s),
+            ))
+            .mul(argument.sin())
+            .mul(Complex::one().sub(s).gamma()?)
+            .mul(reflected),
+    )
+}
+
+fn gcd_u64(mut left: u64, mut right: u64) -> u64 {
+    while right != 0 {
+        let remainder = left % right;
+        left = right;
+        right = remainder;
+    }
+    left
 }
 
 fn factorial(value: usize) -> f64 {
@@ -431,6 +531,91 @@ where
         point = Complex::new(point.re + delta_re, point.im + delta_im);
     }
     Some(point)
+}
+
+/// A numerical zero certificate from residual and argument-principle counts.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ZeroCertificate {
+    /// The certified point.
+    pub(crate) zero: Complex,
+    /// The residual modulus.
+    pub(crate) residual: f64,
+    /// The zero count in the enclosing square.
+    pub(crate) count: i64,
+}
+
+/// Numerically certify an isolated zero by the argument principle.
+///
+/// This verifies one zero in a small square at two boundary resolutions. It is
+/// not a rigorous interval certificate.
+pub(crate) fn certify_zero<F>(function: F, zero: Complex, half: f64) -> Option<ZeroCertificate>
+where
+    F: Fn(Complex) -> Option<Complex>,
+{
+    let residual = function(zero)?.abs();
+    if residual > 1e-4 {
+        return None;
+    }
+    let coarse = argument_principle_count(&function, zero, half, 256)?;
+    let fine = argument_principle_count(&function, zero, half, 512)?;
+    if coarse != 1 || fine != 1 {
+        return None;
+    }
+    Some(ZeroCertificate {
+        zero,
+        residual,
+        count: fine,
+    })
+}
+
+fn argument_principle_count<F>(
+    function: &F,
+    center: Complex,
+    half: f64,
+    samples: usize,
+) -> Option<i64>
+where
+    F: Fn(Complex) -> Option<Complex>,
+{
+    if samples < 4 || half <= 0.0 {
+        return None;
+    }
+    let corners = [
+        Complex::new(center.re - half, center.im - half),
+        Complex::new(center.re + half, center.im - half),
+        Complex::new(center.re + half, center.im + half),
+        Complex::new(center.re - half, center.im + half),
+    ];
+    let mut total = 0.0f64;
+    let mut previous = None;
+    let evaluate = |point: Complex| -> Option<f64> {
+        let value = function(point)?;
+        Some(argument(value.re, value.im))
+    };
+    for edge in 0..4 {
+        let start = corners[edge];
+        let end = corners[(edge + 1) % 4];
+        for step in 0..samples {
+            let fraction = step as f64 / samples as f64;
+            let point = Complex::new(
+                start.re + (end.re - start.re) * fraction,
+                start.im + (end.im - start.im) * fraction,
+            );
+            let angle = evaluate(point)?;
+            if let Some(previous_angle) = previous {
+                let mut difference = angle - previous_angle;
+                while difference > core::f64::consts::PI {
+                    difference -= 2.0 * core::f64::consts::PI;
+                }
+                while difference < -core::f64::consts::PI {
+                    difference += 2.0 * core::f64::consts::PI;
+                }
+                total += difference;
+            }
+            previous = Some(angle);
+        }
+    }
+    Some((total / (2.0 * core::f64::consts::PI)).round() as i64)
 }
 
 /// Scan the critical line for approximate zeros by minimizing the modulus.
@@ -583,10 +768,45 @@ mod tests {
         assert!((beta_two.re - 0.915_965_594_177_219).abs() < 1e-9);
         let modulo_three = dirichlet_l(rational(2.0), &character_mod_three()).unwrap();
         assert!((modulo_three.re - 0.781_302_412_896_486).abs() < 1e-9);
+        let beta_one = dirichlet_l(rational(1.0), &beta_character()).unwrap();
+        let pi = core::f64::consts::PI;
+        assert!((beta_one.re - pi / 4.0).abs() < 1e-4, "{beta_one:?}");
+        let three_one = dirichlet_l(rational(1.0), &character_mod_three()).unwrap();
+        assert!(
+            (three_one.re - pi / (3.0 * 3.0f64.sqrt())).abs() < 1e-4,
+            "{three_one:?}"
+        );
         let beta_negative_two = dirichlet_l(rational(-2.0), &beta_character()).unwrap();
         assert!(
             (beta_negative_two.re + 0.5).abs() < 1e-8,
             "{beta_negative_two:?}"
+        );
+    }
+
+    #[test]
+    fn conductor_reduction_removes_induced_euler_factors() {
+        let base = character_mod_three();
+        let mut values = Vec::with_capacity(12);
+        for residue in 0..12u64 {
+            values.push(if gcd_u64(residue, 12) == 1 {
+                base.value(residue % 3)
+            } else {
+                Complex::zero()
+            });
+        }
+        let induced = DirichletCharacter::new(12, values).unwrap();
+        assert_eq!(induced.conductor(), Some(3));
+        let (primitive, original) = induced.primitive_reduction().unwrap();
+        assert_eq!(original, 12);
+        assert_eq!(primitive.modulus(), 3);
+        let direct = dirichlet_l(rational(2.0), &induced).unwrap();
+        let reduced = dirichlet_l(rational(2.0), &primitive).unwrap();
+        let factor =
+            Complex::one().sub(primitive.value(2).mul(power_real(2.0, rational(2.0).neg())));
+        let expected = reduced.mul(factor);
+        assert!(
+            (direct.re - expected.re).abs() < 1e-9,
+            "{direct:?} {expected:?}"
         );
     }
 
@@ -598,6 +818,8 @@ mod tests {
             .iter()
             .min_by(|left, right| left.im.partial_cmp(&right.im).unwrap())
             .unwrap();
+        let certificate = certify_zero(zeta, *first, 0.25).unwrap();
+        assert_eq!(certificate.count, 1);
         assert!((first.re - 0.5).abs() < 1e-4, "{first:?}");
         assert!((first.im - 14.134_725).abs() < 1e-3, "{first:?}");
     }

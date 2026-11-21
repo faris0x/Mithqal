@@ -45,6 +45,32 @@ impl UnitGroup {
     pub(crate) fn fundamental_units(&self) -> &[FieldElement] {
         &self.fundamental_units
     }
+
+    /// Verify the presented unit data without claiming saturation.
+    ///
+    /// Checks the rank count, unit norms, and regulator positivity. It does not
+    /// prove that the selected lattice is the full unit lattice.
+    pub(crate) fn verify(&self, order: &Order) -> bool {
+        if self.fundamental_units.len() != self.rank {
+            return false;
+        }
+        if self.torsion_order == 0 {
+            return false;
+        }
+        if self.rank > 0
+            && !self
+                .regulator
+                .is_some_and(|value| value.is_finite() && value > 0.0)
+        {
+            return false;
+        }
+        self.fundamental_units.iter().all(|unit| {
+            order
+                .field()
+                .norm(unit)
+                .is_some_and(|norm| norm.abs().is_one())
+        })
+    }
 }
 
 /// Compute the unit group for a quadratic field.
@@ -601,6 +627,7 @@ mod tests {
         for unit in units.fundamental_units() {
             assert!(field.norm(unit).unwrap().abs().is_one());
         }
+        assert!(units.verify(&order));
     }
 
     #[test]
@@ -615,6 +642,7 @@ mod tests {
         for unit in units.fundamental_units() {
             assert!(field.norm(unit).unwrap().abs().is_one());
         }
+        assert!(units.verify(&order));
     }
 
     #[test]

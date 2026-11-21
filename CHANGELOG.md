@@ -368,3 +368,6 @@ Initial kernel work.
 - Extended experimental unit groups to general rank using selected independent unit log vectors and covolume regulators.
 - Added the Riemann zeta functional equation with complex gamma and negative-integer values.
 - Added the primitive Dirichlet functional equation with Gauss sums and root numbers for Re(s) below one half.
+- Added Dirichlet conductor detection and primitive reduction with finite Euler factor restoration.
+- Added a numerical Richardson limit for nonprincipal L(1, chi) and argument-principle zero certificates.
+- Added unit-data verification for general-rank regulators without claiming saturation.
