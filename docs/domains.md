@@ -50,7 +50,7 @@ The current audit indicates that the following areas still contain substantial k
 - arbitrary precision integer and modular polynomial factorization, including Hensel lifting and Zassenhaus recombination
 - exact rational matrix algebra, Sturm signatures, and power basis number field arithmetic
 - maximal orders by the p-radical Round 2 step, integral bases, multiplication tables, and p-maximality checks
-- codifferent and different lattices, fractional ideal arithmetic, ideal factorization, prime ideal decomposition, small-degree class groups with an independent imaginary-quadratic reduced-form cross-check, order conductors, quadratic narrow class numbers, and ray class numbers for prime-power moduli, quadratic and general experimental unit groups, and experimental Hurwitz zeta, Riemann and primitive Dirichlet functional equations, conductor reduction, nonprincipal L(1) limits, Dirichlet L evaluation, numerically certified critical-line zero scanning, and fixed-precision p-adic field arithmetic
+- codifferent and different lattices, fractional ideal arithmetic, ideal factorization, prime ideal decomposition, small-degree class groups with an independent imaginary-quadratic reduced-form cross-check, order conductors, quadratic narrow class numbers, and ray class numbers for prime-power moduli, and narrow ray class numbers with real places for real quadratic fields, quadratic and general experimental unit groups, and experimental Hurwitz zeta, Riemann and primitive Dirichlet functional equations, conductor reduction, nonprincipal L(1) limits, Dirichlet L evaluation, numerically certified critical-line zero scanning, and fixed-precision p-adic field arithmetic
 - calculus kernels and limits
 - exact rational linear algebra
 - integer number theory

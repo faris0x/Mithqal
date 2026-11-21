@@ -199,6 +199,60 @@ pub(crate) fn ray_class_number(order: &Order, modulus: &Ideal) -> Option<Int> {
     Some(result)
 }
 
+/// The narrow ray class number for a prime-power finite modulus plus all real
+/// places, for real quadratic fields.
+pub(crate) fn ray_class_number_real_places(order: &Order, modulus: &Ideal) -> Option<Int> {
+    let field = order.field();
+    if field.degree() != 2 || field.signature() != (2, 0) {
+        return None;
+    }
+    let base = narrow_class_number(order)?;
+    if modulus.norm().is_one() {
+        return Some(base);
+    }
+    let factors = factor_ideal(order, modulus)?;
+    if factors.len() != 1 {
+        return None;
+    }
+    let (prime_ideal, exponent) = &factors[0];
+    let norm = prime_ideal.norm().clone();
+    let phi = norm
+        .pow_u32(*exponent)
+        .sub(&norm.pow_u32(exponent.saturating_sub(1)));
+    let units = unit_group(order)?;
+    if units.torsion_order() > 2 || units.fundamental_units().is_empty() {
+        return None;
+    }
+    let fundamental = &units.fundamental_units()[0];
+    let norm_value = field.norm(fundamental)?;
+    let trace_value = field.trace(fundamental)?;
+    let totally_positive = norm_value.sign() > 0 && trace_value.sign() > 0;
+    let generator = if totally_positive {
+        fundamental.clone()
+    } else {
+        field.multiply(fundamental, fundamental)
+    };
+    let mut image_order = None;
+    for value in 1..=10_000u32 {
+        let powered = field.power(&generator, value);
+        let difference = field.sub(&powered, &field.one());
+        let coordinates = order.coordinates_of(&difference)?;
+        if coordinates.iter().all(|value| value.den().is_one()) {
+            let integers: Vec<Int> = coordinates.iter().map(|value| value.num()).collect();
+            if modulus.contains(&integers) {
+                image_order = Some(Int::from_i64(value as i64));
+                break;
+            }
+        }
+    }
+    let image_order = image_order?;
+    let (result, remainder) = base.mul(&phi).divrem(&image_order).ok()?;
+    if !remainder.is_zero() {
+        return None;
+    }
+    Some(result)
+}
+
 fn enumerate_ideals(order: &Order, base: &[PrimeIdeal], bound: i64) -> Option<Vec<Ideal>> {
     let mut ideals: Vec<Ideal> = Vec::new();
     let mut queue = vec![Ideal::identity(order)?];
@@ -479,6 +533,22 @@ mod tests {
         let primes = decompose_prime_general(&order, &Int::from_i64(5)).unwrap();
         let modulus = &primes[0].ideal();
         assert_eq!(ray_class_number(&order, modulus).unwrap(), Int::from_i64(1));
+    }
+
+    #[test]
+    fn narrow_ray_class_numbers_with_real_places() {
+        let quadratic = field(&[-5, 0, 1]);
+        let order = maximal_order(&quadratic).unwrap();
+        let identity = Ideal::identity(&order).unwrap();
+        assert_eq!(
+            ray_class_number_real_places(&order, &identity).unwrap(),
+            Int::one()
+        );
+        let primes = decompose_prime_general(&order, &Int::from_i64(5)).unwrap();
+        assert_eq!(
+            ray_class_number_real_places(&order, primes[0].ideal()).unwrap(),
+            Int::from_i64(2)
+        );
     }
 
     #[test]
