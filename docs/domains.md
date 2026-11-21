@@ -50,7 +50,7 @@ The current audit indicates that the following areas still contain substantial k
 - arbitrary precision integer and modular polynomial factorization, including Hensel lifting and Zassenhaus recombination
 - exact rational matrix algebra, Sturm signatures, and power basis number field arithmetic
 - maximal orders by the p-radical Round 2 step, integral bases, multiplication tables, and p-maximality checks
-- codifferent and different lattices, fractional ideal arithmetic, ideal factorization, prime ideal decomposition, small-degree class groups, and quadratic unit groups
+- codifferent and different lattices, fractional ideal arithmetic, ideal factorization, prime ideal decomposition, small-degree class groups, and quadratic and rank-one higher-degree unit groups
 - calculus kernels and limits
 - exact rational linear algebra
 - integer number theory
@@ -74,7 +74,7 @@ The manifest will drive dependency resolution, size estimates, compatibility che
 
 ## Number field kernel feature
 
-The `numberfields` Cargo feature is enabled by default. It compiles the exact integer matrix, lattice, integer polynomial, rational matrix, Sturm, power basis number field, maximal order, different, ideal, prime decomposition, and class group layers. The current layer covers field validation, signatures, element arithmetic, norms, traces, characteristic and minimal polynomials, integrality tests, integral bases, multiplication tables, p-maximality by the p-radical Round 2 step, codifferent and different lattices, fractional ideal multiplication, inversion, division, powers, ideal factorization, prime ideals with ramification, residue degree, and Frobenius data, and class groups for small-degree fields, together with quadratic unit groups and regulators. General higher-degree units, large-index prime decomposition, and expression-level field objects are still ahead.
+The `numberfields` Cargo feature is enabled by default. It compiles the exact integer matrix, lattice, integer polynomial, rational matrix, Sturm, power basis number field, maximal order, different, ideal, prime decomposition, and class group layers. The current layer covers field validation, signatures, element arithmetic, norms, traces, characteristic and minimal polynomials, integrality tests, integral bases, multiplication tables, p-maximality by the p-radical Round 2 step, codifferent and different lattices, fractional ideal multiplication, inversion, division, powers, ideal factorization, prime ideals with ramification, residue degree, and Frobenius data, and class groups for small-degree fields, together with quadratic and rank-one higher-degree unit groups and regulators. Rank-two and higher unit lattices, large-index prime decomposition, and expression-level field objects are still ahead.
 
 A size-sensitive build can omit the substrate:
 
@@ -96,7 +96,7 @@ The number theory domains are broad but not a research-level computer algebra sy
 - primitive-root, multiplicative-order, and discrete-log searches are brute force
 - partition and Bell computations use direct recurrences
 - analytic number theory is limited to exact arithmetic sums, Bernoulli and Euler numbers, Chebyshev functions, and truncated Dirichlet series
-- class field theory and general higher-degree units are not implemented; class groups are computed for small-degree fields with bounded Minkowski radii, quadratic units and regulators are implemented, and large-index non-monogenic decomposition plus expression-level field objects are still ahead
+- class field theory and general higher-degree units are not implemented; class groups are computed for small-degree fields with bounded Minkowski radii, quadratic and rank-one higher-degree units and regulators are implemented, and rank-two unit lattices, large-index non-monogenic decomposition, plus expression-level field objects are still ahead
 - elliptic curves cover affine arithmetic, point counting, and small-parameter Diffie-Hellman, not modularity, ranks, or descent
 - p-adic support covers valuations, norms, units, and truncated expansions, not a general p-adic field
 - quadratic forms cover positive definite reduction and class-number counting, not composition or general indefinite forms

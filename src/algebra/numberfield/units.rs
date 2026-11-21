@@ -2,8 +2,9 @@
 //!
 //! The torsion subgroup is explicit for imaginary quadratic fields. Real
 //! quadratic fundamental units are found by exact norm tests over a bounded
-//! coefficient box, and the regulator uses the two real embeddings. Higher
-//! degree unit groups need the general log lattice and are not implemented yet.
+//! coefficient box. Rank-one higher-degree fields use numeric embeddings for
+//! the log norm. Rank two and higher, and general log lattices, are not
+//! implemented yet.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -49,26 +50,37 @@ impl UnitGroup {
 pub(crate) fn unit_group(order: &Order) -> Option<UnitGroup> {
     let field = order.field();
     let degree = field.degree();
-    if degree > 2 {
-        return None;
-    }
     let (real_embeddings, complex_pairs) = field.signature();
     let rank = real_embeddings + complex_pairs - 1;
     if rank == 0 {
+        let torsion = if degree <= 2 {
+            torsion_order(field)
+        } else {
+            general_torsion_order(order)?
+        };
         return Some(UnitGroup {
             rank,
-            torsion_order: torsion_order(field),
+            torsion_order: torsion,
             regulator: None,
             fundamental_units: Vec::new(),
         });
     }
-    if degree != 2 || real_embeddings != 2 {
+    if rank != 1 {
         return None;
     }
-    let (unit, regulator) = fundamental_real_quadratic(order)?;
+    if degree == 2 && real_embeddings == 2 {
+        let (unit, regulator) = fundamental_real_quadratic(order)?;
+        return Some(UnitGroup {
+            rank,
+            torsion_order: 2,
+            regulator: Some(regulator),
+            fundamental_units: vec![unit],
+        });
+    }
+    let (unit, regulator, torsion) = rank_one_unit(order)?;
     Some(UnitGroup {
         rank,
-        torsion_order: 2,
+        torsion_order: torsion,
         regulator: Some(regulator),
         fundamental_units: vec![unit],
     })
@@ -156,6 +168,201 @@ fn fundamental_real_quadratic(order: &Order) -> Option<(FieldElement, f64)> {
     best
 }
 
+#[derive(Clone, Copy)]
+struct Complex {
+    real: f64,
+    imaginary: f64,
+}
+
+impl Complex {
+    fn new(real: f64, imaginary: f64) -> Self {
+        Complex { real, imaginary }
+    }
+
+    fn add(self, other: Self) -> Self {
+        Complex::new(self.real + other.real, self.imaginary + other.imaginary)
+    }
+
+    fn sub(self, other: Self) -> Self {
+        Complex::new(self.real - other.real, self.imaginary - other.imaginary)
+    }
+
+    fn mul(self, other: Self) -> Self {
+        Complex::new(
+            self.real * other.real - self.imaginary * other.imaginary,
+            self.real * other.imaginary + self.imaginary * other.real,
+        )
+    }
+
+    fn div(self, other: Self) -> Option<Self> {
+        let denominator = other.real * other.real + other.imaginary * other.imaginary;
+        if denominator == 0.0 {
+            return None;
+        }
+        Some(Complex::new(
+            (self.real * other.real + self.imaginary * other.imaginary) / denominator,
+            (self.imaginary * other.real - self.real * other.imaginary) / denominator,
+        ))
+    }
+
+    fn abs(self) -> f64 {
+        (self.real * self.real + self.imaginary * self.imaginary).sqrt()
+    }
+}
+
+fn numeric_roots(field: &NumberField) -> Option<Vec<Complex>> {
+    let degree = field.degree();
+    let coefficients = field.defining_polynomial().to_rat_coeffs();
+    let mut descending = Vec::with_capacity(coefficients.len());
+    for value in coefficients.iter().rev() {
+        descending.push(rat_to_f64(value)?);
+    }
+    let mut roots = Vec::with_capacity(degree);
+    let seed = Complex::new(0.4, 0.9);
+    let mut current = Complex::new(1.0, 0.0);
+    for _ in 0..degree {
+        roots.push(current);
+        current = current.mul(seed);
+    }
+    for _ in 0..500 {
+        let mut maximum = 0.0f64;
+        for index in 0..degree {
+            let numerator = evaluate_complex(&descending, roots[index]);
+            let mut denominator = Complex::new(1.0, 0.0);
+            for other in 0..degree {
+                if other != index {
+                    denominator = denominator.mul(roots[index].sub(roots[other]));
+                }
+            }
+            let delta = numerator.div(denominator)?;
+            roots[index] = roots[index].sub(delta);
+            maximum = maximum.max(delta.abs());
+        }
+        if maximum < 1e-13 {
+            break;
+        }
+    }
+    let mut residual = 0.0f64;
+    for root in &roots {
+        let value = evaluate_complex(&descending, *root).abs();
+        let scale = (1.0 + root.abs()).powi(degree as i32);
+        residual = residual.max(value / scale);
+    }
+    if residual > 1e-6 {
+        return None;
+    }
+    Some(roots)
+}
+
+fn evaluate_complex(coefficients: &[f64], value: Complex) -> Complex {
+    let mut result = Complex::new(0.0, 0.0);
+    for coefficient in coefficients {
+        result = result.mul(value).add(Complex::new(*coefficient, 0.0));
+    }
+    result
+}
+
+fn log_norm(element: &FieldElement, roots: &[Complex]) -> Option<f64> {
+    let mut maximum = 0.0f64;
+    for root in roots {
+        let value = evaluate_complex(
+            &element
+                .coefficients()
+                .iter()
+                .map(rat_to_f64)
+                .collect::<Option<Vec<_>>>()?,
+            *root,
+        );
+        let absolute = value.abs();
+        if absolute <= 0.0 {
+            return None;
+        }
+        maximum = maximum.max(absolute.ln().abs());
+    }
+    Some(maximum)
+}
+
+fn rank_one_unit(order: &Order) -> Option<(FieldElement, f64, u32)> {
+    let field = order.field();
+    let size = field.degree();
+    let roots = numeric_roots(field)?;
+    let radius = if size <= 4 { 8i64 } else { 5 };
+    let total = (2 * radius + 1).checked_pow(size as u32)?;
+    if total > 3_000_000 {
+        return None;
+    }
+    let mut best: Option<(FieldElement, f64)> = None;
+    let mut torsion = 2u32;
+    let mut coordinates = vec![Int::zero(); size];
+    for code in 0..total {
+        let mut code = code;
+        let mut nonzero = false;
+        for entry in &mut coordinates {
+            let digit = code % (2 * radius + 1);
+            code /= 2 * radius + 1;
+            let value = digit - radius;
+            if value != 0 {
+                nonzero = true;
+            }
+            *entry = Int::from_i64(value);
+        }
+        if !nonzero {
+            continue;
+        }
+        let element = order.element_from_coordinates(&coordinates);
+        let norm = field.norm(&element)?.abs();
+        if !norm.is_one() {
+            continue;
+        }
+        let logarithm = log_norm(&element, &roots)?;
+        if logarithm < 1e-8 {
+            for exponent in 1..=(6 * size as u32 + 6) {
+                if field.power(&element, exponent).is_one() {
+                    torsion = torsion.max(exponent);
+                    break;
+                }
+            }
+            continue;
+        }
+        let replace = best
+            .as_ref()
+            .is_none_or(|(_, current)| logarithm < *current);
+        if replace {
+            best = Some((element, logarithm));
+        }
+    }
+    let (unit, regulator) = best?;
+    Some((unit, regulator, torsion))
+}
+
+fn general_torsion_order(order: &Order) -> Option<u32> {
+    let field = order.field();
+    let size = field.degree();
+    let radius = 3i64;
+    let total = (2 * radius + 1).checked_pow(size as u32)?;
+    let mut torsion = 1u32;
+    let mut coordinates = vec![Int::zero(); size];
+    for code in 0..total {
+        let mut code = code;
+        for entry in &mut coordinates {
+            let digit = code % (2 * radius + 1);
+            code /= 2 * radius + 1;
+            *entry = Int::from_i64(digit - radius);
+        }
+        let element = order.element_from_coordinates(&coordinates);
+        if !field.norm(&element)?.abs().is_one() {
+            continue;
+        }
+        for exponent in 1..=(6 * size as u32 + 6) {
+            if field.power(&element, exponent).is_one() {
+                torsion = torsion.max(exponent);
+                break;
+            }
+        }
+    }
+    Some(torsion)
+}
+
 fn rat_to_f64(value: &Rat) -> Option<f64> {
     let numerator = value.num().to_i64()? as f64;
     let denominator = value.den().to_i64()? as f64;
@@ -216,6 +423,31 @@ mod tests {
             assert_eq!(units.fundamental_units().len(), 1);
             let unit = &units.fundamental_units()[0];
             assert!(field.norm(unit).unwrap().abs().is_one());
+        }
+    }
+
+    #[test]
+    fn rank_one_higher_degree_units() {
+        for (coefficients, torsion) in [
+            (&[1i64, 1, 1, 1, 1][..], 10u32),
+            (&[1, 0, 0, 0, 1][..], 8),
+            (&[-2, 0, 0, 1][..], 2),
+        ] {
+            let field = field(coefficients);
+            let order = maximal_order(&field).unwrap();
+            let units = unit_group(&order).unwrap();
+            assert_eq!(units.rank(), 1);
+            assert_eq!(units.torsion_order(), torsion);
+            let regulator = units.regulator().unwrap();
+            assert!(regulator > 0.0);
+            assert_eq!(units.fundamental_units().len(), 1);
+            assert!(
+                field
+                    .norm(&units.fundamental_units()[0])
+                    .unwrap()
+                    .abs()
+                    .is_one()
+            );
         }
     }
 

@@ -362,3 +362,4 @@ Initial kernel work.
 - Added class group computation for small-degree fields using the Minkowski bound, ideal enumeration, short element reduction, relation collection, and Smith normal form.
 - Fixed ramified prime decomposition in the finite F_p fallback by including the p-radical in prime ideal generators.
 - Added quadratic unit groups, torsion orders, fundamental real quadratic units, and regulators.
+- Added rank-one higher-degree unit groups and regulators using exact norm tests and numerically verified embeddings, with torsion detection.
