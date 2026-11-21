@@ -421,6 +421,39 @@ pub(crate) fn dirichlet_l(s: Complex, character: &DirichletCharacter) -> Option<
     Some(scale.mul(sum))
 }
 
+/// Certify `L(1, chi)` for a quadratic character through the class number
+/// formula, using exact class groups, torsion, and regulators for small
+/// quadratic fields.
+#[cfg(feature = "numberfields")]
+pub(crate) fn certified_quadratic_l_one(modulus: u64) -> Option<f64> {
+    use crate::algebra::numberfield::{NumberField, class_group, maximal_order, unit_group};
+    use crate::algebra::poly_z::ZPoly;
+    use crate::num::Int;
+
+    let (discriminant, polynomial) = match modulus {
+        3 => (-3i64, vec![3, 0, 1]),
+        4 => (-4, vec![1, 0, 1]),
+        5 => (5, vec![-5, 0, 1]),
+        _ => return None,
+    };
+    let field = NumberField::new(ZPoly::new(
+        polynomial.into_iter().map(Int::from_i64).collect(),
+    ))
+    .ok()?;
+    let order = maximal_order(&field)?;
+    let class = class_group(&order)?;
+    let units = unit_group(&order)?;
+    let class_number = class.class_number().to_i64()? as f64;
+    let absolute = (discriminant.abs() as f64).sqrt();
+    if discriminant < 0 {
+        let torsion = units.torsion_order() as f64;
+        Some(2.0 * core::f64::consts::PI * class_number / (torsion * absolute))
+    } else {
+        let regulator = units.regulator()?;
+        Some(2.0 * class_number * regulator / absolute)
+    }
+}
+
 /// The quadratic character modulo 4, the Dirichlet beta character.
 pub(crate) fn beta_character() -> DirichletCharacter {
     DirichletCharacter::new(
@@ -808,6 +841,34 @@ mod tests {
             (direct.re - expected.re).abs() < 1e-9,
             "{direct:?} {expected:?}"
         );
+    }
+
+    #[cfg(feature = "numberfields")]
+    #[test]
+    fn quadratic_l_one_certificates_match_numerical_values() {
+        for modulus in [3u64, 4, 5] {
+            let certified = certified_quadratic_l_one(modulus).unwrap();
+            let character = match modulus {
+                3 => character_mod_three(),
+                4 => beta_character(),
+                _ => DirichletCharacter::new(
+                    5,
+                    vec![
+                        Complex::zero(),
+                        Complex::one(),
+                        Complex::new(-1.0, 0.0),
+                        Complex::new(-1.0, 0.0),
+                        Complex::one(),
+                    ],
+                )
+                .unwrap(),
+            };
+            let numerical = dirichlet_l(rational(1.0), &character).unwrap().re;
+            assert!(
+                (certified - numerical).abs() < 1e-4,
+                "{modulus} {certified} {numerical}"
+            );
+        }
     }
 
     #[test]

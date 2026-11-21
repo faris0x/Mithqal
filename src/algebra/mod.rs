@@ -25,10 +25,10 @@ mod lattice;
 mod multivariate;
 #[cfg(feature = "numberfields")]
 #[allow(dead_code)]
-mod numberfield;
+pub(crate) mod numberfield;
 #[cfg(feature = "numberfields")]
 #[allow(dead_code)]
-mod poly_z;
+pub(crate) mod poly_z;
 mod polynomial;
 mod rational;
 #[cfg(feature = "numberfields")]
