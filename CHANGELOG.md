@@ -347,3 +347,6 @@ Initial kernel work.
 - Added an optional `numberfields` kernel feature with exact integer matrices, Hermite and Smith normal forms, LLL reduction, and short vector enumeration.
 - Added arbitrary precision integer polynomial arithmetic, modular factorization, Hensel lifting, and Zassenhaus factorization as the substrate for the number field layer.
 - Hardened the substrate so normal forms verify their transforms and invariants, modular and integer factorization verify reconstructed products, and Hensel lifting rejects non-prime-power targets.
+- Added exact rational matrix algebra for characteristic polynomials, nullspaces, inverses, and number field computations.
+- Added exact number field construction with irreducibility validation, Sturm signatures, power-basis discriminants, element arithmetic, norms, traces, characteristic and minimal polynomials, and integrality tests.
+- Fixed Zassenhaus irreducibility decisions for polynomials with no irreducible modular reduction, including quartic fields with Klein four Galois group.

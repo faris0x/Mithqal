@@ -31,6 +31,7 @@ Both checks compile the library without linking a final executable. Embedded bin
 | --- | --- |
 | `std` | Enables standard-library collections, file loading, and `mithqalite/std`. Enabled by default. |
 | `cli` | Enables the command line frontend and implies `std`. |
+| `numberfields` | Compiles exact integer lattice, polynomial, rational matrix, and number field arithmetic. Enabled by default. |
 | no `std` | Uses `core`, `alloc`, `hashbrown`, and `libm`. File loading and the CLI are unavailable. |
 
 Mithqalite uses the same pattern. Its numeric crates have their own `std` features, and the constant cache is active only when `std` is enabled.

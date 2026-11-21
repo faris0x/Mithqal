@@ -16,6 +16,7 @@ This document records the support level of each public area. Stable areas follow
 | Analytic number theory | Experimental | Bernoulli and Euler numbers, Chebyshev functions, summatory functions, and truncated zeta and eta series. |
 | Elliptic curves and quadratic forms | Experimental | Affine curve arithmetic, point counting, reduction, class-number counting, and documented small-parameter limits. |
 | Algebraic and p-adic number theory | Experimental | Quadratic fields, Eisenstein integers, valuations, norms, units, and truncated p-adic expansions. |
+| Number field kernel layer | Experimental | Internal construction, Sturm signatures, power basis arithmetic, norms, traces, characteristic and minimal polynomials, and integrality tests; integral bases, ideals, class groups, and units are not implemented yet. |
 | Statistics | Stable | Implemented in the Mithqal standard library (`lib/statistics.mith`). |
 | Standard library and list primitives | Experimental | Bundled Mithqal modules with dependency-aware selective loading through `Session::with_modules`. |
 | Assumptions | Partial | Local sign, domain, parity, equality, and ordered facts over interned symbols, with conjunction, disjunction, and negation. |

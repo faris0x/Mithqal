@@ -25,9 +25,15 @@ mod lattice;
 mod multivariate;
 #[cfg(feature = "numberfields")]
 #[allow(dead_code)]
+mod numberfield;
+#[cfg(feature = "numberfields")]
+#[allow(dead_code)]
 mod poly_z;
 mod polynomial;
 mod rational;
+#[cfg(feature = "numberfields")]
+#[allow(dead_code)]
+mod ratmatrix;
 mod roots;
 mod solve;
 

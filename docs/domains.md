@@ -48,6 +48,7 @@ The current audit indicates that the following areas still contain substantial k
 - exact polynomial algebra and factorization
 - exact integer lattice algorithms: Hermite and Smith normal forms, LLL reduction, and short vector enumeration
 - arbitrary precision integer and modular polynomial factorization, including Hensel lifting and Zassenhaus recombination
+- exact rational matrix algebra, Sturm signatures, and power basis number field arithmetic
 - calculus kernels and limits
 - exact rational linear algebra
 - integer number theory
@@ -71,7 +72,7 @@ The manifest will drive dependency resolution, size estimates, compatibility che
 
 ## Number field kernel feature
 
-The `numberfields` Cargo feature is enabled by default. It compiles the exact integer matrix, lattice, and integer polynomial substrate that the number field layer will consume. The current pass adds algorithms only; no field, ideal, class group, or unit objects are exposed yet.
+The `numberfields` Cargo feature is enabled by default. It compiles the exact integer matrix, lattice, integer polynomial, rational matrix, Sturm, and power basis number field layers. The current layer covers field validation, signatures, element arithmetic, norms, traces, characteristic and minimal polynomials, and integrality tests. Integral bases, ideals, class groups, and units are still ahead, and no expression-level field objects are exposed yet.
 
 A size-sensitive build can omit the substrate:
 
@@ -93,7 +94,7 @@ The number theory domains are broad but not a research-level computer algebra sy
 - primitive-root, multiplicative-order, and discrete-log searches are brute force
 - partition and Bell computations use direct recurrences
 - analytic number theory is limited to exact arithmetic sums, Bernoulli and Euler numbers, Chebyshev functions, and truncated Dirichlet series
-- class field theory, general number fields, and ideal arithmetic are not implemented; the substrate for the number field layer exists, but no field or ideal objects are exposed yet
+- class field theory and ideal arithmetic are not implemented; internal number field construction and power basis arithmetic exist, but integral bases, ideals, class groups, units, and expression-level field objects are not implemented yet
 - elliptic curves cover affine arithmetic, point counting, and small-parameter Diffie-Hellman, not modularity, ranks, or descent
 - p-adic support covers valuations, norms, units, and truncated expansions, not a general p-adic field
 - quadratic forms cover positive definite reduction and class-number counting, not composition or general indefinite forms

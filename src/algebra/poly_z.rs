@@ -277,16 +277,24 @@ impl ZPoly {
     ///
     /// Non-monic polynomials above degree one are not decided and return
     /// `false`.
-    pub(crate) fn is_irreducible(&self) -> bool {
+    pub(crate) fn irreducibility(&self) -> Option<bool> {
         match self.degree() {
-            None => false,
-            Some(0) => true,
-            Some(1) => true,
+            None => Some(false),
+            Some(0) => Some(true),
+            Some(1) => Some(true),
             Some(_) => self
                 .factor()
-                .map(|factors| factors.len() == 1 && factors[0].1 == 1)
-                .unwrap_or(false),
+                .map(|factors| factors.len() == 1 && factors[0].1 == 1),
         }
+    }
+
+    /// True when the primitive polynomial is irreducible over the integers.
+    ///
+    /// Non-monic polynomials above degree one and undecided factorizations
+    /// return `false`. Use [`ZPoly::irreducibility`] when the distinction
+    /// matters.
+    pub(crate) fn is_irreducible(&self) -> bool {
+        self.irreducibility().unwrap_or(false)
     }
 
     pub(crate) fn to_rat_coeffs(&self) -> Vec<Rat> {
@@ -437,9 +445,14 @@ fn factor_squarefree(polynomial: &ZPoly) -> Option<Vec<ZPoly>> {
         else {
             continue;
         };
-        if let Some(factors) = recombine(polynomial, &lifted, &modulus) {
-            return Some(factors);
+        if lifted.len() > 20 {
+            continue;
         }
+        // A complete modular factorization lifted beyond the coefficient bound
+        // decides irreducibility: if no subset divides, no factor exists.
+        return Some(
+            recombine(polynomial, &lifted, &modulus).unwrap_or_else(|| vec![polynomial.clone()]),
+        );
     }
     None
 }
@@ -1300,6 +1313,49 @@ mod tests {
             left.resultant(&poly(&[0, 1])),
             Some(left.evaluate(&Int::zero()))
         );
+    }
+
+    #[test]
+    fn irreducibility_handles_a_quartic_with_no_irreducible_modular_reduction() {
+        let quartic = poly(&[1, 0, -10, 0, 1]);
+        assert_eq!(quartic.irreducibility(), Some(true));
+        assert_eq!(quartic.factor().unwrap().len(), 1);
+        assert!(quartic.is_irreducible());
+        assert_eq!(poly(&[-1, 0, 1]).irreducibility(), Some(false));
+        assert_eq!(poly(&[-2, 0, 0, 1]).factor().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn zassenhaus_random_monic_polynomials_rebuild_and_factor_irreducibly() {
+        let mut state = 0xfeed_face_cafe_beefu64;
+        for _ in 0..60 {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let degree = 1 + (state % 6) as usize;
+            let mut coefficients = Vec::with_capacity(degree + 1);
+            for _ in 0..degree {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                coefficients.push(Int::from_i64(((state >> 33) % 11) as i64 - 5));
+            }
+            coefficients.push(Int::one());
+            let polynomial = ZPoly::new(coefficients);
+            let factors = polynomial.factor().unwrap();
+            let rebuilt = multiply_all(
+                &factors
+                    .iter()
+                    .flat_map(|(factor, multiplicity)| {
+                        core::iter::repeat_n(factor.clone(), *multiplicity as usize)
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            assert_eq!(rebuilt, polynomial.primitive_part());
+            for (factor, _) in factors {
+                assert_eq!(factor.irreducibility(), Some(true));
+            }
+        }
     }
 
     #[test]
