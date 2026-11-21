@@ -14,6 +14,7 @@ use super::super::lattice::{integer_sqrt, smith_invariants};
 use super::decomposition::{PrimeIdeal, decompose_prime_general, factor_ideal};
 use super::ideal::{FractionalIdeal, Ideal};
 use super::order::Order;
+use super::units::unit_group;
 
 /// A computed class group.
 #[derive(Clone, Debug)]
@@ -116,6 +117,30 @@ pub(crate) fn class_group(order: &Order) -> Option<ClassGroup> {
         class_number,
         minkowski_bound: bound,
     })
+}
+
+/// The narrow class number of a quadratic field.
+///
+/// For a real quadratic field, the narrow class number is `h` when a unit of
+/// norm -1 exists and `2h` otherwise. Imaginary quadratic fields are unchanged.
+pub(crate) fn narrow_class_number(order: &Order) -> Option<Int> {
+    let group = class_group(order)?;
+    let field = order.field();
+    if field.degree() == 2 && field.signature() == (2, 0) {
+        let units = unit_group(order)?;
+        let negative_norm = units.fundamental_units().iter().any(|unit| {
+            field
+                .norm(unit)
+                .is_some_and(|norm| norm.den().is_one() && norm.num() == Int::from_i64(-1))
+        });
+        if negative_norm {
+            Some(group.class_number().clone())
+        } else {
+            Some(group.class_number().mul(&Int::from_i64(2)))
+        }
+    } else {
+        Some(group.class_number().clone())
+    }
 }
 
 fn enumerate_ideals(order: &Order, base: &[PrimeIdeal], bound: i64) -> Option<Vec<Ideal>> {
@@ -363,6 +388,20 @@ mod tests {
         {
             let forms = reduced_form_class_number(&Int::from_i64(discriminant)).unwrap();
             assert_eq!(forms, Int::from_i64(class_number));
+        }
+    }
+
+    #[test]
+    fn narrow_class_numbers_for_real_quadratic_fields() {
+        for (coefficients, narrow) in [
+            (&[-3i64, 0, 1][..], 2i64),
+            (&[-2, 0, 1][..], 1),
+            (&[-5, 0, 1][..], 1),
+            (&[-13, 0, 1][..], 1),
+        ] {
+            let field = field(coefficients);
+            let order = maximal_order(&field).unwrap();
+            assert_eq!(narrow_class_number(&order).unwrap(), Int::from_i64(narrow));
         }
     }
 

@@ -373,4 +373,5 @@ Initial kernel work.
 - Added an independent reduced binary quadratic form class-number cross-check for imaginary quadratic fields.
 - Added conductor ideals for orders in maximal orders through lattice colons.
 - Added fixed-precision p-adic field arithmetic with valuation, addition, multiplication, inversion, and rational embedding.
+- Added narrow class numbers for quadratic fields using the norm of the fundamental unit.
 - Added unit-data verification for general-rank regulators without claiming saturation.
