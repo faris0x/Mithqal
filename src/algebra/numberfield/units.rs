@@ -3,9 +3,9 @@
 //! The torsion subgroup is explicit for imaginary quadratic fields. Real
 //! quadratic fundamental units are found by exact norm tests over a bounded
 //! coefficient box. Rank-one higher-degree fields use numeric embeddings for
-//! the log norm, and rank-two fields use the covolume of pairs of unit log
-//! vectors. Rank three and higher and certified general log lattices are not
-//! implemented yet.
+//! the log norm. Rank two and higher fields select independent unit log vectors
+//! and compute the covolume of the generated sublattice. These higher-rank
+//! regulators are experimental and not certified saturated.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -66,17 +66,14 @@ pub(crate) fn unit_group(order: &Order) -> Option<UnitGroup> {
             fundamental_units: Vec::new(),
         });
     }
-    if rank == 2 {
-        let (units, regulator, torsion) = rank_two_unit(order)?;
+    if rank >= 2 {
+        let (units, regulator, torsion) = rank_r_unit(order, rank)?;
         return Some(UnitGroup {
             rank,
             torsion_order: torsion,
             regulator: Some(regulator),
             fundamental_units: units,
         });
-    }
-    if rank != 1 {
-        return None;
     }
     if degree == 2 && real_embeddings == 2 {
         let (unit, regulator) = fundamental_real_quadratic(order)?;
@@ -363,11 +360,11 @@ fn log_vector(element: &FieldElement, roots: &[Complex]) -> Option<Vec<f64>> {
     Some(vector)
 }
 
-fn rank_two_unit(order: &Order) -> Option<(Vec<FieldElement>, f64, u32)> {
+fn rank_r_unit(order: &Order, rank: usize) -> Option<(Vec<FieldElement>, f64, u32)> {
     let field = order.field();
     let size = field.degree();
     let roots = numeric_roots(field)?;
-    let radius = 6i64;
+    let radius = if size <= 4 { 5i64 } else { 3 };
     let total = (2 * radius + 1).checked_pow(size as u32)?;
     if total > 3_000_000 {
         return None;
@@ -406,35 +403,74 @@ fn rank_two_unit(order: &Order) -> Option<(Vec<FieldElement>, f64, u32)> {
         }
         units.push((vector, element));
     }
-    let mut best: Option<(f64, usize, usize)> = None;
-    for left in 0..units.len() {
-        for right in left + 1..units.len() {
-            let first = &units[left].0;
-            let second = &units[right].0;
-            let mut first_norm = 0.0;
-            let mut second_norm = 0.0;
-            let mut product = 0.0;
-            for (a, b) in first.iter().zip(second) {
-                first_norm += a * a;
-                second_norm += b * b;
-                product += a * b;
+    let mut selected: Vec<Vec<f64>> = Vec::new();
+    let mut fundamental = Vec::new();
+    for (vector, element) in units {
+        let mut residual = vector.clone();
+        for basis in &selected {
+            let mut dot = 0.0;
+            let mut norm = 0.0;
+            for (a, b) in residual.iter().zip(basis) {
+                dot += a * b;
+                norm += b * b;
             }
-            let determinant = (first_norm * second_norm - product * product).max(0.0);
-            let area = determinant.sqrt();
-            if area < 1e-10 {
+            if norm <= 1e-18 {
                 continue;
             }
-            if best.as_ref().is_none_or(|(current, _, _)| area < *current) {
-                best = Some((area, left, right));
+            let factor = dot / norm;
+            for (value, base) in residual.iter_mut().zip(basis) {
+                *value -= factor * base;
+            }
+        }
+        let residual_norm = residual.iter().map(|value| value * value).sum::<f64>();
+        if residual_norm > 1e-10 {
+            selected.push(vector);
+            fundamental.push(element);
+            if selected.len() == rank {
+                break;
             }
         }
     }
-    let (regulator, left, right) = best?;
-    Some((
-        vec![units[left].1.clone(), units[right].1.clone()],
-        regulator,
-        torsion,
-    ))
+    if selected.len() != rank {
+        return None;
+    }
+    let mut gram = vec![vec![0.0f64; rank]; rank];
+    for i in 0..rank {
+        for j in 0..rank {
+            gram[i][j] = selected[i]
+                .iter()
+                .zip(&selected[j])
+                .map(|(a, b)| a * b)
+                .sum();
+        }
+    }
+    let regulator = determinant_f64(&mut gram)?.abs().sqrt();
+    if regulator <= 0.0 {
+        return None;
+    }
+    Some((fundamental, regulator, torsion))
+}
+
+#[allow(clippy::needless_range_loop)]
+fn determinant_f64(matrix: &mut [Vec<f64>]) -> Option<f64> {
+    let size = matrix.len();
+    let mut determinant = 1.0f64;
+    for column in 0..size {
+        let pivot = (column..size).find(|row| matrix[*row][column].abs() > 1e-14)?;
+        if pivot != column {
+            matrix.swap(pivot, column);
+            determinant = -determinant;
+        }
+        let value = matrix[column][column];
+        determinant *= value;
+        for row in column + 1..size {
+            let factor = matrix[row][column] / value;
+            for entry in column..size {
+                matrix[row][entry] -= factor * matrix[column][entry];
+            }
+        }
+    }
+    Some(determinant)
 }
 
 fn general_torsion_order(order: &Order) -> Option<u32> {
@@ -562,6 +598,20 @@ mod tests {
         assert_eq!(units.torsion_order(), 2);
         assert!(units.regulator().unwrap() > 0.0);
         assert_eq!(units.fundamental_units().len(), 2);
+        for unit in units.fundamental_units() {
+            assert!(field.norm(unit).unwrap().abs().is_one());
+        }
+    }
+
+    #[test]
+    fn real_quartic_rank_three_units() {
+        let field = field(&[1, 0, -10, 0, 1]);
+        let order = maximal_order(&field).unwrap();
+        let units = unit_group(&order).unwrap();
+        assert_eq!(units.rank(), 3);
+        assert_eq!(units.torsion_order(), 2);
+        assert!(units.regulator().unwrap() > 0.0);
+        assert_eq!(units.fundamental_units().len(), 3);
         for unit in units.fundamental_units() {
             assert!(field.norm(unit).unwrap().abs().is_one());
         }

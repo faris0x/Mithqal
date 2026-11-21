@@ -92,6 +92,62 @@ impl Complex {
     pub(crate) fn pow(self, exponent: Self) -> Option<Self> {
         Some(exponent.mul(self.ln()?).exp())
     }
+
+    /// Complex sine.
+    pub(crate) fn sin(self) -> Self {
+        let imaginary_unit = Complex::new(0.0, 1.0);
+        let positive = self.mul(imaginary_unit).exp();
+        let negative = self.mul(imaginary_unit.neg()).exp();
+        positive
+            .sub(negative)
+            .div(Complex::new(0.0, 2.0))
+            .unwrap_or_else(Complex::zero)
+    }
+
+    /// Complex cosine.
+    pub(crate) fn cos(self) -> Self {
+        let imaginary_unit = Complex::new(0.0, 1.0);
+        let positive = self.mul(imaginary_unit).exp();
+        let negative = self.mul(imaginary_unit.neg()).exp();
+        positive
+            .add(negative)
+            .div(Complex::new(2.0, 0.0))
+            .unwrap_or_else(Complex::zero)
+    }
+
+    /// Complex gamma by Lanczos approximation with reflection.
+    pub(crate) fn gamma(self) -> Option<Self> {
+        const COEFFICIENTS: [f64; 9] = [
+            0.999_999_999_999_809_9,
+            676.520_368_121_885_1,
+            -1_259.139_216_722_402_8,
+            771.323_428_777_653_1,
+            -176.615_029_162_140_6,
+            12.507_343_278_686_905,
+            -0.138_571_095_265_720_12,
+            9.984_369_578_019_57e-6,
+            1.505_632_735_149_311_6e-7,
+        ];
+        if self.re < 0.5 {
+            let pi = core::f64::consts::PI;
+            let sine = Complex::new(pi * self.re, pi * self.im).sin();
+            return Complex::new(pi, 0.0).div(sine.mul(Complex::one().sub(self).gamma()?));
+        }
+        let z = self.sub(Complex::one());
+        let mut series = Complex::new(COEFFICIENTS[0], 0.0);
+        for (index, coefficient) in COEFFICIENTS.iter().enumerate().skip(1) {
+            series = series
+                .add(Complex::new(*coefficient, 0.0).div(z.add(Complex::new(index as f64, 0.0)))?);
+        }
+        let shifted = z.add(Complex::new(7.5, 0.0));
+        let two_pi = (2.0 * core::f64::consts::PI).sqrt();
+        Some(
+            Complex::new(two_pi, 0.0)
+                .mul(shifted.pow(z.add(Complex::new(0.5, 0.0)))?)
+                .mul(shifted.neg().exp())
+                .mul(series),
+        )
+    }
 }
 
 const BERNOULLI: [(f64, usize); 10] = [
@@ -150,6 +206,31 @@ pub(crate) fn hurwitz_zeta(s: Complex, a: f64) -> Option<Complex> {
 
 /// Evaluate the Riemann zeta function.
 pub(crate) fn zeta(s: Complex) -> Option<Complex> {
+    if s.im == 0.0 && s.re <= 0.0 && s.re % 1.0 == 0.0 {
+        let index = (-s.re) as i64;
+        return Some(match index {
+            0 => Complex::new(-0.5, 0.0),
+            1 => Complex::new(-1.0 / 12.0, 0.0),
+            2 => Complex::zero(),
+            3 => Complex::new(1.0 / 120.0, 0.0),
+            _ => {
+                if index % 2 == 0 {
+                    Complex::zero()
+                } else {
+                    return None;
+                }
+            }
+        });
+    }
+    if s.re < 0.5 {
+        let one_minus = Complex::one().sub(s);
+        let pi = core::f64::consts::PI;
+        let factor = power_real(2.0, s)
+            .mul(power_real(pi, s.sub(Complex::one())))
+            .mul(Complex::new(pi * s.re / 2.0, pi * s.im / 2.0).sin())
+            .mul(one_minus.gamma()?);
+        return Some(factor.mul(zeta(one_minus)?));
+    }
     hurwitz_zeta(s, 1.0)
 }
 
@@ -424,6 +505,7 @@ mod tests {
         assert!((zeta_zero.re + 0.5).abs() < 1e-10);
         let zeta_negative = zeta(rational(-1.0)).unwrap();
         assert!((zeta_negative.re + 1.0 / 12.0).abs() < 1e-10);
+        assert!(zeta(rational(-2.0)).unwrap().abs() < 1e-12);
     }
 
     #[test]

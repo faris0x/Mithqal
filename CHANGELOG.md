@@ -365,3 +365,5 @@ Initial kernel work.
 - Added rank-one higher-degree unit groups and regulators using exact norm tests and numerically verified embeddings, with torsion detection.
 - Added rank-two unit groups and regulators using the covolume of unit log vectors, plus torsion detection.
 - Added experimental Euler-Maclaurin Hurwitz zeta evaluation, Riemann zeta, Dirichlet L-functions through Hurwitz decomposition, and critical-line zero scanning.
+- Extended experimental unit groups to general rank using selected independent unit log vectors and covolume regulators.
+- Added the Riemann zeta functional equation with complex gamma and negative-integer values.

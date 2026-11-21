@@ -50,7 +50,7 @@ The current audit indicates that the following areas still contain substantial k
 - arbitrary precision integer and modular polynomial factorization, including Hensel lifting and Zassenhaus recombination
 - exact rational matrix algebra, Sturm signatures, and power basis number field arithmetic
 - maximal orders by the p-radical Round 2 step, integral bases, multiplication tables, and p-maximality checks
-- codifferent and different lattices, fractional ideal arithmetic, ideal factorization, prime ideal decomposition, small-degree class groups, quadratic, rank-one, and rank-two unit groups, and experimental Hurwitz zeta and Dirichlet L evaluation
+- codifferent and different lattices, fractional ideal arithmetic, ideal factorization, prime ideal decomposition, small-degree class groups, quadratic and general experimental unit groups, and experimental Hurwitz zeta, Riemann zeta functional equation, Dirichlet L evaluation, and critical-line zero scanning
 - calculus kernels and limits
 - exact rational linear algebra
 - integer number theory
@@ -96,7 +96,7 @@ The number theory domains are broad but not a research-level computer algebra sy
 - primitive-root, multiplicative-order, and discrete-log searches are brute force
 - partition and Bell computations use direct recurrences
 - analytic number theory is limited to exact arithmetic sums, Bernoulli and Euler numbers, Chebyshev functions, and truncated Dirichlet series
-- class field theory and general higher-degree units are not implemented; class groups are computed for small-degree fields with bounded Minkowski radii, quadratic, rank-one, and rank-two units and regulators are implemented, experimental zeta and Dirichlet L evaluation exists, and rank-three unit lattices, certified zero theory, large-index non-monogenic decomposition, and expression-level field objects are still ahead
+- class field theory and general higher-degree units are not implemented; class groups are computed for small-degree fields with bounded Minkowski radii, experimental units and regulators are implemented through general rank, zeta and Dirichlet L evaluation exists with the Riemann functional equation, and certified unit saturation, certified zero theory, large-index non-monogenic decomposition, and expression-level field objects are still ahead
 - elliptic curves cover affine arithmetic, point counting, and small-parameter Diffie-Hellman, not modularity, ranks, or descent
 - p-adic support covers valuations, norms, units, and truncated expansions, not a general p-adic field
 - quadratic forms cover positive definite reduction and class-number counting, not composition or general indefinite forms
