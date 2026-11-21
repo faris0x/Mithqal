@@ -6,4 +6,6 @@
 
 mod element;
 mod field;
+mod integral_basis;
+mod order;
 mod sturm;

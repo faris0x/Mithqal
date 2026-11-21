@@ -157,7 +157,7 @@ fn factor_recursive(value: u64, factors: &mut Vec<u64>) {
     factor_recursive(value / divisor, factors);
 }
 
-fn factor_u64(value: u64) -> Vec<(u64, u32)> {
+pub(crate) fn factor_u64(value: u64) -> Vec<(u64, u32)> {
     let mut factors = Vec::new();
     factor_recursive(value, &mut factors);
     factors.sort_unstable();

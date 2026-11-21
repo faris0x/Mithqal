@@ -273,6 +273,164 @@ pub(crate) fn smith_normal_form(matrix: &IntMatrix) -> Option<(IntMatrix, IntMat
     Some((a, u, v))
 }
 
+/// The Smith normal form with only the column transform.
+///
+/// Returns `(d, v)` where `d` is diagonal and `v` is unimodular. A left
+/// transform exists but is not tracked or returned. This is intended for large
+/// rectangular congruence matrices where constructing and verifying the left
+/// transform is disproportionate.
+#[allow(clippy::needless_range_loop)]
+pub(crate) fn smith_normal_form_with_column_transform(
+    matrix: &IntMatrix,
+) -> Option<(IntMatrix, IntMatrix)> {
+    let rows = matrix.row_count();
+    let columns = matrix.column_count();
+    let mut a = matrix.clone();
+    let mut v = IntMatrix::identity(columns);
+    let guard_limit = rows
+        .saturating_mul(columns)
+        .saturating_mul(32)
+        .saturating_add(256);
+    let mut guard = 0usize;
+    let mut pivot = 0usize;
+    while pivot < rows && pivot < columns {
+        let Some((found_row, found_column)) = find_nonzero(&a, pivot) else {
+            break;
+        };
+        if found_row != pivot {
+            a.swap_rows(found_row, pivot);
+        }
+        if found_column != pivot {
+            a.swap_columns(found_column, pivot);
+            v.swap_columns(found_column, pivot);
+        }
+        loop {
+            guard += 1;
+            if guard > guard_limit {
+                return None;
+            }
+            let mut changed = false;
+            for row in 0..rows {
+                if row == pivot {
+                    continue;
+                }
+                let entry = a.get(row, pivot);
+                if entry.is_zero() {
+                    continue;
+                }
+                let pivot_value = a.get(pivot, pivot);
+                if divides_exact(&pivot_value, &entry) {
+                    let factor = div_exact(&entry, &pivot_value);
+                    a.add_row_multiple(row, pivot, &factor.neg());
+                    changed = true;
+                } else {
+                    let (gcd, s, t) = extended_gcd(&pivot_value, &entry);
+                    let source_row = a.row(pivot);
+                    let other_row = a.row(row);
+                    let other_factor = div_exact(&entry, &gcd).neg();
+                    let pivot_factor = div_exact(&pivot_value, &gcd);
+                    let new_pivot_row = combine(&source_row, &other_row, &s, &t);
+                    let new_other_row =
+                        combine(&source_row, &other_row, &other_factor, &pivot_factor);
+                    a.set_row(pivot, new_pivot_row);
+                    a.set_row(row, new_other_row);
+                    changed = true;
+                }
+            }
+            for column in 0..columns {
+                if column == pivot {
+                    continue;
+                }
+                let entry = a.get(pivot, column);
+                if entry.is_zero() {
+                    continue;
+                }
+                let pivot_value = a.get(pivot, pivot);
+                if divides_exact(&pivot_value, &entry) {
+                    let factor = div_exact(&entry, &pivot_value);
+                    a.add_column_multiple(column, pivot, &factor.neg());
+                    v.add_column_multiple(column, pivot, &factor.neg());
+                    changed = true;
+                } else {
+                    let (gcd, s, t) = extended_gcd(&pivot_value, &entry);
+                    let source_column = a.column(pivot);
+                    let other_column = a.column(column);
+                    let source_v = v.column(pivot);
+                    let other_v = v.column(column);
+                    let new_pivot_column = combine(&source_column, &other_column, &s, &t);
+                    let other_factor = div_exact(&entry, &gcd).neg();
+                    let pivot_factor = div_exact(&pivot_value, &gcd);
+                    let new_other_column =
+                        combine(&source_column, &other_column, &other_factor, &pivot_factor);
+                    let new_pivot_v = combine(&source_v, &other_v, &s, &t);
+                    let new_other_v = combine(&source_v, &other_v, &other_factor, &pivot_factor);
+                    a.set_column(pivot, new_pivot_column);
+                    a.set_column(column, new_other_column);
+                    v.set_column(pivot, new_pivot_v);
+                    v.set_column(column, new_other_v);
+                    changed = true;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        let pivot_value = a.get(pivot, pivot);
+        if pivot_value.is_zero() {
+            pivot += 1;
+            continue;
+        }
+        let mut offender = None;
+        'scan: for row in pivot..rows {
+            for column in pivot..columns {
+                if row == pivot && column == pivot {
+                    continue;
+                }
+                if !divides_exact(&pivot_value, &a.get(row, column)) {
+                    offender = Some(row);
+                    break 'scan;
+                }
+            }
+        }
+        if let Some(row) = offender {
+            a.add_row_multiple(pivot, row, &Int::one());
+            continue;
+        }
+        if a.get(pivot, pivot).sign() < 0 {
+            a.scale_row(pivot, &Int::from_i64(-1));
+        }
+        pivot += 1;
+    }
+    if v.determinant()?.abs() != Int::one() {
+        return None;
+    }
+    let size = rows.min(columns);
+    for row in 0..rows {
+        for column in 0..columns {
+            if row != column && !a.get(row, column).is_zero() {
+                return None;
+            }
+        }
+    }
+    let mut previous = Int::one();
+    let mut saw_zero = false;
+    for index in 0..size {
+        let value = a.get(index, index);
+        if value.sign() < 0 {
+            return None;
+        }
+        if value.is_zero() {
+            saw_zero = true;
+            continue;
+        }
+        if saw_zero || !divides_exact(&previous, &value) {
+            return None;
+        }
+        previous = value;
+    }
+    Some((a, v))
+}
+
 /// The nonzero diagonal entries of the Smith normal form, each at least one.
 pub(crate) fn smith_invariants(matrix: &IntMatrix) -> Option<Vec<Int>> {
     let (diagonal, _, _) = smith_normal_form(matrix)?;
@@ -694,6 +852,27 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn column_transform_smith_matches_full_invariants() {
+        let mut state = 0x2468_ace0_1357_9bdfu64;
+        for _ in 0..24 {
+            let mut rows = vec![vec![Int::zero(); 4]; 3];
+            for row in &mut rows {
+                for value in row.iter_mut() {
+                    state = state
+                        .wrapping_mul(6_364_136_223_846_793_005)
+                        .wrapping_add(1_442_695_040_888_963_407);
+                    *value = Int::from_i64(((state >> 33) % 9) as i64 - 4);
+                }
+            }
+            let source = IntMatrix::from_rows(rows).unwrap();
+            let (full, _, _) = smith_normal_form(&source).unwrap();
+            let (diagonal, transform) = smith_normal_form_with_column_transform(&source).unwrap();
+            assert_eq!(full, diagonal);
+            assert_eq!(transform.determinant().unwrap().abs(), Int::one());
         }
     }
 

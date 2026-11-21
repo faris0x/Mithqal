@@ -350,3 +350,6 @@ Initial kernel work.
 - Added exact rational matrix algebra for characteristic polynomials, nullspaces, inverses, and number field computations.
 - Added exact number field construction with irreducibility validation, Sturm signatures, power-basis discriminants, element arithmetic, norms, traces, characteristic and minimal polynomials, and integrality tests.
 - Fixed Zassenhaus irreducibility decisions for polynomials with no irreducible modular reduction, including quartic fields with Klein four Galois group.
+- Added integral basis and maximal order computation by the p-radical Round 2 step, with a monogenic fast path, p-maximality checks, multiplication tables, and index and discriminant verification.
+- Added a column-transform-only Smith normal form for large rectangular congruence systems used by the multiplier ring step.
+- Hardened orders with basis integrality, associativity, containment, and discriminant identity checks, including p = 2, 3, and 5 cases and index 4 and 8 fields.
