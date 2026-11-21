@@ -1,8 +1,10 @@
 //! Integral ideals as lattices, the codifferent, and the different.
 //!
-//! The first layer represents an integral ideal by a column basis in the
-//! maximal order coordinates. Norms are lattice indices. Ideal multiplication
-//! and class groups remain for the next pass.
+//! Integral ideals use a column basis in maximal order coordinates, with norms
+//! as lattice indices. Fractional ideals add a denominator. The layer covers
+//! multiplication, inversion, division, powers, factorization valuation, the
+//! codifferent, and the different. Class groups and units remain for the next
+//! pass.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -11,7 +13,9 @@ use crate::num::{Int, Rat};
 
 use super::super::dense::lcm;
 use super::super::intmatrix::{IntMatrix, div_exact};
-use super::super::lattice::{column_hermite_normal_form, smith_normal_form_with_column_transform};
+use super::super::lattice::{
+    column_hermite_normal_form, generator_lattice_basis, smith_normal_form_with_column_transform,
+};
 use super::super::ratmatrix::{RatMatrix, rat_from_int};
 use super::element::FieldElement;
 use super::order::Order;
@@ -47,7 +51,7 @@ impl Ideal {
         if matrix.row_count() != size {
             return None;
         }
-        let form = column_hermite_normal_form(&matrix);
+        let form = generator_lattice_basis(&matrix)?;
         if form.column_count() != size {
             return None;
         }
@@ -84,6 +88,11 @@ impl Ideal {
 
     /// True when the coordinates lie in the ideal.
     pub(crate) fn contains(&self, coordinates: &[Int]) -> bool {
+        self.contains_all(core::slice::from_ref(&coordinates.to_vec()))
+    }
+
+    /// True when every listed coordinate vector lies in the ideal.
+    pub(crate) fn contains_all(&self, coordinates: &[Vec<Int>]) -> bool {
         let matrix = match IntMatrix::from_columns(self.basis.clone()) {
             Some(matrix) => matrix,
             None => return false,
@@ -101,19 +110,289 @@ impl Ideal {
         let Some(inverse) = rational.inverse() else {
             return false;
         };
-        let column =
-            match RatMatrix::from_columns(vec![coordinates.iter().map(rat_from_int).collect()]) {
-                Some(column) => column,
-                None => return false,
+        for coordinates in coordinates {
+            let column =
+                match RatMatrix::from_columns(vec![coordinates.iter().map(rat_from_int).collect()])
+                {
+                    Some(column) => column,
+                    None => return false,
+                };
+            let Some(solution) = inverse.multiply(&column) else {
+                return false;
             };
-        let Some(solution) = inverse.multiply(&column) else {
+            if !solution
+                .to_rows()
+                .iter()
+                .flatten()
+                .all(|value| value.den().is_one())
+            {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl Ideal {
+    /// The unit ideal.
+    pub(crate) fn identity(order: &Order) -> Option<Self> {
+        let size = order.field().degree();
+        let mut basis = Vec::with_capacity(size);
+        for index in 0..size {
+            let mut column = vec![Int::zero(); size];
+            column[index] = Int::one();
+            basis.push(column);
+        }
+        Ideal::from_basis(basis)
+    }
+
+    /// The product of two integral ideals.
+    pub(crate) fn multiply(&self, order: &Order, other: &Ideal) -> Option<Self> {
+        let size = order.field().degree();
+        let mut generators = Vec::with_capacity(size * size);
+        for left in &self.basis {
+            for right in &other.basis {
+                generators.push(order.multiply_coordinates(left, right));
+            }
+        }
+        let product = Ideal::from_generators(&generators, size)?;
+        if product.norm() != &self.norm.mul(&other.norm) {
+            return None;
+        }
+        Some(product)
+    }
+    /// A nonnegative power.
+    pub(crate) fn power(&self, order: &Order, exponent: u32) -> Option<Self> {
+        let mut result = Ideal::identity(order)?;
+        let mut factor = self.clone();
+        let mut exponent = exponent;
+        while exponent > 0 {
+            if exponent & 1 == 1 {
+                result = result.multiply(order, &factor)?;
+            }
+            exponent >>= 1;
+            if exponent > 0 {
+                factor = factor.multiply(order, &factor)?;
+            }
+        }
+        Some(result)
+    }
+
+    /// True when every element of this ideal lies in `other`.
+    pub(crate) fn is_subset_of(&self, other: &Ideal) -> bool {
+        self.basis.iter().all(|column| other.contains(column))
+    }
+
+    /// True when the two ideals have the same lattice.
+    pub(crate) fn equals(&self, other: &Ideal) -> bool {
+        let Ok(left) = IntMatrix::from_columns(self.basis.clone()).ok_or(()) else {
             return false;
         };
-        solution
-            .to_rows()
-            .iter()
-            .flatten()
-            .all(|value| value.den().is_one())
+        let Ok(right) = IntMatrix::from_columns(other.basis.clone()).ok_or(()) else {
+            return false;
+        };
+        column_hermite_normal_form(&left) == column_hermite_normal_form(&right)
+    }
+}
+
+/// A fractional ideal `(1/d) I`.
+#[derive(Clone, Debug)]
+pub(crate) struct FractionalIdeal {
+    basis: Vec<Vec<Int>>,
+    denominator: Int,
+    norm: Rat,
+}
+
+impl FractionalIdeal {
+    /// Build from a canonical numerator lattice and positive denominator.
+    pub(crate) fn from_numerator(basis: Vec<Vec<Int>>, denominator: Int) -> Option<Self> {
+        let size = basis.len();
+        if size == 0 || basis.iter().any(|column| column.len() != size) {
+            return None;
+        }
+        if denominator.sign() <= 0 {
+            return None;
+        }
+        let matrix = IntMatrix::from_columns(basis)?;
+        let form = column_hermite_normal_form(&matrix);
+        if form.column_count() != size {
+            return None;
+        }
+        let mut basis: Vec<Vec<Int>> = (0..size).map(|column| form.column(column)).collect();
+        let determinant = form.determinant()?.abs();
+        if determinant.is_zero() {
+            return None;
+        }
+        let mut content = Int::zero();
+        for column in &basis {
+            for value in column {
+                content = content.gcd(&value.abs());
+            }
+        }
+        let common = content.gcd(&denominator);
+        let divisor = if common.is_zero() { Int::one() } else { common };
+        let denominator = div_exact(&denominator, &divisor);
+        if !divisor.is_one() {
+            for column in &mut basis {
+                for value in column {
+                    *value = div_exact(value, &divisor);
+                }
+            }
+        }
+        let determinant = IntMatrix::from_columns(basis.clone())?.determinant()?.abs();
+        let norm = Rat::from_ints(determinant, denominator.pow_u32(size as u32)).ok()?;
+        Some(FractionalIdeal {
+            basis,
+            denominator,
+            norm,
+        })
+    }
+
+    /// The unit fractional ideal.
+    pub(crate) fn identity(order: &Order) -> Option<Self> {
+        FractionalIdeal::from_integral(Ideal::identity(order)?)
+    }
+
+    /// Promote an integral ideal.
+    pub(crate) fn from_integral(ideal: Ideal) -> Option<Self> {
+        FractionalIdeal::from_numerator(ideal.basis, Int::one())
+    }
+
+    /// Build from a rational power basis.
+    pub(crate) fn from_power_basis(order: &Order, basis: &RatMatrix) -> Option<Self> {
+        let coordinates = order.basis().inverse()?.multiply(basis)?;
+        let size = coordinates.row_count();
+        let mut denominator = Int::one();
+        for row in coordinates.to_rows().iter() {
+            for value in row {
+                denominator = lcm(&denominator, &value.den());
+            }
+        }
+        let mut columns = Vec::with_capacity(coordinates.column_count());
+        for column in 0..coordinates.column_count() {
+            let mut values = Vec::with_capacity(size);
+            for row in 0..size {
+                let value = coordinates.get(row, column);
+                let scale = div_exact(&denominator, &value.den());
+                values.push(value.num().mul(&scale));
+            }
+            columns.push(values);
+        }
+        FractionalIdeal::from_numerator(columns, denominator)
+    }
+
+    /// The numerator basis in order coordinates.
+    pub(crate) fn basis(&self) -> &[Vec<Int>] {
+        &self.basis
+    }
+
+    /// The denominator.
+    pub(crate) fn denominator(&self) -> &Int {
+        &self.denominator
+    }
+
+    /// The fractional ideal norm.
+    pub(crate) fn norm(&self) -> &Rat {
+        &self.norm
+    }
+
+    /// True when the fractional ideal is integral.
+    pub(crate) fn is_integral(&self) -> bool {
+        self.basis.iter().flatten().all(|value| {
+            value
+                .divrem(&self.denominator)
+                .map(|(_, remainder)| remainder.is_zero())
+                .unwrap_or(false)
+        })
+    }
+
+    /// Convert to an integral ideal when possible.
+    pub(crate) fn to_integral(&self) -> Option<Ideal> {
+        if !self.is_integral() {
+            return None;
+        }
+        let mut columns = Vec::with_capacity(self.basis.len());
+        for column in &self.basis {
+            let mut values = Vec::with_capacity(column.len());
+            for value in column {
+                values.push(div_exact(value, &self.denominator));
+            }
+            columns.push(values);
+        }
+        Ideal::from_basis(columns)
+    }
+
+    /// The power basis of the fractional ideal.
+    pub(crate) fn power_basis(&self, order: &Order) -> Option<RatMatrix> {
+        let size = order.field().degree();
+        let numerator = RatMatrix::from_columns(
+            self.basis
+                .iter()
+                .map(|column| column.iter().map(rat_from_int).collect())
+                .collect(),
+        )?;
+        let product = order.basis().multiply(&numerator)?;
+        let inverse_denominator = Rat::one().div(&rat_from_int(&self.denominator)).ok()?;
+        let mut columns = Vec::with_capacity(size);
+        for column in 0..product.column_count() {
+            columns.push(
+                product
+                    .column(column)
+                    .iter()
+                    .map(|value| value.mul(&inverse_denominator))
+                    .collect(),
+            );
+        }
+        RatMatrix::from_columns(columns)
+    }
+
+    /// The product of two fractional ideals.
+    pub(crate) fn multiply(&self, order: &Order, other: &FractionalIdeal) -> Option<Self> {
+        let size = order.field().degree();
+        let mut generators = Vec::with_capacity(size * size);
+        for left in &self.basis {
+            for right in &other.basis {
+                generators.push(order.multiply_coordinates(left, right));
+            }
+        }
+        let matrix = IntMatrix::from_columns(generators)?;
+        let form = generator_lattice_basis(&matrix)?;
+        if form.column_count() != size {
+            return None;
+        }
+        FractionalIdeal::from_numerator(
+            (0..size).map(|column| form.column(column)).collect(),
+            self.denominator.mul(&other.denominator),
+        )
+    }
+
+    /// The inverse fractional ideal.
+    pub(crate) fn inverse(&self, order: &Order) -> Option<Self> {
+        let basis = self.power_basis(order)?;
+        let inverse = inverse_ideal_lattice(order, &basis)?;
+        FractionalIdeal::from_power_basis(order, &inverse)
+    }
+
+    /// The quotient of two fractional ideals.
+    pub(crate) fn divide(&self, order: &Order, other: &FractionalIdeal) -> Option<Self> {
+        self.multiply(order, &other.inverse(order)?)
+    }
+
+    /// A nonnegative power.
+    pub(crate) fn power(&self, order: &Order, exponent: u32) -> Option<Self> {
+        let mut result = FractionalIdeal::identity(order)?;
+        let mut factor = self.clone();
+        let mut exponent = exponent;
+        while exponent > 0 {
+            if exponent & 1 == 1 {
+                result = result.multiply(order, &factor)?;
+            }
+            exponent >>= 1;
+            if exponent > 0 {
+                factor = factor.multiply(order, &factor)?;
+            }
+        }
+        Some(result)
     }
 }
 
@@ -314,6 +593,110 @@ mod tests {
             let diff = different(&order).unwrap();
             assert_eq!(diff.norm(), &Int::from_i64(discriminant));
             assert!(different_is_dual(&order, &diff, &codiff));
+        }
+    }
+
+    #[test]
+    fn ideal_multiplication_and_inversion() {
+        let field = field(&[5, 0, 1]);
+        let order = maximal_order(&field).unwrap();
+        let size = field.degree();
+        let mut generators = Vec::new();
+        for index in 0..size {
+            let mut column = vec![Int::zero(); size];
+            column[index] = Int::from_i64(2);
+            generators.push(column);
+        }
+        generators.push(vec![Int::one(), Int::one()]);
+        let prime = Ideal::from_generators(&generators, size).unwrap();
+        assert_eq!(prime.norm(), &Int::from_i64(2));
+        let square = prime.multiply(&order, &prime).unwrap();
+        assert_eq!(square.norm(), &Int::from_i64(4));
+        let two = Ideal::from_generators(
+            &(0..size)
+                .map(|index| {
+                    let mut column = vec![Int::zero(); size];
+                    column[index] = Int::from_i64(2);
+                    column
+                })
+                .collect::<Vec<_>>(),
+            size,
+        )
+        .unwrap();
+        assert!(square.equals(&two));
+        assert!(square.is_subset_of(&two));
+        assert!(two.is_subset_of(&square));
+    }
+
+    #[test]
+    fn fractional_ideals_have_reciprocal_norms() {
+        let field = field(&[5, 0, 1]);
+        let order = maximal_order(&field).unwrap();
+        let half = FractionalIdeal::from_numerator(
+            (0..field.degree())
+                .map(|index| {
+                    let mut column = vec![Int::zero(); field.degree()];
+                    column[index] = Int::one();
+                    column
+                })
+                .collect(),
+            Int::from_i64(2),
+        )
+        .unwrap();
+        assert_eq!(half.norm(), &rational(1, 4));
+        assert!(!half.is_integral());
+        let inverse = half.inverse(&order).unwrap();
+        assert_eq!(inverse.norm(), &rational(4, 1));
+        assert_eq!(inverse.denominator(), &Int::one());
+        assert!(inverse.is_integral());
+        let product = half.multiply(&order, &inverse).unwrap();
+        assert_eq!(product.norm(), &rational(1, 1));
+        assert!(product.is_integral());
+        assert!(
+            product
+                .to_integral()
+                .unwrap()
+                .equals(&Ideal::identity(&order).unwrap())
+        );
+    }
+
+    #[test]
+    fn fractional_power_and_division() {
+        let field = field(&[5, 0, 1]);
+        let order = maximal_order(&field).unwrap();
+        let mut generators = Vec::new();
+        for index in 0..field.degree() {
+            let mut column = vec![Int::zero(); field.degree()];
+            column[index] = Int::from_i64(2);
+            generators.push(column);
+        }
+        generators.push(vec![Int::one(), Int::one()]);
+        let ideal = FractionalIdeal::from_integral(
+            Ideal::from_generators(&generators, field.degree()).unwrap(),
+        )
+        .unwrap();
+        let square = ideal.power(&order, 2).unwrap();
+        assert_eq!(square.norm(), &rational(4, 1));
+        let quotient = square.divide(&order, &ideal).unwrap();
+        assert_eq!(quotient.norm(), ideal.norm());
+    }
+
+    #[test]
+    fn different_times_codifferent_is_the_unit_ideal() {
+        for coefficients in [&[-5i64, 0, 1][..], &[-2, 0, 0, 1][..]] {
+            let field = field(coefficients);
+            let order = maximal_order(&field).unwrap();
+            let codifferent =
+                FractionalIdeal::from_power_basis(&order, &codifferent(&order).unwrap()).unwrap();
+            let different = FractionalIdeal::from_integral(different(&order).unwrap()).unwrap();
+            let product = codifferent.multiply(&order, &different).unwrap();
+            assert_eq!(product.norm(), &rational(1, 1));
+            assert!(
+                product
+                    .to_integral()
+                    .unwrap()
+                    .equals(&Ideal::identity(&order).unwrap())
+            );
         }
     }
 

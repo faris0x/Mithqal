@@ -356,3 +356,6 @@ Initial kernel work.
 - Added integral ideal lattices, the codifferent, the different, exact lattice inversion, and different norm and duality verification.
 - Added prime ideal decomposition for monogenic maximal orders, with ramification indices, residue degrees, residue moduli, and Frobenius polynomials.
 - Added full modular factorization with multiplicities, including p-th power and mixed multiplicity handling, and random modular factorization tests.
+- Added fractional ideal multiplication, inversion, division, powers, and norms, plus ideal factorization through prime valuations.
+- Added general prime decomposition through p-maximal generators and a finite F_p idempotent fallback for small residue algebras, covering the non-monogenic Dedekind cubic at p = 2.
+- Replaced pathological Hermite basis extraction on redundant generators with transpose SNF followed by LLL, keeping ideal multiplication fast.

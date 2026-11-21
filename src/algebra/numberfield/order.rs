@@ -13,7 +13,7 @@ use crate::num::{Int, Rat};
 
 use super::super::dense::lcm;
 use super::super::intmatrix::{IntMatrix, div_exact, divides};
-use super::super::lattice::{column_hermite_normal_form, smith_normal_form_with_column_transform};
+use super::super::lattice::{generator_lattice_basis, smith_normal_form_with_column_transform};
 use super::super::poly_z::{invert_mod, reduce_mod};
 use super::super::ratmatrix::{RatMatrix, rat_from_int};
 use super::element::FieldElement;
@@ -137,6 +137,30 @@ impl Order {
     pub(crate) fn coordinates_of(&self, element: &FieldElement) -> Option<Vec<Rat>> {
         let column = RatMatrix::from_columns(vec![element.coefficients().to_vec()])?;
         Some(self.inverse_basis.multiply(&column)?.column(0))
+    }
+
+    /// Multiply two elements given in order coordinates.
+    #[allow(clippy::needless_range_loop)]
+    pub(crate) fn multiply_coordinates(&self, left: &[Int], right: &[Int]) -> Vec<Int> {
+        let size = self.field.degree();
+        let mut result = vec![Int::zero(); size];
+        for left_index in 0..size {
+            if left[left_index].is_zero() {
+                continue;
+            }
+            for right_index in 0..size {
+                if right[right_index].is_zero() {
+                    continue;
+                }
+                let coefficient = left[left_index].mul(&right[right_index]);
+                for output in 0..size {
+                    result[output] = result[output].add(
+                        &coefficient.mul(&self.multiplication[left_index][right_index][output]),
+                    );
+                }
+            }
+        }
+        result
     }
 
     /// The field element with the given order coordinates.
@@ -343,7 +367,7 @@ fn lattice_basis_columns(generators: &[Vec<Int>], size: usize) -> Option<Vec<Vec
     if matrix.row_count() != size {
         return None;
     }
-    let form = column_hermite_normal_form(&matrix);
+    let form = generator_lattice_basis(&matrix)?;
     if form.column_count() != size {
         return None;
     }
