@@ -143,6 +143,62 @@ pub(crate) fn narrow_class_number(order: &Order) -> Option<Int> {
     }
 }
 
+/// The ray class number for a prime-power modulus.
+///
+/// For `m = P^e`, the ray class group fits
+/// `1 -> U_m -> (O/m)^* -> Cl_m -> Cl -> 1`.
+/// This routine handles finite moduli whose torsion is only `{+-1}` and whose
+/// unit image orders are found by exact congruence tests.
+pub(crate) fn ray_class_number(order: &Order, modulus: &Ideal) -> Option<Int> {
+    let h = class_group(order)?.class_number().clone();
+    if modulus.norm().is_one() {
+        return Some(h);
+    }
+    let factors = factor_ideal(order, modulus)?;
+    if factors.len() != 1 {
+        return None;
+    }
+    let (prime_ideal, exponent) = &factors[0];
+    let norm = prime_ideal.norm().clone();
+    let power = norm.pow_u32(*exponent);
+    let phi = power.sub(&norm.pow_u32(exponent.saturating_sub(1)));
+    let units = unit_group(order)?;
+    if units.torsion_order() > 2 {
+        return None;
+    }
+    let mut image_order = Int::one();
+    let mut candidates = units.fundamental_units().to_vec();
+    candidates.push(order.field().negate(&order.field().one()));
+    for unit in &candidates {
+        let mut order_of_unit = None;
+        for value in 1..=10_000u32 {
+            let powered = order.field().power(unit, value);
+            let difference = order.field().sub(&powered, &order.field().one());
+            let coordinates = order.coordinates_of(&difference)?;
+            if coordinates.iter().all(|value| value.den().is_one()) {
+                let integers: Vec<Int> = coordinates.iter().map(|value| value.num()).collect();
+                if modulus.contains(&integers) {
+                    order_of_unit = Some(value);
+                    break;
+                }
+            }
+        }
+        let value = order_of_unit?;
+        let value = Int::from_i64(value as i64);
+        image_order = image_order
+            .mul(&value)
+            .divrem(&image_order.gcd(&value))
+            .ok()?
+            .0;
+    }
+    let numerator = h.mul(&phi);
+    let (result, remainder) = numerator.divrem(&image_order).ok()?;
+    if !remainder.is_zero() {
+        return None;
+    }
+    Some(result)
+}
+
 fn enumerate_ideals(order: &Order, base: &[PrimeIdeal], bound: i64) -> Option<Vec<Ideal>> {
     let mut ideals: Vec<Ideal> = Vec::new();
     let mut queue = vec![Ideal::identity(order)?];
@@ -403,6 +459,26 @@ mod tests {
             let order = maximal_order(&field).unwrap();
             assert_eq!(narrow_class_number(&order).unwrap(), Int::from_i64(narrow));
         }
+    }
+
+    #[test]
+    fn ray_class_numbers_for_prime_power_moduli() {
+        let quadratic = field(&[5, 0, 1]);
+        let order = maximal_order(&quadratic).unwrap();
+        let identity = Ideal::identity(&order).unwrap();
+        assert_eq!(
+            ray_class_number(&order, &identity).unwrap(),
+            Int::from_i64(2)
+        );
+        let primes = decompose_prime_general(&order, &Int::from_i64(2)).unwrap();
+        let modulus = &primes[0].ideal();
+        assert_eq!(ray_class_number(&order, modulus).unwrap(), Int::from_i64(2));
+
+        let quadratic = field(&[-5, 0, 1]);
+        let order = maximal_order(&quadratic).unwrap();
+        let primes = decompose_prime_general(&order, &Int::from_i64(5)).unwrap();
+        let modulus = &primes[0].ideal();
+        assert_eq!(ray_class_number(&order, modulus).unwrap(), Int::from_i64(1));
     }
 
     #[test]

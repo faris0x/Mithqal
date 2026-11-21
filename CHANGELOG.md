@@ -374,4 +374,5 @@ Initial kernel work.
 - Added conductor ideals for orders in maximal orders through lattice colons.
 - Added fixed-precision p-adic field arithmetic with valuation, addition, multiplication, inversion, and rational embedding.
 - Added narrow class numbers for quadratic fields using the norm of the fundamental unit.
+- Added ray class numbers for prime-power moduli using exact unit congruence orders.
 - Added unit-data verification for general-rank regulators without claiming saturation.
