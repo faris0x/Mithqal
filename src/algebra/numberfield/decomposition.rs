@@ -372,23 +372,30 @@ fn brute_force_prime_ideals(order: &Order, prime: &Int) -> Option<Vec<PrimeIdeal
         p_generators.push(column);
     }
     let p_ideal = Ideal::from_generators(&p_generators, size)?;
+    let radical = order.p_radical_basis(prime)?;
     let mut result = Vec::with_capacity(primitive.len());
     for idempotent in primitive {
-        let columns = units
-            .iter()
-            .map(|unit| multiply_vectors(order, &idempotent, unit, prime))
-            .collect::<Vec<_>>();
-        let degree = rank_mod_prime(&columns, prime)? as u32;
-        if degree == 0 {
-            return None;
-        }
         let complement = sub_vectors(&one_vector, &idempotent, prime);
         let mut generators = p_generators.clone();
+        generators.extend(radical.iter().cloned());
         for unit in &units {
             generators.push(multiply_vectors(order, &complement, unit, prime));
         }
         let ideal = Ideal::from_generators(&generators, size)?;
-        if ideal.norm() != &prime.pow_u32(degree) {
+        let mut degree = 0u32;
+        let mut remaining = ideal.norm().clone();
+        while remaining.cmp(&Int::one()) == core::cmp::Ordering::Greater {
+            let (quotient, remainder) = remaining.divrem(prime).ok()?;
+            if !remainder.is_zero() {
+                return None;
+            }
+            remaining = quotient;
+            degree += 1;
+            if degree > size as u32 {
+                return None;
+            }
+        }
+        if degree == 0 {
             return None;
         }
         let modulus = find_residue_modulus(order, &idempotent, degree, prime, total)?;
@@ -438,6 +445,15 @@ fn find_residue_modulus(
         let polynomial = minimal_polynomial_mod_prime(order, &projected, idempotent, prime)?;
         if polynomial.len() - 1 == degree as usize {
             return Some(polynomial);
+        }
+        if let Some(factors) =
+            factor_mod_p_with_multiplicity(&ZPoly::new(polynomial.clone()), prime)
+        {
+            for (factor, _) in factors {
+                if factor.degree() == Some(degree as usize) {
+                    return Some(factor.coeffs);
+                }
+            }
         }
     }
     None

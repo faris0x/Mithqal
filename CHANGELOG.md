@@ -359,3 +359,5 @@ Initial kernel work.
 - Added fractional ideal multiplication, inversion, division, powers, and norms, plus ideal factorization through prime valuations.
 - Added general prime decomposition through p-maximal generators and a finite F_p idempotent fallback for small residue algebras, covering the non-monogenic Dedekind cubic at p = 2.
 - Replaced pathological Hermite basis extraction on redundant generators with transpose SNF followed by LLL, keeping ideal multiplication fast.
+- Added class group computation for small-degree fields using the Minkowski bound, ideal enumeration, short element reduction, relation collection, and Smith normal form.
+- Fixed ramified prime decomposition in the finite F_p fallback by including the p-radical in prime ideal generators.

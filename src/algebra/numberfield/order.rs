@@ -246,16 +246,7 @@ impl Order {
             return Some(self.clone());
         }
         let size = self.field.degree();
-        let images = self.frobenius_images(prime)?;
-        let kernel = kernel_mod_prime(&images, prime)?;
-        let mut generators = Vec::with_capacity(size + kernel.len());
-        for index in 0..size {
-            let mut column = vec![Int::zero(); size];
-            column[index] = prime.clone();
-            generators.push(column);
-        }
-        generators.extend(kernel);
-        let ideal_basis = lattice_basis_columns(&generators, size)?;
+        let ideal_basis = self.p_radical_basis(prime)?;
         let ideal_matrix = RatMatrix::from_columns(
             ideal_basis
                 .iter()
@@ -324,6 +315,21 @@ impl Order {
             return None;
         }
         Some(next)
+    }
+
+    /// A basis of the p-radical `{ x in O : x^p in pO }`.
+    pub(crate) fn p_radical_basis(&self, prime: &Int) -> Option<Vec<Vec<Int>>> {
+        let size = self.field.degree();
+        let images = self.frobenius_images(prime)?;
+        let kernel = kernel_mod_prime(&images, prime)?;
+        let mut generators = Vec::with_capacity(size + kernel.len());
+        for index in 0..size {
+            let mut column = vec![Int::zero(); size];
+            column[index] = prime.clone();
+            generators.push(column);
+        }
+        generators.extend(kernel);
+        lattice_basis_columns(&generators, size)
     }
 
     /// The images of the basis elements under the p-power map on `O / pO`.
