@@ -259,6 +259,60 @@ impl DirichletCharacter {
     pub(crate) fn value(&self, residue: u64) -> Complex {
         self.values[(residue % self.modulus) as usize]
     }
+
+    /// The complex conjugate character.
+    pub(crate) fn conjugate(&self) -> Self {
+        DirichletCharacter {
+            modulus: self.modulus,
+            values: self
+                .values
+                .iter()
+                .map(|value| Complex::new(value.re, -value.im))
+                .collect(),
+        }
+    }
+
+    /// The parity, zero for even and one for odd, or `None` for non-real data.
+    pub(crate) fn parity(&self) -> Option<u32> {
+        let value = self.value(self.modulus - 1);
+        if value.im.abs() > 1e-12 {
+            return None;
+        }
+        if (value.re - 1.0).abs() < 1e-12 {
+            Some(0)
+        } else if (value.re + 1.0).abs() < 1e-12 {
+            Some(1)
+        } else {
+            None
+        }
+    }
+
+    /// The Gauss sum.
+    pub(crate) fn gauss_sum(&self) -> Option<Complex> {
+        let modulus = self.modulus as f64;
+        let mut total = Complex::zero();
+        for residue in 1..self.modulus {
+            let angle = 2.0 * core::f64::consts::PI * residue as f64 / modulus;
+            total = total.add(
+                self.value(residue)
+                    .mul(Complex::new(angle.cos(), angle.sin())),
+            );
+        }
+        Some(total)
+    }
+
+    /// The root number for a primitive character.
+    pub(crate) fn root_number(&self) -> Option<Complex> {
+        let parity = self.parity()?;
+        let gauss = self.gauss_sum()?;
+        let modulus = (self.modulus as f64).sqrt();
+        let denominator = if parity == 0 {
+            Complex::new(modulus, 0.0)
+        } else {
+            Complex::new(0.0, modulus)
+        };
+        gauss.div(denominator)
+    }
 }
 
 /// Evaluate a Dirichlet L-function through its Hurwitz decomposition.
@@ -266,6 +320,21 @@ pub(crate) fn dirichlet_l(s: Complex, character: &DirichletCharacter) -> Option<
     let modulus = character.modulus();
     if modulus == 1 {
         return zeta(s);
+    }
+    if s.re < 0.5 {
+        let parity = character.parity()?;
+        let root = character.root_number()?;
+        let pi = core::f64::consts::PI;
+        let argument = Complex::new(pi * (s.re + parity as f64) / 2.0, pi * s.im / 2.0);
+        let reflected = dirichlet_l(Complex::one().sub(s), &character.conjugate())?;
+        return Some(
+            root.mul(power_real(2.0, s))
+                .mul(power_real(pi, s.sub(Complex::one())))
+                .mul(power_real(modulus as f64, Complex::new(0.5, 0.0).sub(s)))
+                .mul(argument.sin())
+                .mul(Complex::one().sub(s).gamma()?)
+                .mul(reflected),
+        );
     }
     let mut sum = Complex::zero();
     for residue in 1..modulus {
@@ -514,6 +583,11 @@ mod tests {
         assert!((beta_two.re - 0.915_965_594_177_219).abs() < 1e-9);
         let modulo_three = dirichlet_l(rational(2.0), &character_mod_three()).unwrap();
         assert!((modulo_three.re - 0.781_302_412_896_486).abs() < 1e-9);
+        let beta_negative_two = dirichlet_l(rational(-2.0), &beta_character()).unwrap();
+        assert!(
+            (beta_negative_two.re + 0.5).abs() < 1e-8,
+            "{beta_negative_two:?}"
+        );
     }
 
     #[test]

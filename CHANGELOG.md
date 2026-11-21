@@ -367,3 +367,4 @@ Initial kernel work.
 - Added experimental Euler-Maclaurin Hurwitz zeta evaluation, Riemann zeta, Dirichlet L-functions through Hurwitz decomposition, and critical-line zero scanning.
 - Extended experimental unit groups to general rank using selected independent unit log vectors and covolume regulators.
 - Added the Riemann zeta functional equation with complex gamma and negative-integer values.
+- Added the primitive Dirichlet functional equation with Gauss sums and root numbers for Re(s) below one half.
