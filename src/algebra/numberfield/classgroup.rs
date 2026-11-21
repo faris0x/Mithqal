@@ -10,7 +10,7 @@ use crate::prelude::*;
 
 use crate::num::Int;
 
-use super::super::lattice::smith_invariants;
+use super::super::lattice::{integer_sqrt, smith_invariants};
 use super::decomposition::{PrimeIdeal, decompose_prime_general, factor_ideal};
 use super::ideal::{FractionalIdeal, Ideal};
 use super::order::Order;
@@ -105,6 +105,12 @@ pub(crate) fn class_group(order: &Order) -> Option<ClassGroup> {
             torsion.push(value);
         }
     }
+    if order.field().signature() == (0, 1) && order.field().degree() == 2 {
+        let forms = reduced_form_class_number(order.discriminant())?;
+        if forms != class_number {
+            return None;
+        }
+    }
     Some(ClassGroup {
         invariants: torsion,
         class_number,
@@ -132,6 +138,41 @@ fn enumerate_ideals(order: &Order, base: &[PrimeIdeal], bound: i64) -> Option<Ve
         }
     }
     Some(ideals)
+}
+
+/// The class number of an imaginary quadratic order by counting reduced forms.
+///
+/// This is the classical reduced-form enumeration for negative discriminants.
+pub(crate) fn reduced_form_class_number(discriminant: &Int) -> Option<Int> {
+    if discriminant.sign() >= 0 {
+        return None;
+    }
+    let absolute = discriminant.abs();
+    let bound = integer_sqrt(&absolute.divrem(&Int::from_i64(3)).ok()?.0);
+    let bound = bound.to_i64()?;
+    if bound <= 0 {
+        return None;
+    }
+    let mut count = 0i64;
+    for a in 1..=bound {
+        for b in -a..=a {
+            let numerator = Int::from_i64(b * b).sub(discriminant);
+            let denominator = Int::from_i64(4 * a);
+            let (c, remainder) = match numerator.divrem(&denominator) {
+                Ok(value) => value,
+                Err(_) => return None,
+            };
+            if !remainder.is_zero() {
+                continue;
+            }
+            let c_value = c.to_i64()?;
+            let reduced = b.abs() <= a && a <= c_value && (b >= 0 || (b.abs() < a && a < c_value));
+            if reduced {
+                count += 1;
+            }
+        }
+    }
+    Some(Int::from_i64(count))
 }
 
 fn minkowski_bound(order: &Order) -> Option<Int> {
@@ -314,6 +355,15 @@ mod tests {
         assert_eq!(class_number(&[-2, 0, 1]), (1, Vec::new()));
         assert_eq!(class_number(&[-5, 0, 1]), (1, Vec::new()));
         assert_eq!(class_number(&[-13, 0, 1]), (1, Vec::new()));
+    }
+
+    #[test]
+    fn reduced_forms_cross_check_imaginary_quadratic_class_numbers() {
+        for (discriminant, class_number) in [(-4i64, 1i64), (-20, 2), (-23, 3), (-24, 2), (-40, 2)]
+        {
+            let forms = reduced_form_class_number(&Int::from_i64(discriminant)).unwrap();
+            assert_eq!(forms, Int::from_i64(class_number));
+        }
     }
 
     #[test]

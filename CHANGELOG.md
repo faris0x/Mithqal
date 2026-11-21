@@ -370,4 +370,5 @@ Initial kernel work.
 - Added the primitive Dirichlet functional equation with Gauss sums and root numbers for Re(s) below one half.
 - Added Dirichlet conductor detection and primitive reduction with finite Euler factor restoration.
 - Added a numerical Richardson limit for nonprincipal L(1, chi) and argument-principle zero certificates.
+- Added an independent reduced binary quadratic form class-number cross-check for imaginary quadratic fields.
 - Added unit-data verification for general-rank regulators without claiming saturation.
