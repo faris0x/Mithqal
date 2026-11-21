@@ -16,7 +16,16 @@ mod dense;
 mod factor;
 mod hensel;
 mod hensel_fast;
+#[cfg(feature = "numberfields")]
+#[allow(dead_code)]
+mod intmatrix;
+#[cfg(feature = "numberfields")]
+#[allow(dead_code)]
+mod lattice;
 mod multivariate;
+#[cfg(feature = "numberfields")]
+#[allow(dead_code)]
+mod poly_z;
 mod polynomial;
 mod rational;
 mod roots;

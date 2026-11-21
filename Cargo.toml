@@ -10,10 +10,11 @@ homepage = "https://github.com/faris0x/Mithqal"
 publish = false
 
 [features]
-default = ["std", "cli"]
+default = ["std", "cli", "numberfields"]
 std = ["mithqalite/std"]
 cli = ["std", "dep:rustyline"]
 gui = []
+numberfields = []
 
 [dependencies]
 rustyline = { version = "19", optional = true }

@@ -344,3 +344,6 @@ Initial kernel work.
 - Added quadratic field and Eisenstein integer arithmetic, p-adic valuations, norms, units, and truncated expansions.
 - Added binary quadratic form reduction, class-number counting by reduced forms, and representation search.
 - Added cryptographic number theory: Miller-Rabin witnesses, Carmichael and pseudoprime tests, Lucas-Lehmer, RSA, finite-field Diffie-Hellman, and Wieferich and Wilson prime tests.
+- Added an optional `numberfields` kernel feature with exact integer matrices, Hermite and Smith normal forms, LLL reduction, and short vector enumeration.
+- Added arbitrary precision integer polynomial arithmetic, modular factorization, Hensel lifting, and Zassenhaus factorization as the substrate for the number field layer.
+- Hardened the substrate so normal forms verify their transforms and invariants, modular and integer factorization verify reconstructed products, and Hensel lifting rejects non-prime-power targets.

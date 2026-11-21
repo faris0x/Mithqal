@@ -46,6 +46,8 @@ Library domains stay in `lib/*.mith` when they are ordinary definitions over the
 The current audit indicates that the following areas still contain substantial kernel mathematics:
 
 - exact polynomial algebra and factorization
+- exact integer lattice algorithms: Hermite and Smith normal forms, LLL reduction, and short vector enumeration
+- arbitrary precision integer and modular polynomial factorization, including Hensel lifting and Zassenhaus recombination
 - calculus kernels and limits
 - exact rational linear algebra
 - integer number theory
@@ -67,6 +69,22 @@ embedded = true
 
 The manifest will drive dependency resolution, size estimates, compatibility checks, and website build options. The current implementation derives dependencies from `import` declarations and uses `Session::with_modules` for selection.
 
+## Number field kernel feature
+
+The `numberfields` Cargo feature is enabled by default. It compiles the exact integer matrix, lattice, and integer polynomial substrate that the number field layer will consume. The current pass adds algorithms only; no field, ideal, class group, or unit objects are exposed yet.
+
+A size-sensitive build can omit the substrate:
+
+```text
+cargo build --no-default-features --features std,cli --lib
+```
+
+The substrate itself is also checked without the standard library:
+
+```text
+cargo check --no-default-features --features numberfields --lib
+```
+
 ## Current limits
 
 The number theory domains are broad but not a research-level computer algebra system for the entire field. Current limits include:
@@ -75,7 +93,7 @@ The number theory domains are broad but not a research-level computer algebra sy
 - primitive-root, multiplicative-order, and discrete-log searches are brute force
 - partition and Bell computations use direct recurrences
 - analytic number theory is limited to exact arithmetic sums, Bernoulli and Euler numbers, Chebyshev functions, and truncated Dirichlet series
-- class field theory, general number fields, and ideal arithmetic are not implemented
+- class field theory, general number fields, and ideal arithmetic are not implemented; the substrate for the number field layer exists, but no field or ideal objects are exposed yet
 - elliptic curves cover affine arithmetic, point counting, and small-parameter Diffie-Hellman, not modularity, ranks, or descent
 - p-adic support covers valuations, norms, units, and truncated expansions, not a general p-adic field
 - quadratic forms cover positive definite reduction and class-number counting, not composition or general indefinite forms
