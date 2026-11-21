@@ -5,6 +5,7 @@
 //! polynomials, and integrality tests. Integral bases and ideals come later.
 
 mod classgroup;
+mod conductor;
 mod decomposition;
 mod element;
 mod field;
