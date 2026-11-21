@@ -372,4 +372,5 @@ Initial kernel work.
 - Added a numerical Richardson limit for nonprincipal L(1, chi) and argument-principle zero certificates.
 - Added an independent reduced binary quadratic form class-number cross-check for imaginary quadratic fields.
 - Added conductor ideals for orders in maximal orders through lattice colons.
+- Added fixed-precision p-adic field arithmetic with valuation, addition, multiplication, inversion, and rational embedding.
 - Added unit-data verification for general-rank regulators without claiming saturation.

@@ -26,6 +26,8 @@ mod multivariate;
 #[cfg(feature = "numberfields")]
 #[allow(dead_code)]
 pub(crate) mod numberfield;
+#[allow(dead_code)]
+mod padic;
 #[cfg(feature = "numberfields")]
 #[allow(dead_code)]
 pub(crate) mod poly_z;
