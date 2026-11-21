@@ -363,3 +363,5 @@ Initial kernel work.
 - Fixed ramified prime decomposition in the finite F_p fallback by including the p-radical in prime ideal generators.
 - Added quadratic unit groups, torsion orders, fundamental real quadratic units, and regulators.
 - Added rank-one higher-degree unit groups and regulators using exact norm tests and numerically verified embeddings, with torsion detection.
+- Added rank-two unit groups and regulators using the covolume of unit log vectors, plus torsion detection.
+- Added experimental Euler-Maclaurin Hurwitz zeta evaluation, Riemann zeta, Dirichlet L-functions through Hurwitz decomposition, and critical-line zero scanning.

@@ -3,7 +3,8 @@
 //! The torsion subgroup is explicit for imaginary quadratic fields. Real
 //! quadratic fundamental units are found by exact norm tests over a bounded
 //! coefficient box. Rank-one higher-degree fields use numeric embeddings for
-//! the log norm. Rank two and higher, and general log lattices, are not
+//! the log norm, and rank-two fields use the covolume of pairs of unit log
+//! vectors. Rank three and higher and certified general log lattices are not
 //! implemented yet.
 
 #[allow(unused_imports)]
@@ -63,6 +64,15 @@ pub(crate) fn unit_group(order: &Order) -> Option<UnitGroup> {
             torsion_order: torsion,
             regulator: None,
             fundamental_units: Vec::new(),
+        });
+    }
+    if rank == 2 {
+        let (units, regulator, torsion) = rank_two_unit(order)?;
+        return Some(UnitGroup {
+            rank,
+            torsion_order: torsion,
+            regulator: Some(regulator),
+            fundamental_units: units,
         });
     }
     if rank != 1 {
@@ -335,6 +345,98 @@ fn rank_one_unit(order: &Order) -> Option<(FieldElement, f64, u32)> {
     Some((unit, regulator, torsion))
 }
 
+fn log_vector(element: &FieldElement, roots: &[Complex]) -> Option<Vec<f64>> {
+    let coefficients = element
+        .coefficients()
+        .iter()
+        .map(rat_to_f64)
+        .collect::<Option<Vec<_>>>()?;
+    let mut vector = Vec::with_capacity(roots.len());
+    for root in roots {
+        let value = evaluate_complex(&coefficients, *root);
+        let absolute = value.abs();
+        if absolute <= 0.0 {
+            return None;
+        }
+        vector.push(absolute.ln());
+    }
+    Some(vector)
+}
+
+fn rank_two_unit(order: &Order) -> Option<(Vec<FieldElement>, f64, u32)> {
+    let field = order.field();
+    let size = field.degree();
+    let roots = numeric_roots(field)?;
+    let radius = 6i64;
+    let total = (2 * radius + 1).checked_pow(size as u32)?;
+    if total > 3_000_000 {
+        return None;
+    }
+    let mut torsion = 2u32;
+    let mut units: Vec<(Vec<f64>, FieldElement)> = Vec::new();
+    let mut coordinates = vec![Int::zero(); size];
+    for code in 0..total {
+        let mut code = code;
+        let mut nonzero = false;
+        for entry in &mut coordinates {
+            let digit = code % (2 * radius + 1);
+            code /= 2 * radius + 1;
+            let value = digit - radius;
+            if value != 0 {
+                nonzero = true;
+            }
+            *entry = Int::from_i64(value);
+        }
+        if !nonzero {
+            continue;
+        }
+        let element = order.element_from_coordinates(&coordinates);
+        if !field.norm(&element)?.abs().is_one() {
+            continue;
+        }
+        let vector = log_vector(&element, &roots)?;
+        if vector.iter().all(|value| value.abs() < 1e-8) {
+            for exponent in 1..=(6 * size as u32 + 6) {
+                if field.power(&element, exponent).is_one() {
+                    torsion = torsion.max(exponent);
+                    break;
+                }
+            }
+            continue;
+        }
+        units.push((vector, element));
+    }
+    let mut best: Option<(f64, usize, usize)> = None;
+    for left in 0..units.len() {
+        for right in left + 1..units.len() {
+            let first = &units[left].0;
+            let second = &units[right].0;
+            let mut first_norm = 0.0;
+            let mut second_norm = 0.0;
+            let mut product = 0.0;
+            for (a, b) in first.iter().zip(second) {
+                first_norm += a * a;
+                second_norm += b * b;
+                product += a * b;
+            }
+            let determinant = (first_norm * second_norm - product * product).max(0.0);
+            let area = determinant.sqrt();
+            if area < 1e-10 {
+                continue;
+            }
+            if best.as_ref().is_none_or(|(current, _, _)| area < *current) {
+                best = Some((area, left, right));
+            }
+        }
+    }
+    let (regulator, left, right) = best?;
+    Some((
+        vec![units[left].1.clone(), units[right].1.clone()],
+        regulator,
+        torsion,
+    ))
+}
+
 fn general_torsion_order(order: &Order) -> Option<u32> {
     let field = order.field();
     let size = field.degree();
@@ -448,6 +550,20 @@ mod tests {
                     .abs()
                     .is_one()
             );
+        }
+    }
+
+    #[test]
+    fn real_cubic_rank_two_units() {
+        let field = field(&[-1, -3, 0, 1]);
+        let order = maximal_order(&field).unwrap();
+        let units = unit_group(&order).unwrap();
+        assert_eq!(units.rank(), 2);
+        assert_eq!(units.torsion_order(), 2);
+        assert!(units.regulator().unwrap() > 0.0);
+        assert_eq!(units.fundamental_units().len(), 2);
+        for unit in units.fundamental_units() {
+            assert!(field.norm(unit).unwrap().abs().is_one());
         }
     }
 

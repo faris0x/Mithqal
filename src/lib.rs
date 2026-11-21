@@ -17,6 +17,8 @@
 extern crate alloc;
 
 mod algebra;
+#[allow(dead_code)]
+mod analytic;
 pub mod api;
 pub mod builtins;
 mod calculus;
