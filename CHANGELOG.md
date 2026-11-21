@@ -353,3 +353,6 @@ Initial kernel work.
 - Added integral basis and maximal order computation by the p-radical Round 2 step, with a monogenic fast path, p-maximality checks, multiplication tables, and index and discriminant verification.
 - Added a column-transform-only Smith normal form for large rectangular congruence systems used by the multiplier ring step.
 - Hardened orders with basis integrality, associativity, containment, and discriminant identity checks, including p = 2, 3, and 5 cases and index 4 and 8 fields.
+- Added integral ideal lattices, the codifferent, the different, exact lattice inversion, and different norm and duality verification.
+- Added prime ideal decomposition for monogenic maximal orders, with ramification indices, residue degrees, residue moduli, and Frobenius polynomials.
+- Added full modular factorization with multiplicities, including p-th power and mixed multiplicity handling, and random modular factorization tests.

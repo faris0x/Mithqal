@@ -4,8 +4,10 @@
 //! power basis arithmetic, norms, traces, characteristic polynomials, minimal
 //! polynomials, and integrality tests. Integral bases and ideals come later.
 
+mod decomposition;
 mod element;
 mod field;
+mod ideal;
 mod integral_basis;
 mod order;
 mod sturm;

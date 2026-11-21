@@ -50,6 +50,7 @@ The current audit indicates that the following areas still contain substantial k
 - arbitrary precision integer and modular polynomial factorization, including Hensel lifting and Zassenhaus recombination
 - exact rational matrix algebra, Sturm signatures, and power basis number field arithmetic
 - maximal orders by the p-radical Round 2 step, integral bases, multiplication tables, and p-maximality checks
+- codifferent and different lattices, and prime ideal decomposition for monogenic maximal orders
 - calculus kernels and limits
 - exact rational linear algebra
 - integer number theory
@@ -73,7 +74,7 @@ The manifest will drive dependency resolution, size estimates, compatibility che
 
 ## Number field kernel feature
 
-The `numberfields` Cargo feature is enabled by default. It compiles the exact integer matrix, lattice, integer polynomial, rational matrix, Sturm, power basis number field, and maximal order layers. The current layer covers field validation, signatures, element arithmetic, norms, traces, characteristic and minimal polynomials, integrality tests, integral bases, multiplication tables, and p-maximality by the p-radical Round 2 step. Ideals, class groups, units, and expression-level field objects are still ahead.
+The `numberfields` Cargo feature is enabled by default. It compiles the exact integer matrix, lattice, integer polynomial, rational matrix, Sturm, power basis number field, maximal order, different, and monogenic prime decomposition layers. The current layer covers field validation, signatures, element arithmetic, norms, traces, characteristic and minimal polynomials, integrality tests, integral bases, multiplication tables, p-maximality by the p-radical Round 2 step, codifferent and different lattices, and prime ideals with ramification, residue degree, and Frobenius data. Ideal multiplication, class groups, units, and expression-level field objects are still ahead.
 
 A size-sensitive build can omit the substrate:
 
@@ -95,7 +96,7 @@ The number theory domains are broad but not a research-level computer algebra sy
 - primitive-root, multiplicative-order, and discrete-log searches are brute force
 - partition and Bell computations use direct recurrences
 - analytic number theory is limited to exact arithmetic sums, Bernoulli and Euler numbers, Chebyshev functions, and truncated Dirichlet series
-- class field theory and ideal arithmetic are not implemented; internal number field construction, power basis arithmetic, and maximal orders exist, but ideals, class groups, units, prime decomposition, and expression-level field objects are not implemented yet
+- class field theory and ideal arithmetic are not implemented; internal number field construction, power basis arithmetic, maximal orders, the different, and monogenic prime decomposition exist, but ideal multiplication, class groups, units, general non-monogenic decomposition, and expression-level field objects are not implemented yet
 - elliptic curves cover affine arithmetic, point counting, and small-parameter Diffie-Hellman, not modularity, ranks, or descent
 - p-adic support covers valuations, norms, units, and truncated expansions, not a general p-adic field
 - quadratic forms cover positive definite reduction and class-number counting, not composition or general indefinite forms

@@ -26,6 +26,7 @@ pub(crate) struct Order {
     pub(super) basis: RatMatrix,
     pub(super) inverse_basis: RatMatrix,
     pub(super) multiplication: Vec<Vec<Vec<Int>>>,
+    pub(super) trace_matrix: RatMatrix,
     pub(super) index: Int,
     pub(super) discriminant: Int,
 }
@@ -94,6 +95,7 @@ impl Order {
             basis,
             inverse_basis,
             multiplication,
+            trace_matrix,
             index,
             discriminant,
         })
@@ -112,6 +114,42 @@ impl Order {
     /// The multiplication table.
     pub(crate) fn multiplication_table(&self) -> &[Vec<Vec<Int>>] {
         &self.multiplication
+    }
+
+    /// The trace pairing matrix in the order basis.
+    pub(crate) fn trace_matrix(&self) -> &RatMatrix {
+        &self.trace_matrix
+    }
+
+    /// True when a rational lattice is contained in the order.
+    pub(crate) fn contains_lattice(&self, basis: &RatMatrix) -> Option<bool> {
+        let coordinates = self.inverse_basis.multiply(basis)?;
+        Some(
+            coordinates
+                .to_rows()
+                .iter()
+                .flatten()
+                .all(|value| value.den().is_one()),
+        )
+    }
+
+    /// The coordinates of a field element in the order basis.
+    pub(crate) fn coordinates_of(&self, element: &FieldElement) -> Option<Vec<Rat>> {
+        let column = RatMatrix::from_columns(vec![element.coefficients().to_vec()])?;
+        Some(self.inverse_basis.multiply(&column)?.column(0))
+    }
+
+    /// The field element with the given order coordinates.
+    pub(crate) fn element_from_coordinates(&self, coordinates: &[Int]) -> FieldElement {
+        let size = self.field.degree();
+        let mut power = vec![Rat::zero(); size];
+        for (index, value) in coordinates.iter().enumerate() {
+            let basis = self.basis.column(index);
+            for row in 0..size {
+                power[row] = power[row].add(&rat_from_int(value).mul(&basis[row]));
+            }
+        }
+        self.field.element(power)
     }
 
     /// The index `[Order : Z[alpha]]`.

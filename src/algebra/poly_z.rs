@@ -710,7 +710,12 @@ fn scale_mod(coefficients: &[Int], factor: &Int, modulus: &Int) -> Vec<Int> {
     )
 }
 
-fn poly_pow_mod(base: &[Int], exponent: &Int, modulus: &[Int], prime: &Int) -> Option<Vec<Int>> {
+pub(crate) fn poly_pow_mod(
+    base: &[Int],
+    exponent: &Int,
+    modulus: &[Int],
+    prime: &Int,
+) -> Option<Vec<Int>> {
     let mut result = vec![Int::one()];
     let mut factor = poly_div_rem_mod(base, modulus, prime)?.1;
     let mut exponent = exponent.clone();
@@ -867,6 +872,96 @@ fn trace_map(
         term = poly_div_rem_mod(&term, polynomial, prime)?.1;
     }
     Some(total)
+}
+
+/// Factor a monic polynomial modulo a prime, preserving multiplicities.
+pub(crate) fn factor_mod_p_with_multiplicity(
+    polynomial: &ZPoly,
+    prime: &Int,
+) -> Option<Vec<(ZPoly, u32)>> {
+    let monic = monic_mod(&polynomial.reduce_mod(prime).coeffs, prime)?;
+    if monic.is_empty() {
+        return None;
+    }
+    let radical = radical_mod(&monic, prime)?;
+    let distinct = factor_mod_p_squarefree(&ZPoly::new(radical), prime)?;
+    let mut result = Vec::with_capacity(distinct.len());
+    let mut product = vec![Int::one()];
+    for factor in distinct {
+        let mut exponent = 0u32;
+        let mut current = monic.clone();
+        loop {
+            let (quotient, remainder) = poly_div_rem_mod(&current, &factor.coeffs, prime)?;
+            if !remainder.is_empty() {
+                break;
+            }
+            current = quotient;
+            exponent += 1;
+            if exponent > 1024 {
+                return None;
+            }
+        }
+        if exponent == 0 {
+            return None;
+        }
+        for _ in 0..exponent {
+            product = poly_mul_mod(&product, &factor.coeffs, prime);
+        }
+        result.push((factor, exponent));
+    }
+    if product != monic {
+        return None;
+    }
+    Some(result)
+}
+
+fn radical_mod(coefficients: &[Int], prime: &Int) -> Option<Vec<Int>> {
+    let monic = monic_mod(coefficients, prime)?;
+    if monic.len() <= 2 {
+        return Some(monic);
+    }
+    let derivative = poly_derivative_mod(&monic, prime);
+    if derivative.is_empty() {
+        let root = pth_root_mod(&monic, prime)?;
+        return radical_mod(&root, prime);
+    }
+    let shared = poly_gcd_mod(&monic, &derivative, prime)?;
+    let (quotient, remainder) = poly_div_rem_mod(&monic, &shared, prime)?;
+    if !remainder.is_empty() {
+        return None;
+    }
+    let shared_radical = radical_mod(&shared, prime)?;
+    poly_lcm_mod(&quotient, &shared_radical, prime)
+}
+
+fn pth_root_mod(coefficients: &[Int], prime: &Int) -> Option<Vec<Int>> {
+    let step = prime.to_i64()?;
+    if step <= 0 {
+        return None;
+    }
+    let step = step as usize;
+    for (index, value) in coefficients.iter().enumerate() {
+        if !value.is_zero() && !index.is_multiple_of(step) {
+            return None;
+        }
+    }
+    let mut root = Vec::new();
+    let mut index = 0usize;
+    while index < coefficients.len() {
+        root.push(coefficients[index].clone());
+        index += step;
+    }
+    Some(trim_mod(root, prime))
+}
+
+fn poly_lcm_mod(left: &[Int], right: &[Int], prime: &Int) -> Option<Vec<Int>> {
+    let common = poly_gcd_mod(left, right, prime)?;
+    let product = poly_mul_mod(left, right, prime);
+    let (quotient, remainder) = poly_div_rem_mod(&product, &common, prime)?;
+    if !remainder.is_empty() {
+        return None;
+    }
+    Some(quotient)
 }
 
 /// Lift a factorization of a monic polynomial modulo a prime to a higher power
@@ -1082,6 +1177,97 @@ mod tests {
             ZPoly::new(product),
             poly(&[1, 0, 0, 0, 1]).reduce_mod(&prime)
         );
+    }
+
+    #[test]
+    fn modular_factorization_preserves_multiplicities() {
+        let cases = [
+            (vec![1i64, 0, 1], 2i64),
+            (vec![-1, 1], 5),
+            (vec![-2, -3, 0, 1], 5),
+            (vec![-1, 0, 0, 1], 3),
+        ];
+        for (coefficients, prime) in cases {
+            let polynomial = ZPoly::new(coefficients.iter().map(|v| Int::from_i64(*v)).collect());
+            let prime = Int::from_i64(prime);
+            let factors = factor_mod_p_with_multiplicity(&polynomial, &prime).unwrap();
+            let mut product = vec![Int::one()];
+            for (factor, multiplicity) in &factors {
+                for _ in 0..*multiplicity {
+                    product = poly_mul_mod(&product, &factor.coeffs, &prime);
+                }
+            }
+            assert_eq!(
+                ZPoly::new(product),
+                polynomial.reduce_mod(&prime),
+                "input {:?}",
+                coefficients
+            );
+        }
+        let prime = Int::from_i64(2);
+        let factors = factor_mod_p_with_multiplicity(&poly(&[1, 0, 1]), &prime).unwrap();
+        assert_eq!(factors.len(), 1);
+        assert_eq!(factors[0].1, 2);
+        let prime = Int::from_i64(3);
+        let factors = factor_mod_p_with_multiplicity(&poly(&[-1, 0, 0, 1]), &prime).unwrap();
+        assert_eq!(factors.len(), 1);
+        assert_eq!(factors[0].1, 3);
+    }
+
+    #[test]
+    fn modular_factorization_handles_mixed_and_power_multiplicities() {
+        let mut polynomial = ZPoly::one();
+        for _ in 0..3 {
+            polynomial = polynomial.multiply(&poly(&[-1, 1]));
+        }
+        for _ in 0..2 {
+            polynomial = polynomial.multiply(&poly(&[-2, 1]));
+        }
+        let prime = Int::from_i64(3);
+        let factors = factor_mod_p_with_multiplicity(&polynomial, &prime).unwrap();
+        let total: u32 = factors.iter().map(|(_, multiplicity)| *multiplicity).sum();
+        assert_eq!(total, 5);
+        let mut product = vec![Int::one()];
+        for (factor, multiplicity) in &factors {
+            for _ in 0..*multiplicity {
+                product = poly_mul_mod(&product, &factor.coeffs, &prime);
+            }
+        }
+        assert_eq!(ZPoly::new(product), polynomial.reduce_mod(&prime));
+    }
+
+    #[test]
+    fn modular_factorization_random_monic_polynomials() {
+        let mut state = 0x0f0f_1234_5678_abcd_u64;
+        for _ in 0..48 {
+            let prime = [2i64, 3, 5][(state % 3) as usize];
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let degree = 1 + (state % 6) as usize;
+            let mut coefficients = Vec::with_capacity(degree + 1);
+            for _ in 0..degree {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                coefficients.push(Int::from_i64(((state >> 33) % 7) as i64 - 3));
+            }
+            coefficients.push(Int::one());
+            let polynomial = ZPoly::new(coefficients);
+            let prime = Int::from_i64(prime);
+            if polynomial.reduce_mod(&prime).degree() != Some(degree) {
+                continue;
+            }
+            let factors = factor_mod_p_with_multiplicity(&polynomial, &prime).unwrap();
+            let mut product = vec![Int::one()];
+            for (factor, multiplicity) in &factors {
+                assert_eq!(factor.irreducibility(), Some(true));
+                for _ in 0..*multiplicity {
+                    product = poly_mul_mod(&product, &factor.coeffs, &prime);
+                }
+            }
+            assert_eq!(ZPoly::new(product), polynomial.reduce_mod(&prime));
+        }
     }
 
     #[test]
