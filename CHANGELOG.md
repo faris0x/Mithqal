@@ -361,3 +361,4 @@ Initial kernel work.
 - Replaced pathological Hermite basis extraction on redundant generators with transpose SNF followed by LLL, keeping ideal multiplication fast.
 - Added class group computation for small-degree fields using the Minkowski bound, ideal enumeration, short element reduction, relation collection, and Smith normal form.
 - Fixed ramified prime decomposition in the finite F_p fallback by including the p-radical in prime ideal generators.
+- Added quadratic unit groups, torsion orders, fundamental real quadratic units, and regulators.
