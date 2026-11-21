@@ -376,4 +376,8 @@ Initial kernel work.
 - Added narrow class numbers for quadratic fields using the norm of the fundamental unit.
 - Added ray class numbers for prime-power moduli using exact unit congruence orders.
 - Added narrow ray class numbers with all real places for real quadratic fields.
+- Added general ray class group orders for arbitrary finite moduli and real-place subsets, with exact congruence-kernel invariants and certified full structure when the class number is one.
+- Added saturation completion for totally real unit groups by bounded Cholesky enumeration, with explicit witnesses and a documented enumeration envelope.
+- Added interval regulator bounds for totally real fields using exact rational root isolation and interval arithmetic.
+- Corrected unit regulators for totally real fields to use exact real embedding enclosures instead of numerical root approximations.
 - Added unit-data verification for general-rank regulators without claiming saturation.

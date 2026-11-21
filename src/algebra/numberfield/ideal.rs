@@ -3,8 +3,8 @@
 //! Integral ideals use a column basis in maximal order coordinates, with norms
 //! as lattice indices. Fractional ideals add a denominator. The layer covers
 //! multiplication, inversion, division, powers, factorization valuation, the
-//! codifferent, and the different. Class groups and units remain for the next
-//! pass.
+//! codifferent, and the different. Class groups, ray class groups, and units
+//! build on this layer.
 
 #[allow(unused_imports)]
 use crate::prelude::*;

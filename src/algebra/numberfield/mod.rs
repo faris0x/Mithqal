@@ -8,10 +8,12 @@ mod classgroup;
 mod conductor;
 mod decomposition;
 mod element;
+mod embedding;
 mod field;
 mod ideal;
 mod integral_basis;
 mod order;
+mod rayclass;
 mod sturm;
 mod units;
 

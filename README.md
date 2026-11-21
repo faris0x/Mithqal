@@ -19,7 +19,7 @@ cargo build
 cargo run
 ```
 
-Use `cargo build --no-default-features --lib` to build the engine without the command line frontend. The `cli` feature controls the frontend and the `gui` feature is reserved for a future graphical frontend. The `numberfields` feature is enabled by default and compiles the exact lattice, integer polynomial, rational matrix, number field arithmetic, maximal order, different, ideal arithmetic, prime decomposition, class group, rank-one, rank-two, and higher-rank unit layers, experimental analytic zeta and L-function evaluation, and fixed-precision p-adic field arithmetic; size-sensitive builds can disable it.
+Use `cargo build --no-default-features --lib` to build the engine without the command line frontend. The `cli` feature controls the frontend and the `gui` feature is reserved for a future graphical frontend. The `numberfields` feature is enabled by default and compiles the exact lattice, integer polynomial, rational matrix, number field arithmetic, maximal order, different, ideal arithmetic, prime decomposition, class group, general-rank unit and saturation layers, general ray class orders and congruence kernels, experimental analytic zeta and L-function evaluation, and fixed-precision p-adic field arithmetic; size-sensitive builds can disable it.
 
 The supported desktop build target is Linux on x86-64. A native build requires the Rust toolchain pinned in `rust-toolchain.toml`. Numeric work is pure Rust; no C compiler, Make, or native numeric libraries are required. The first build compiles Mithqalite from `vendor/mithqalite` and caches the result in `target`.
 
