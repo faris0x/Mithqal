@@ -1,4 +1,8 @@
-//! Kernel head dispatch for algebra, calculus, logic, numeric, list, text, and file families.
+//! Kernel head dispatch.
+//!
+//! Public mathematical policy is defined in the Mithqal standard library.
+//! This dispatcher keeps expression mechanics, numeric primitives, and the
+//! explicitly named accelerator kernels.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -256,7 +260,7 @@ impl<'a> Evaluator<'a> {
     pub(super) fn apply_algebra(
         &mut self,
         function: AlgebraHead,
-        head: ExprId,
+        _head: ExprId,
         args: &[ExprId],
     ) -> Result<ExprId, Diagnostic> {
         let context = crate::algebra::Context {
@@ -267,20 +271,27 @@ impl<'a> Evaluator<'a> {
             list: self.heads.list,
             equal: self.heads.equal,
         };
+        let public = self.arena.builtin_head(Self::algebra_public_name(function));
         match function {
-            AlgebraHead::Expand => self.algebra_unary(args, head, context, crate::algebra::expand),
-            AlgebraHead::Factor => self.algebra_unary(args, head, context, crate::algebra::factor),
-            AlgebraHead::Together => {
-                self.algebra_unary(args, head, context, crate::algebra::together)
+            AlgebraHead::Expand => {
+                self.algebra_unary(args, public, context, crate::algebra::expand)
             }
-            AlgebraHead::Cancel => self.algebra_unary(args, head, context, crate::algebra::cancel),
+            AlgebraHead::Factor => {
+                self.algebra_unary(args, public, context, crate::algebra::factor)
+            }
+            AlgebraHead::Together => {
+                self.algebra_unary(args, public, context, crate::algebra::together)
+            }
+            AlgebraHead::Cancel => {
+                self.algebra_unary(args, public, context, crate::algebra::cancel)
+            }
             AlgebraHead::PolynomialGcd => {
                 require_arity(
                     args,
                     3,
                     "polynomialGcd expects two polynomials and a variable",
                 )?;
-                let original = self.arena.intern_call(head, args);
+                let original = self.held_public_call(public, args);
                 Ok(
                     crate::algebra::polynomial_gcd(self.arena, args[0], args[1], args[2], &context)
                         .unwrap_or(original),
@@ -288,7 +299,7 @@ impl<'a> Evaluator<'a> {
             }
             AlgebraHead::Resultant => {
                 require_arity(args, 3, "resultant expects two polynomials and a variable")?;
-                let original = self.arena.intern_call(head, args);
+                let original = self.held_public_call(public, args);
                 Ok(
                     crate::algebra::resultant(self.arena, args[0], args[1], args[2], &context)
                         .unwrap_or(original),
@@ -301,7 +312,7 @@ impl<'a> Evaluator<'a> {
                     args.to_vec()
                 };
                 require_arity(&normalized, 2, "solve expects an equation and a variable")?;
-                let original = self.arena.intern_call(head, &normalized);
+                let original = self.held_public_call(public, &normalized);
                 Ok(
                     crate::algebra::solve(self.arena, normalized[0], normalized[1], &context)
                         .unwrap_or(original),
@@ -309,7 +320,7 @@ impl<'a> Evaluator<'a> {
             }
             AlgebraHead::Degree => {
                 require_arity(args, 2, "degree expects a polynomial and a variable")?;
-                let original = self.arena.intern_call(head, args);
+                let original = self.held_public_call(public, args);
                 Ok(
                     crate::algebra::degree(self.arena, args[0], args[1], &context)
                         .unwrap_or(original),
@@ -321,7 +332,7 @@ impl<'a> Evaluator<'a> {
                     3,
                     "coefficient expects a polynomial, a variable, and an index",
                 )?;
-                let original = self.arena.intern_call(head, args);
+                let original = self.held_public_call(public, args);
                 Ok(
                     crate::algebra::coefficient(self.arena, args[0], args[1], args[2], &context)
                         .unwrap_or(original),
@@ -333,7 +344,7 @@ impl<'a> Evaluator<'a> {
                     3,
                     "polynomialDivide expects a dividend, a divisor, and a variable",
                 )?;
-                let original = self.arena.intern_call(head, args);
+                let original = self.held_public_call(public, args);
                 Ok(crate::algebra::polynomial_divide(
                     self.arena, args[0], args[1], args[2], &context,
                 )
@@ -341,12 +352,34 @@ impl<'a> Evaluator<'a> {
             }
             AlgebraHead::Discriminant => {
                 require_arity(args, 2, "discriminant expects a polynomial and a variable")?;
-                let original = self.arena.intern_call(head, args);
+                let original = self.held_public_call(public, args);
                 Ok(
                     crate::algebra::discriminant(self.arena, args[0], args[1], &context)
                         .unwrap_or(original),
                 )
             }
+        }
+    }
+
+    fn held_public_call(&mut self, head: ExprId, args: &[ExprId]) -> ExprId {
+        let call = self.arena.intern_call(head, args);
+        let hold = self.arena.builtin_head("unevaluated");
+        self.arena.intern_call(hold, &[call])
+    }
+
+    fn algebra_public_name(function: AlgebraHead) -> &'static str {
+        match function {
+            AlgebraHead::Expand => "expand",
+            AlgebraHead::Factor => "factor",
+            AlgebraHead::Together => "together",
+            AlgebraHead::Cancel => "cancel",
+            AlgebraHead::PolynomialGcd => "polynomialGcd",
+            AlgebraHead::Resultant => "resultant",
+            AlgebraHead::Solve => "solve",
+            AlgebraHead::Degree => "degree",
+            AlgebraHead::Coefficient => "coefficient",
+            AlgebraHead::PolynomialDivide => "polynomialDivide",
+            AlgebraHead::Discriminant => "discriminant",
         }
     }
 
@@ -701,6 +734,10 @@ impl<'a> Evaluator<'a> {
                 items.sort_by(|left, right| self.list_order(*left, *right));
                 Some(self.arena.intern_call(self.heads.list, &items))
             }
+            ListHead::IsList => {
+                let list = self.list_items(args[0]).is_some();
+                Some(self.boolean(list))
+            }
             ListHead::IsNumber => {
                 let numeric = matches!(
                     self.arena.node(args[0]),
@@ -799,13 +836,9 @@ impl<'a> Evaluator<'a> {
         }
         match function {
             NumberTheoryHead::IsPrime => crate::numbertheory::is_prime(self.arena, args[0]),
-            NumberTheoryHead::NextPrime => crate::numbertheory::next_prime(self.arena, args[0]),
             NumberTheoryHead::FactorInteger => {
                 crate::numbertheory::factor_integer(self.arena, args[0])
             }
-            NumberTheoryHead::Divisors => crate::numbertheory::divisors(self.arena, args[0]),
-            NumberTheoryHead::Totient => crate::numbertheory::totient(self.arena, args[0]),
-            NumberTheoryHead::Sigma => crate::numbertheory::sigma(self.arena, args[0]),
             NumberTheoryHead::IsEven => crate::numbertheory::is_even(self.arena, args[0]),
             NumberTheoryHead::IsOdd => crate::numbertheory::is_odd(self.arena, args[0]),
             NumberTheoryHead::Divides => crate::numbertheory::divides(self.arena, args[0], args[1]),
@@ -813,19 +846,7 @@ impl<'a> Evaluator<'a> {
             NumberTheoryHead::PowerMod => {
                 crate::numbertheory::power_mod(self.arena, args[0], args[1], args[2])
             }
-            NumberTheoryHead::PreviousPrime => {
-                crate::numbertheory::previous_prime(self.arena, args[0])
-            }
-            NumberTheoryHead::DivisorCount => {
-                crate::numbertheory::divisor_count(self.arena, args[0])
-            }
-            NumberTheoryHead::Moebius => crate::numbertheory::moebius(self.arena, args[0]),
-            NumberTheoryHead::Radical => crate::numbertheory::radical(self.arena, args[0]),
-            NumberTheoryHead::IsSquareFree => {
-                crate::numbertheory::is_square_free(self.arena, args[0])
-            }
             NumberTheoryHead::PrimeCount => crate::numbertheory::prime_count(self.arena, args[0]),
-            NumberTheoryHead::Fibonacci => crate::numbertheory::fibonacci(self.arena, args[0]),
             NumberTheoryHead::IsPerfectSquare => {
                 crate::numbertheory::is_perfect_square(self.arena, args[0])
             }

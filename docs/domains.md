@@ -8,22 +8,24 @@ Mithqal separates kernel mathematics from the bundled standard library. Kernel c
 
 | Domain | Imports | Exported names |
 |---|---|---:|
-| `calculus` | none | 2 |
-| `algebraicnumbertheory` | lists, numbertheory | 16 |
-| `analyticnumbertheory` | lists | 12 |
-| `cryptonumbertheory` | lists, logic, numbertheory | 14 |
-| `ellipticcurves` | lists | 16 |
-| `quadraticforms` | lists, numbertheory | 7 |
+| `algebra` | lists | 11 |
+| `algebraicnumbertheory` | lists, numbertheory, quadraticforms | 20 |
+| `analyticnumbertheory` | lists, numbertheory | 16 |
+| `calculus` | algebra | 2 |
 | `combinatorics` | lists, sets | 7 |
+| `cryptonumbertheory` | lists, logic, numbertheory | 14 |
 | `decision` | lists, logic, sets, statistics | 5 |
+| `ellipticcurves` | lists | 16 |
 | `foundations` | lists, logic, sets | 7 |
 | `games` | lists, logic, sets, relations, statistics | 14 |
 | `graphs` | lists, logic, sets, relations | 20 |
 | `information` | lists, sets, probability, relations | 10 |
+| `linearalgebra` | lists, logic | 6 |
 | `lists` | none | 6 |
 | `logic` | lists | 3 |
-| `numbertheory` | lists, logic | 77 |
+| `numbertheory` | lists, logic | 88 |
 | `probability` | lists, logic, sets, relations, statistics | 9 |
+| `quadraticforms` | lists, numbertheory | 7 |
 | `relations` | lists, logic, sets | 11 |
 | `sets` | lists, logic | 12 |
 | `statistics` | none | 13 |
@@ -51,9 +53,8 @@ The current audit indicates that the following areas still contain substantial k
 - exact rational matrix algebra, Sturm signatures, and power basis number field arithmetic
 - maximal orders by the p-radical Round 2 step, integral bases, multiplication tables, and p-maximality checks
 - codifferent and different lattices, fractional ideal arithmetic, ideal factorization, prime ideal decomposition, small-degree class groups with an independent imaginary-quadratic reduced-form cross-check, order conductors, quadratic narrow class numbers, general ray class group orders for arbitrary finite moduli and real-place conditions with certified congruence-kernel invariants, quadratic and general unit groups with saturation completion and interval regulator bounds on totally real fields, and experimental Hurwitz zeta, Riemann and primitive Dirichlet functional equations, conductor reduction, nonprincipal L(1) limits, Dirichlet L evaluation, numerically certified critical-line zero scanning, and fixed-precision p-adic field arithmetic
-- calculus kernels and limits
-- exact rational linear algebra
-- integer number theory
+- native accelerators behind the library policy for calculus, algebra, linear algebra, and number theory
+- limits, series, and the heavier polynomial and eigenvalue kernels
 - approximate numeric dispatch and special functions
 
 The existing library already covers descriptive statistics, finite sets and relations, structure dictionaries, combinatorics, probability, decision theory, games, graphs, information theory, calculus rules, classical and computational number theory, analytic number theory, elliptic curves, quadratic fields, p-adic expansions, binary quadratic forms, and cryptographic number theory.
@@ -106,7 +107,7 @@ The classical layer is intended to grow without pulling more definitions into th
 ## Migration order
 
 1. Keep `statistics` as the first selective-loading proof because it has no library imports.
-2. Keep `numbertheory` as the first large selectable mathematical domain. Its classical layer is in `lib/numbertheory.mith`; performance-critical primality, factorization, divisor, modular, Jacobi, and Fibonacci primitives remain in the kernel.
-3. Move linear algebra and polynomial algebra only after the manifest and size-reporting path exists.
-4. Keep calculus kernels in the kernel until the library has a stable numeric and symbolic interface for series, limits, and branch conditions.
+2. `numbertheory` policy now lives in `lib/numbertheory.mith`. Primality, factorization, modular arithmetic, Jacobi symbols, and the sieve used by `primeCount` remain as native accelerators.
+3. `algebra` policy lives in `lib/algebra.mith`, and elementary `linearalgebra` operations are in `lib/linearalgebra.mith`. Determinants, inverses, decompositions, and eigenvalues remain native accelerators with public kernel names.
+4. Calculus rules are in `lib/calculus.mith`. Differentiation, integration, limits, and series remain native accelerators because they need the evaluator and branch-condition machinery.
 

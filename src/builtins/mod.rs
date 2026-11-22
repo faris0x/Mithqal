@@ -33,10 +33,17 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         }
         "forall" | "exists" | "setBuilder" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "interval" | "complex" => A::new().with(A::PROTECTED),
-        "expand" | "factor" | "together" | "cancel" | "polynomialGcd" | "resultant" | "solve"
-        | "degree" | "coefficient" | "polynomialDivide" | "discriminant" => {
-            A::new().with(A::PROTECTED)
-        }
+        "kernelExpand"
+        | "kernelFactor"
+        | "kernelTogether"
+        | "kernelCancel"
+        | "kernelPolynomialGcd"
+        | "kernelResultant"
+        | "kernelSolve"
+        | "kernelDegree"
+        | "kernelCoefficient"
+        | "kernelPolynomialDivide"
+        | "kernelDiscriminant" => A::new().with(A::PROTECTED),
         "differentiate" | "integrate" | "limit" | "series" | "converges" => {
             A::new().with(A::PROTECTED)
         }
@@ -94,19 +101,17 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         }
         "gcd" | "lcm" | "factorial" | "binomial" | "floor" | "ceil" | "round" | "gamma"
         | "lgamma" | "erf" | "erfc" | "erfi" => A::new().with(A::PROTECTED),
-        "det" | "rank" | "transpose" | "inverse" | "rref" | "trace" | "matmul" | "identity"
-        | "solveLinear" | "dot" | "cross" | "plu" | "charpoly" | "eigenvalues" | "nullspace"
-        | "kernel" | "eigenvectors" | "qr" => A::new().with(A::PROTECTED),
-        "isPrime" | "nextPrime" | "factorInteger" | "divisors" | "totient" | "sigma" | "isEven"
-        | "isOdd" | "divides" | "mod" | "powerMod" => A::new().with(A::PROTECTED),
-        "previousPrime" | "divisorCount" | "moebius" | "radical" | "isSquareFree"
-        | "primeCount" | "fibonacci" | "isPerfectSquare" | "modInverse" | "jacobi" => {
+        "kernelDet" | "kernelRank" | "kernelTranspose" | "kernelInverse" | "kernelRref"
+        | "kernelTrace" | "kernelMatmul" | "kernelIdentity" | "kernelSolveLinear" | "kernelDot"
+        | "kernelCross" | "kernelPlu" | "kernelCharpoly" | "kernelEigenvalues"
+        | "kernelNullspace" | "kernelEigenvectors" | "kernelQr" => A::new().with(A::PROTECTED),
+        "isPrime" | "factorInteger" | "isEven" | "isOdd" | "divides" | "mod" | "powerMod"
+        | "kernelPrimeCount" | "isPerfectSquare" | "modInverse" | "jacobi" => {
             A::new().with(A::PROTECTED)
         }
         "xor" | "implies" | "all" | "any" => A::new().with(A::PROTECTED),
-        "length" | "sort" | "first" | "rest" | "cons" | "nth" | "reverse" | "isNumber" => {
-            A::new().with(A::PROTECTED)
-        }
+        "length" | "sort" | "first" | "rest" | "cons" | "nth" | "reverse" | "isNumber"
+        | "kernelIsList" => A::new().with(A::PROTECTED),
         "pattern" | "blank" | "blankSequence" | "blankNullSequence" | "condition" => {
             A::new().with(A::PROTECTED)
         }

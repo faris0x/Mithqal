@@ -10,9 +10,83 @@ mod numbertheory
 import lists
 import logic
 
-export coprime, extendedGcd, quotient, remainder, crt, modAdd, modSub, modMul, modPow, legendreSymbol, isQuadraticResidue, multiplicativeOrder, primitiveRoot, discreteLog, carmichaelLambda, jordanTotient, dedekindPsi, liouville, omega, bigOmega, divisorSigma, unitaryDivisors, unitaryDivisorCount, aliquotSum, isPerfect, isAbundant, isDeficient, isAmicable, primeFactors, distinctPrimeFactors, primeExponent, valuation, nthPrime, primeGap, isTwinPrime, isCousinPrime, isSexyPrime, isSophieGermainPrime, isSafePrime, isMersennePrime, mersenneNumber, fermatNumber, isFermatPrime, isPrimePower, isPerfectPower, lucasNumber, tribonacci, pellNumber, jacobsthalNumber, triangularNumber, pentagonalNumber, hexagonalNumber, polygonalNumber, bellNumber, partitionNumber, harmonicNumber, mertens, summatoryTotient, summatorySigma, pythagoreanTriples, isPythagorean, solveLinearDiophantine, sumOfTwoSquares, isSumOfTwoSquares, egyptianFraction, continuedFraction, convergents, gaussianNorm, gaussianMultiply, gaussianIsPrime, floorSqrt, primeList, primeSum, primeProduct, radicalList, mobiusSum, divisorSum
+export nextPrime, previousPrime, divisors, divisorCount, totient, sigma, moebius, radical, isSquareFree, primeCount, fibonacci, coprime, extendedGcd, quotient, remainder, crt, modAdd, modSub, modMul, modPow, legendreSymbol, isQuadraticResidue, multiplicativeOrder, primitiveRoot, discreteLog, carmichaelLambda, jordanTotient, dedekindPsi, liouville, omega, bigOmega, divisorSigma, unitaryDivisors, unitaryDivisorCount, aliquotSum, isPerfect, isAbundant, isDeficient, isAmicable, primeFactors, distinctPrimeFactors, primeExponent, valuation, nthPrime, primeGap, isTwinPrime, isCousinPrime, isSexyPrime, isSophieGermainPrime, isSafePrime, isMersennePrime, mersenneNumber, fermatNumber, isFermatPrime, isPrimePower, isPerfectPower, lucasNumber, tribonacci, pellNumber, jacobsthalNumber, triangularNumber, pentagonalNumber, hexagonalNumber, polygonalNumber, bellNumber, partitionNumber, harmonicNumber, mertens, summatoryTotient, summatorySigma, pythagoreanTriples, isPythagorean, solveLinearDiophantine, sumOfTwoSquares, isSumOfTwoSquares, egyptianFraction, continuedFraction, convergents, gaussianNorm, gaussianMultiply, gaussianIsPrime, floorSqrt, primeList, primeSum, primeProduct, radicalList, mobiusSum, divisorSum
 
 // ---
+
+def positiveFactors(n)=filter(factorInteger(n),fn(pe)=>nth(pe,0)>0)
+
+def nextPrime(n) when isNumber(n)&&floor(n)==n=nextPrimeStep(n+1)
+def nextPrime(n)=unevaluated(nextPrime(n))
+def nextPrimeStep(candidate)=
+if(isPrime(candidate),candidate,nextPrimeStep(candidate+1))
+end
+
+def previousPrime(n) when isNumber(n)&&floor(n)==n&&n>2=previousPrimeStep(n-1)
+def previousPrime(n)=unevaluated(previousPrime(n))
+def previousPrimeStep(candidate)=
+if(isPrime(candidate),candidate,previousPrimeStep(candidate-1))
+end
+
+def divisorExtend(values,prime,exponent)=
+concat(map(rangeList(exponent+1),fn(k)=>map(values,fn(value)=>value*power(prime,k))))
+end
+
+def divisors(n) when isNumber(n)&&floor(n)==n&&n>0=
+sort(fold(fn(acc,pe)=>divisorExtend(acc,nth(pe,0),nth(pe,1)),[1],positiveFactors(n)))
+end
+def divisors(n)=unevaluated(divisors(n))
+
+def divisorCount(n) when isNumber(n)&&floor(n)==n&&n>0=
+fold(fn(acc,pe)=>acc*(nth(pe,1)+1),1,positiveFactors(n))
+end
+def divisorCount(n)=unevaluated(divisorCount(n))
+
+def geometricSum(prime,exponent)=
+fold(fn(acc,k)=>acc+power(prime,k),0,rangeList(exponent+1))
+end
+
+def sigma(n) when isNumber(n)&&floor(n)==n&&n>0=
+fold(fn(acc,pe)=>acc*geometricSum(nth(pe,0),nth(pe,1)),1,positiveFactors(n))
+end
+def sigma(n)=unevaluated(sigma(n))
+
+def totient(n) when isNumber(n)&&floor(n)==n&&n>0=
+fold(fn(acc,pe)=>acc*(nth(pe,0)-1)*power(nth(pe,0),nth(pe,1)-1),1,positiveFactors(n))
+end
+def totient(n)=unevaluated(totient(n))
+
+def moebius(n) when isNumber(n)&&floor(n)==n&&n>0=moebiusFactors(positiveFactors(n))
+def moebius(n)=unevaluated(moebius(n))
+def moebiusFactors(factors)=
+if(fold(fn(acc,pe)=>acc||nth(pe,1)>1,false,factors),0,if(isEven(length(factors)),1,-1))
+end
+
+def radical(n) when isNumber(n)&&floor(n)==n&&n>0=
+fold(fn(acc,pe)=>acc*nth(pe,0),1,positiveFactors(n))
+end
+def radical(n)=unevaluated(radical(n))
+
+def isSquareFree(n) when isNumber(n)&&floor(n)==n&&n>0=
+fold(fn(acc,pe)=>acc&&nth(pe,1)==1,true,positiveFactors(n))
+end
+def isSquareFree(n)=unevaluated(isSquareFree(n))
+
+def primeCount(n) when isNumber(n)&&floor(n)==n=kernelPrimeCount(n)
+def primeCount(n)=unevaluated(primeCount(n))
+
+def fibonacciPair(n) when n==0=[0,1]
+def fibonacciPair(n)=
+let pair=fibonacciPair(floor(n/2))
+let a=nth(pair,0)
+let b=nth(pair,1)
+let c=a*(2*b-a)
+let d=a*a+b*b
+if(isEven(n),[c,d],[d,c+d])
+end
+
+def fibonacci(n) when isNumber(n)&&floor(n)==n&&n>=0=nth(fibonacciPair(n),0)
+def fibonacci(n)=unevaluated(fibonacci(n))
 
 def quotient(a,b)=floor(a/b)
 def remainder(a,b)=mod(a,b)

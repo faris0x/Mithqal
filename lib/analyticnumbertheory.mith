@@ -7,8 +7,9 @@
 mod analyticnumbertheory
 
 import lists
+import numbertheory
 
-export bernoulliNumber, bernoulliPolynomial, vonMangoldt, mangoldt, chebyshevTheta, chebyshevPsi, summatoryLiouville, summatoryMobius, zetaInteger, dirichletEta, eulerNumber, primeHarmonic
+export bernoulliNumber, bernoulliPolynomial, vonMangoldt, mangoldt, chebyshevTheta, chebyshevPsi, summatoryLiouville, summatoryMobius, summatoryVonMangoldt, zetaInteger, riemannZetaApprox, dirichletEta, dirichletBeta, primeZeta, eulerNumber, primeHarmonic
 
 def bernoulliNumber(n) when n==0=1
 def bernoulliNumber(n)=
@@ -59,6 +60,20 @@ def eulerNumber(n)=
 let ks=filter(rangeList(n),fn(k)=>isEven(k))
 let terms=map(ks,fn(k)=>binomial(n,k)*eulerNumber(k))
 -fold(fn(acc,term)=>acc+term,0,terms)
+end
+
+def summatoryVonMangoldt(n)=
+fold(fn(acc,k)=>acc+vonMangoldt(k),0,map(rangeList(n),fn(k)=>k+1))
+end
+
+def riemannZetaApprox(s,terms)=zetaInteger(s,terms)
+
+def dirichletBeta(s,terms)=
+fold(fn(acc,k)=>acc+if(isEven(k),1,-1)/power(2*k+1,s),0,rangeList(terms))
+end
+
+def primeZeta(s,terms)=
+fold(fn(acc,p)=>acc+1/power(p,s),0,primesBelow(terms))
 end
 
 def primeHarmonic(n)=

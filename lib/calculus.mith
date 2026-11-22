@@ -10,6 +10,7 @@ export derive,antiderivative
 
 def productOf(items)=fold(fn(acc,item)=>acc*item,1,items)
 
+
 def d(v_,v_)=1
 def d(plus(a_,b__),x)=d(a,x)+fold(fn(acc,term)=>acc+d(term,x),0,list(b))
 def d(negate(u_),x)=-d(u,x)

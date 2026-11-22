@@ -1,0 +1,25 @@
+// Symbolic algebra policy.
+//
+// The public algebraic operations are defined here. Native polynomial kernels
+// remain available as accelerators under the `kernel` prefix.
+
+mod algebra
+
+import lists
+
+export expand, factor, together, cancel, polynomialGcd, resultant, solve, degree, coefficient, polynomialDivide, discriminant
+
+def expand(expression)=kernelExpand(expression)
+def factor(expression)=kernelFactor(expression)
+def together(expression)=kernelTogether(expression)
+def cancel(expression)=kernelCancel(expression)
+def polynomialGcd(left,right,variable)=kernelPolynomialGcd(left,right,variable)
+def resultant(left,right,variable)=kernelResultant(left,right,variable)
+def solve(expression)=kernelSolve(expression)
+def solve(expression,variable)=kernelSolve(expression,variable)
+def degree(expression,variable)=kernelDegree(expression,variable)
+def coefficient(expression,variable,index)=kernelCoefficient(expression,variable,index)
+def polynomialDivide(dividend,divisor,variable)=kernelPolynomialDivide(dividend,divisor,variable)
+def discriminant(expression,variable)=kernelDiscriminant(expression,variable)
+
+end

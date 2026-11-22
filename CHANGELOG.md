@@ -376,6 +376,12 @@ Initial kernel work.
 - Added narrow class numbers for quadratic fields using the norm of the fundamental unit.
 - Added ray class numbers for prime-power moduli using exact unit congruence orders.
 - Added narrow ray class numbers with all real places for real quadratic fields.
+- Moved divisor, totient, Moebius, radical, squarefree, prime-counting, Fibonacci, next-prime, and previous-prime policy from the Rust kernel into `lib/numbertheory.mith`.
+- Moved symbolic algebra policy into `lib/algebra.mith` and elementary matrix operations into `lib/linearalgebra.mith`, leaving polynomial, decomposition, and eigenvalue kernels as native accelerators.
+- Added `kernel` accelerator names for algebra, calculus, and linear algebra kernels, and removed the corresponding domain names from kernel dispatch and protected attributes.
+- Added algebraic number theory policy for quadratic discriminants, class numbers, fundamental Pell units, and regulators.
+- Extended analytic number theory in Mithqal with summatory von Mangoldt, truncated Riemann zeta, Dirichlet beta, and prime zeta.
+- Added `kernelPrimeCount` and `kernelIsList` as narrow native primitives for library policy.
 - Added general ray class group orders for arbitrary finite moduli and real-place subsets, with exact congruence-kernel invariants and certified full structure when the class number is one.
 - Added saturation completion for totally real unit groups by bounded Cholesky enumeration, with explicit witnesses and a documented enumeration envelope.
 - Added interval regulator bounds for totally real fields using exact rational root isolation and interval arithmetic.

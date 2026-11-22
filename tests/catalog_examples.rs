@@ -51,7 +51,8 @@ fn kernel_heads_have_catalog_entries() {
             continue;
         };
         let name = &left[start + 1..start + 1 + end];
-        if catalog::find(name).is_none() && !internal.contains(&name) {
+        if catalog::find(name).is_none() && !internal.contains(&name) && !name.starts_with("kernel")
+        {
             missing.push(name.to_string());
         }
     }

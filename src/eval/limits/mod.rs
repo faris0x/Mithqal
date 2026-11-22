@@ -747,7 +747,9 @@ impl<'a> Evaluator<'a> {
                 "algebra function expects one argument",
             ));
         }
-        let original = self.arena.intern_call(head, args);
+        let call = self.arena.intern_call(head, args);
+        let hold = self.arena.builtin_head("unevaluated");
+        let original = self.arena.intern_call(hold, &[call]);
         Ok(operation(self.arena, args[0], &context).unwrap_or(original))
     }
 }

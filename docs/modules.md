@@ -205,10 +205,21 @@ Information quantities are in bits. `log2` is exact when the probability is an i
 
 ## numbertheory
 
-Classical and computational number theory. The kernel supplies primality, factorization, divisors, modular powers, modular inverses, Jacobi symbols, Fibonacci numbers, and exact arithmetic. This module supplies the broader classical layer over those primitives.
+Classical and computational number theory. The kernel supplies primality, factorization, modular powers, modular inverses, Jacobi symbols, and exact arithmetic primitives. This module supplies the divisor, totient, Moebius, prime-counting, and Fibonacci policy over those primitives.
 
 | Function | Meaning |
 |---|---|
+| `nextPrime` | least prime greater than `n` (``nextPrime(n)``) |
+| `previousPrime` | greatest prime less than `n` (``previousPrime(n)``) |
+| `divisors` | positive divisors (``divisors(n)``) |
+| `divisorCount` | number of positive divisors (``divisorCount(n)``) |
+| `totient` | Euler totient (``totient(n)``) |
+| `sigma` | sum of positive divisors (``sigma(n)``) |
+| `moebius` | Moebius function (``moebius(n)``) |
+| `radical` | product of distinct prime factors (``radical(n)``) |
+| `isSquareFree` | squarefree test (``isSquareFree(n)``) |
+| `primeCount` | number of primes at most `n` (``primeCount(n)``) |
+| `fibonacci` | Fibonacci number (``fibonacci(n)``) |
 | `coprime` | true when the gcd is one (``coprime(a,b)``) |
 | `extendedGcd` | Bezout coefficients `[g,x,y]` with `a*x+b*y=g` (``extendedGcd(a,b)``) |
 | `quotient` | floor of the integer quotient (``quotient(a,b)``) |
@@ -299,8 +310,12 @@ Classical and computational number theory. The kernel supplies primality, factor
 | `chebyshevPsi` | Chebyshev psi sum of von Mangoldt values |
 | `summatoryLiouville` | summatory Liouville function |
 | `summatoryMobius` | summatory Moebius function |
+| `summatoryVonMangoldt` | summatory von Mangoldt function |
 | `zetaInteger` | partial sum of the zeta series at an integer exponent |
+| `riemannZetaApprox` | truncated Riemann zeta series |
 | `dirichletEta` | truncated Dirichlet eta series |
+| `dirichletBeta` | truncated Dirichlet beta series |
+| `primeZeta` | truncated prime zeta series |
 | `eulerNumber` | Euler secant number |
 | `primeHarmonic` | sum of reciprocals of primes below a bound |
 
@@ -329,6 +344,10 @@ Classical and computational number theory. The kernel supplies primality, factor
 
 | Function | Meaning |
 |---|---|
+| `quadraticFieldDiscriminant` | discriminant of a quadratic field |
+| `quadraticClassNumber` | class number of an imaginary quadratic field |
+| `quadraticFundamentalUnit` | fundamental Pell solution `[x,y]` |
+| `quadraticRegulator` | regulator from the fundamental unit |
 | `quadraticConjugate` | conjugate in a quadratic field |
 | `quadraticNorm` | field norm |
 | `quadraticTrace` | field trace |
@@ -377,9 +396,52 @@ Classical and computational number theory. The kernel supplies primality, factor
 | `isEulerPseudoprime` | Euler pseudoprime test |
 | `orderOfElement` | multiplicative order alias |
 
+## algebra
+
+Symbolic algebra policy over the native polynomial kernels.
+
+| Function | Meaning |
+|---|---|
+| `expand(expr)` | expand products and powers |
+| `factor(expr)` | factor over the supported domains |
+| `together(expr)` | combine rational terms |
+| `cancel(expr)` | cancel common factors |
+| `polynomialGcd(p,q,var)` | polynomial gcd |
+| `resultant(p,q,var)` | polynomial resultant |
+| `solve(expr,var)` | solve supported equations |
+| `degree(expr,var)` | polynomial degree |
+| `coefficient(expr,var,index)` | polynomial coefficient |
+| `polynomialDivide(dividend,divisor,var)` | quotient and remainder |
+| `discriminant(expr,var)` | polynomial discriminant |
+
+## linearalgebra
+
+Elementary matrix operations are defined in Mithqal over lists of rows. Determinants, inverses, decompositions, characteristic polynomials, and eigenvalue routines remain native kernel functions.
+
+| Function | Meaning |
+|---|---|
+| `transpose(matrix)` | matrix transpose |
+| `identity(n)` | `n` by `n` identity matrix |
+| `trace(matrix)` | sum of diagonal entries |
+| `dot(left,right)` | vector dot product |
+| `cross(left,right)` | three-dimensional cross product |
+| `matmul(left,right)` | matrix product |
+| `det(matrix)` | determinant, kernel function |
+| `rank(matrix)` | rank, kernel function |
+| `inverse(matrix)` | matrix inverse, kernel function |
+| `rref(matrix)` | reduced row echelon form, kernel function |
+| `solveLinear(matrix,rhs)` | linear solve, kernel function |
+| `plu(matrix)` | PLU decomposition, kernel function |
+| `charpoly(matrix)` | characteristic polynomial, kernel function |
+| `eigenvalues(matrix)` | eigenvalues, kernel function |
+| `nullspace(matrix)` | nullspace, kernel function |
+| `kernel(matrix)` | nullspace alias, kernel function |
+| `eigenvectors(matrix)` | eigenvectors, kernel function |
+| `qr(matrix)` | QR decomposition, kernel function |
+
 ## calculus
 
-The calculus module expresses differentiation and integration rules in Mithqal. Forms that the rules do not handle fall back to the native `differentiate` and `integrate` kernels.
+The calculus module expresses differentiation and integration rules in Mithqal. Forms that the rules do not handle fall back to the `kernelDifferentiate` and `kernelIntegrate` accelerators.
 
 | Function | Meaning |
 |---|---|

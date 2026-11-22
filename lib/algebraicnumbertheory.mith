@@ -9,8 +9,41 @@ mod algebraicnumbertheory
 
 import lists
 import numbertheory
+import quadraticforms
 
-export quadraticConjugate, quadraticNorm, quadraticTrace, quadraticAdd, quadraticMultiply, quadraticInverse, quadraticIsUnit, quadraticPower, eisensteinNorm, eisensteinMultiply, eisensteinIsPrime, padicValuation, padicNorm, padicUnit, padicExpansion, padicDigit
+export quadraticFieldDiscriminant, quadraticClassNumber, quadraticFundamentalUnit, quadraticRegulator, quadraticConjugate, quadraticNorm, quadraticTrace, quadraticAdd, quadraticMultiply, quadraticInverse, quadraticIsUnit, quadraticPower, eisensteinNorm, eisensteinMultiply, eisensteinIsPrime, padicValuation, padicNorm, padicUnit, padicExpansion, padicDigit
+
+def quadraticFieldDiscriminant(radicand)=
+if(mod(radicand,4)==1,radicand,4*radicand)
+end
+
+def quadraticClassNumber(radicand)=
+if(radicand>=0,undefined,binaryFormClassNumber(quadraticFieldDiscriminant(radicand)))
+end
+
+def quadraticFundamentalUnit(d) when d<=1=undefined
+def quadraticFundamentalUnit(d)=
+let a0=floorSqrt(d)
+pellStep(d,0,1,a0,a0,1,a0,0,1)
+end
+
+def pellStep(d,m,den,a,a0,h0,h1,k0,k1)=
+if(h1*h1-d*k1*k1==1||h1*h1-d*k1*k1==-1,[h1,k1],pellNext(d,m,den,a,a0,h0,h1,k0,k1))
+end
+
+def pellNext(d,m,den,a,a0,h0,h1,k0,k1)=
+let nextM=den*a-m
+let nextDen=(d-nextM*nextM)/den
+let nextA=floor((a0+nextM)/nextDen)
+let nextH1=nextA*h1+h0
+let nextK1=nextA*k1+k0
+pellStep(d,nextM,nextDen,nextA,a0,h1,nextH1,k1,nextK1)
+end
+
+def quadraticRegulator(d)=
+let unit=quadraticFundamentalUnit(d)
+if(same(unit,undefined),undefined,ln(nth(unit,0)+nth(unit,1)*sqrt(d)))
+end
 
 def quadraticConjugate(a,b)=[a,-b]
 def quadraticTrace(a,b)=2*a

@@ -1,0 +1,45 @@
+// Linear algebra over lists of rows.
+//
+// Elementary matrix operations are implemented here in Mithqal. The native
+// kernels remain available as accelerators for the operations that need
+// pivoting, polynomial characteristic data, or numerical decomposition.
+
+mod linearalgebra
+
+import lists
+import logic
+
+export transpose, trace, matmul, identity, dot, cross
+
+def transpose(matrix) when kernelIsList(matrix)&&length(matrix)==0=[]
+def transpose(matrix) when kernelIsList(matrix)&&kernelIsList(first(matrix))=
+let columns=length(first(matrix))
+map(rangeList(columns),fn(j)=>map(matrix,fn(row)=>nth(row,j)))
+end
+def transpose(matrix)=unevaluated(transpose(matrix))
+
+def identity(n) when isNumber(n)&&floor(n)==n&&n>=0=map(rangeList(n),fn(i)=>map(rangeList(n),fn(j)=>if(i==j,1,0)))
+def identity(n)=unevaluated(identity(n))
+
+def dot(left,right) when kernelIsList(left)&&kernelIsList(right)&&length(left)==length(right)=
+fold(fn(acc,i)=>acc+nth(left,i)*nth(right,i),0,rangeList(length(left)))
+end
+def dot(left,right)=unevaluated(dot(left,right))
+
+def cross(left,right) when kernelIsList(left)&&kernelIsList(right)&&length(left)==3&&length(right)==3=
+[nth(left,1)*nth(right,2)-nth(left,2)*nth(right,1),nth(left,2)*nth(right,0)-nth(left,0)*nth(right,2),nth(left,0)*nth(right,1)-nth(left,1)*nth(right,0)]
+end
+def cross(left,right)=unevaluated(cross(left,right))
+
+def matmul(left,right) when kernelIsList(left)&&kernelIsList(right)&&length(left)>0&&length(right)>0&&kernelIsList(first(left))&&kernelIsList(first(right))&&length(first(left))==length(right)=
+let columns=transpose(right)
+map(left,fn(row)=>map(columns,fn(column)=>dot(row,column)))
+end
+def matmul(left,right)=unevaluated(matmul(left,right))
+
+def trace(matrix) when kernelIsList(matrix)&&length(matrix)>0&&kernelIsList(first(matrix))&&length(first(matrix))==length(matrix)=
+fold(fn(acc,i)=>acc+nth(nth(matrix,i),i),0,rangeList(length(matrix)))
+end
+def trace(matrix)=unevaluated(trace(matrix))
+
+end

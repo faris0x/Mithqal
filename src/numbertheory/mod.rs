@@ -1,7 +1,9 @@
-//! Exact integer number theory.
+//! Exact integer number theory primitives.
 //!
-//! Functions operate on machine sized integers for factorization and primality.
-//! Modular arithmetic uses arbitrary precision integers.
+//! This layer contains the native accelerators used by the Mithqal number
+//! theory library: primality, factorization, modular arithmetic, Jacobi
+//! symbols, perfect-square tests, and a sieve-backed prime count. Divisor,
+//! totient, Moebius, radical, and Fibonacci policy live in Mithqal code.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -176,18 +178,6 @@ pub(crate) fn is_prime(arena: &mut Arena, expression: ExprId) -> Option<ExprId> 
     Some(boolean(arena, value > 1 && is_prime_u64(value as u64)))
 }
 
-pub(crate) fn next_prime(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    let mut candidate = if value < 2 { 2 } else { value + 1 };
-    if candidate < 2 {
-        candidate = 2;
-    }
-    while !is_prime_u64(candidate as u64) {
-        candidate = candidate.checked_add(1)?;
-    }
-    Some(integer(arena, Int::from_i64(candidate)))
-}
-
 pub(crate) fn factor_integer(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
     let value = as_i64(arena, expression)?;
     if value == 0 {
@@ -209,69 +199,6 @@ pub(crate) fn factor_integer(arena: &mut Arena, expression: ExprId) -> Option<Ex
         }
     }
     Some(list(arena, &entries))
-}
-
-pub(crate) fn divisors(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    if value == 0 {
-        return None;
-    }
-    let magnitude = value.unsigned_abs();
-    if magnitude == 1 {
-        let one = integer(arena, Int::from_i64(1));
-        return Some(list(arena, &[one]));
-    }
-    let mut values = vec![1u64];
-    for (prime, exponent) in factor_u64(magnitude) {
-        let mut next = Vec::with_capacity(values.len() * (exponent as usize + 1));
-        let mut power = 1u64;
-        for _ in 0..=exponent {
-            for value in &values {
-                next.push(value * power);
-            }
-            power = power.saturating_mul(prime);
-        }
-        values = next;
-    }
-    values.sort_unstable();
-    let entries = values
-        .into_iter()
-        .map(|value| integer(arena, Int::from_i64(value as i64)))
-        .collect::<Vec<_>>();
-    Some(list(arena, &entries))
-}
-
-pub(crate) fn totient(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    if value <= 0 {
-        return None;
-    }
-    let magnitude = value as u64;
-    let mut result = magnitude;
-    for (prime, _) in factor_u64(magnitude) {
-        result = result / prime * (prime - 1);
-    }
-    Some(integer(arena, Int::from_i64(result as i64)))
-}
-
-pub(crate) fn sigma(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    if value <= 0 {
-        return None;
-    }
-    let magnitude = value as u64;
-    let mut result = Int::one();
-    for (prime, exponent) in factor_u64(magnitude) {
-        let prime = Int::from_i64(prime as i64);
-        let mut power = Int::one();
-        let mut sum = Int::zero();
-        for _ in 0..=exponent {
-            sum = sum.add(&power);
-            power = power.mul(&prime);
-        }
-        result = result.mul(&sum);
-    }
-    Some(integer(arena, result))
 }
 
 pub(crate) fn is_even(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
@@ -350,74 +277,6 @@ fn modulo_int(value: &Int, modulus: &Int) -> Option<Int> {
     Some(remainder)
 }
 
-pub(crate) fn previous_prime(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    if value <= 2 {
-        return None;
-    }
-    let mut candidate = value - 1;
-    while candidate >= 2 {
-        if is_prime_u64(candidate as u64) {
-            return Some(integer(arena, Int::from_i64(candidate)));
-        }
-        candidate -= 1;
-    }
-    None
-}
-
-pub(crate) fn divisor_count(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    if value == 0 {
-        return None;
-    }
-    let mut count = 1u64;
-    for (_, exponent) in factor_u64(value.unsigned_abs()) {
-        count = count.saturating_mul(exponent as u64 + 1);
-    }
-    Some(integer(arena, Int::from_i64(count as i64)))
-}
-
-pub(crate) fn moebius(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    if value <= 0 {
-        return None;
-    }
-    let factors = factor_u64(value as u64);
-    if factors.iter().any(|(_, exponent)| *exponent > 1) {
-        return Some(integer(arena, Int::zero()));
-    }
-    let sign = if factors.len().is_multiple_of(2) {
-        1
-    } else {
-        -1
-    };
-    Some(integer(arena, Int::from_i64(sign)))
-}
-
-pub(crate) fn radical(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    if value == 0 {
-        return None;
-    }
-    let mut result = Int::one();
-    for (prime, _) in factor_u64(value.unsigned_abs()) {
-        result = result.mul(&Int::from_i64(prime as i64));
-    }
-    Some(integer(arena, result))
-}
-
-pub(crate) fn is_square_free(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    if value <= 0 {
-        return None;
-    }
-    let factors = factor_u64(value as u64);
-    Some(boolean(
-        arena,
-        factors.iter().all(|(_, exponent)| *exponent == 1),
-    ))
-}
-
 pub(crate) fn prime_count(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
     let value = as_i64(arena, expression)?;
     if value < 2 {
@@ -443,31 +302,6 @@ pub(crate) fn prime_count(arena: &mut Arena, expression: ExprId) -> Option<ExprI
     }
     let count = sieve.into_iter().filter(|prime| *prime).count();
     Some(integer(arena, Int::from_i64(count as i64)))
-}
-
-pub(crate) fn fibonacci(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
-    let value = as_i64(arena, expression)?;
-    if !(0..=10_000).contains(&value) {
-        return None;
-    }
-    if value <= 92 {
-        let mut previous = 0u64;
-        let mut current = 1u64;
-        for _ in 0..value {
-            let next = previous + current;
-            previous = current;
-            current = next;
-        }
-        return Some(integer(arena, Int::from_u64(previous)));
-    }
-    let mut previous = Int::zero();
-    let mut current = Int::one();
-    for _ in 0..value {
-        let next = previous.add(&current);
-        previous = current;
-        current = next;
-    }
-    Some(integer(arena, previous))
 }
 
 pub(crate) fn is_perfect_square(arena: &mut Arena, expression: ExprId) -> Option<ExprId> {
