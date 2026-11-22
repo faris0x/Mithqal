@@ -8,6 +8,7 @@
 #[allow(unused_imports)]
 use crate::prelude::*;
 
+#[cfg(feature = "numberfields")]
 pub(crate) use crate::algebra::{dense, intmatrix, lattice, poly_z, ratmatrix};
 
 pub(crate) mod analytic;
