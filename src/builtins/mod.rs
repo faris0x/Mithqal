@@ -44,9 +44,11 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         | "kernelCoefficient"
         | "kernelPolynomialDivide"
         | "kernelDiscriminant" => A::new().with(A::PROTECTED),
-        "differentiate" | "integrate" | "limit" | "series" | "converges" => {
-            A::new().with(A::PROTECTED)
-        }
+        "kernelDifferentiate"
+        | "kernelIntegrate"
+        | "kernelLimit"
+        | "kernelSeries"
+        | "kernelConverges" => A::new().with(A::PROTECTED),
         "assume" | "assuming" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "assumptions" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),
         "begin" | "context" => A::new().with(A::HOLD_ALL).with(A::PROTECTED),

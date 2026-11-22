@@ -31,7 +31,7 @@ Both checks compile the library without linking a final executable. Embedded bin
 | --- | --- |
 | `std` | Enables standard-library collections, file loading, and `mithqalite/std`. Enabled by default. |
 | `cli` | Enables the command line frontend and implies `std`. |
-| `numberfields` | Compiles exact integer lattice, polynomial, rational matrix, number field arithmetic, maximal orders, the different, fractional ideals, prime decomposition, small-degree class groups, general unit groups with totally real saturation completion and regulator enclosures, general ray class orders and congruence kernels, experimental analytic zeta, Riemann and Dirichlet functional equations, and fixed-precision p-adic field arithmetic. Enabled by default. |
+| `numberfields` | Compiles the native accelerator stack: exact integer lattice, polynomial, rational matrix, number field arithmetic, maximal orders, the different, fractional ideals, prime decomposition, small-degree class groups, general unit groups with totally real saturation completion and regulator enclosures, general ray class orders and congruence kernels, experimental analytic zeta, Riemann and Dirichlet functional equations, and fixed-precision p-adic field arithmetic. Enabled by default. |
 | no `std` | Uses `core`, `alloc`, `hashbrown`, and `libm`. File loading and the CLI are unavailable. |
 
 Mithqalite uses the same pattern. Its numeric crates have their own `std` features, and the constant cache is active only when `std` is enabled.

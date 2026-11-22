@@ -11,7 +11,7 @@ Mithqal separates kernel mathematics from the bundled standard library. Kernel c
 | `algebra` | lists | 11 |
 | `algebraicnumbertheory` | lists, numbertheory, quadraticforms | 20 |
 | `analyticnumbertheory` | lists, numbertheory | 16 |
-| `calculus` | algebra | 2 |
+| `calculus` | algebra | 7 |
 | `combinatorics` | lists, sets | 7 |
 | `cryptonumbertheory` | lists, logic, numbertheory | 14 |
 | `decision` | lists, logic, sets, statistics | 5 |
@@ -20,7 +20,7 @@ Mithqal separates kernel mathematics from the bundled standard library. Kernel c
 | `games` | lists, logic, sets, relations, statistics | 14 |
 | `graphs` | lists, logic, sets, relations | 20 |
 | `information` | lists, sets, probability, relations | 10 |
-| `linearalgebra` | lists, logic | 6 |
+| `linearalgebra` | lists, logic | 18 |
 | `lists` | none | 6 |
 | `logic` | lists | 3 |
 | `numbertheory` | lists, logic | 88 |
@@ -73,9 +73,9 @@ embedded = true
 
 The manifest will drive dependency resolution, size estimates, compatibility checks, and website build options. The current implementation derives dependencies from `import` declarations and uses `Session::with_modules` for selection.
 
-## Number field kernel feature
+## Native accelerator layer
 
-The `numberfields` Cargo feature is enabled by default. It compiles the exact integer matrix, lattice, integer polynomial, rational matrix, Sturm, power basis number field, maximal order, different, ideal, prime decomposition, and class group layers. The current layer covers field validation, signatures, element arithmetic, norms, traces, characteristic and minimal polynomials, integrality tests, integral bases, multiplication tables, p-maximality by the p-radical Round 2 step, codifferent and different lattices, fractional ideal multiplication, inversion, division, powers, ideal factorization, prime ideals with ramification, residue degree, and Frobenius data, and class groups for small-degree fields, together with quadratic, rank-one, and general-rank unit groups, saturation completion for totally real fields, and interval regulator bounds. Ray class group orders are available for arbitrary finite moduli and real-place subsets; their congruence-kernel invariants are exact, and the full group structure is certified when the ordinary class number is one. Experimental analytic evaluation includes Euler-Maclaurin Hurwitz zeta, Dirichlet L-functions through Hurwitz decomposition, and critical-line zero scanning. Full ray class extension structure for nontrivial class groups, certified zero enclosures, large-index prime decomposition, and expression-level field objects are still ahead.
+The `numberfields` Cargo feature is enabled by default. It compiles the native accelerator stack under `src/accelerators`: exact integer matrix and lattice kernels, integer and rational polynomial kernels, Sturm isolation, number fields, maximal orders, the different, ideals, prime decomposition, class groups, units, ray class orders, and analytic zeta and L-function evaluation. The current layer covers field validation, signatures, element arithmetic, norms, traces, characteristic and minimal polynomials, integrality tests, integral bases, multiplication tables, p-maximality by the p-radical Round 2 step, codifferent and different lattices, fractional ideal multiplication, inversion, division, powers, ideal factorization, prime ideals with ramification, residue degree, and Frobenius data, and class groups for small-degree fields, together with quadratic, rank-one, and general-rank unit groups, saturation completion for totally real fields, and interval regulator bounds. Ray class group orders are available for arbitrary finite moduli and real-place subsets; their congruence-kernel invariants are exact, and the full group structure is certified when the ordinary class number is one. Experimental analytic evaluation includes Euler-Maclaurin Hurwitz zeta, Dirichlet L-functions through Hurwitz decomposition, and critical-line zero scanning. Full ray class extension structure for nontrivial class groups, certified zero enclosures, large-index prime decomposition, and expression-level field objects are still ahead.
 
 A size-sensitive build can omit the substrate:
 

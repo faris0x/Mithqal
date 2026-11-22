@@ -1,8 +1,9 @@
-//! Exact number field construction and arithmetic.
+//! Native algebraic number theory accelerator.
 //!
-//! The current layer covers defining polynomial validation, exact signatures,
-//! power basis arithmetic, norms, traces, characteristic polynomials, minimal
-//! polynomials, and integrality tests. Integral bases and ideals come later.
+//! This module implements number field construction, maximal orders, ideals,
+//! decomposition, class groups, units, saturation, ray class orders, and
+//! conductor machinery. It is a performance accelerator, not public policy.
+//! The Mithqal library owns the user-facing algebraic number theory surface.
 
 mod classgroup;
 mod conductor;

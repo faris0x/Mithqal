@@ -156,11 +156,11 @@ pub(crate) enum CalculusHead {
 impl CalculusHead {
     pub(super) fn from_name(name: &str) -> Option<Self> {
         Some(match name {
-            "differentiate" => Self::Differentiate,
-            "integrate" => Self::Integrate,
-            "limit" => Self::Limit,
-            "series" => Self::Series,
-            "converges" => Self::Converges,
+            "kernelDifferentiate" => Self::Differentiate,
+            "kernelIntegrate" => Self::Integrate,
+            "kernelLimit" => Self::Limit,
+            "kernelSeries" => Self::Series,
+            "kernelConverges" => Self::Converges,
             _ => return None,
         })
     }
@@ -219,23 +219,23 @@ pub(crate) enum LinearHead {
 impl LinearHead {
     pub(super) fn from_name(name: &str) -> Option<Self> {
         Some(match name {
-            "det" => Self::Determinant,
-            "rank" => Self::Rank,
+            "kernelDet" => Self::Determinant,
+            "kernelRank" => Self::Rank,
             "kernelTranspose" => Self::Transpose,
-            "inverse" => Self::Inverse,
-            "rref" => Self::Rref,
+            "kernelInverse" => Self::Inverse,
+            "kernelRref" => Self::Rref,
             "kernelTrace" => Self::Trace,
             "kernelMatmul" => Self::Matmul,
             "kernelIdentity" => Self::Identity,
-            "solveLinear" => Self::SolveLinear,
+            "kernelSolveLinear" => Self::SolveLinear,
             "kernelDot" => Self::Dot,
             "kernelCross" => Self::Cross,
-            "plu" => Self::Plu,
-            "charpoly" => Self::Charpoly,
-            "eigenvalues" => Self::Eigenvalues,
-            "nullspace" | "kernel" => Self::Nullspace,
-            "eigenvectors" => Self::Eigenvectors,
-            "qr" => Self::Qr,
+            "kernelPlu" => Self::Plu,
+            "kernelCharpoly" => Self::Charpoly,
+            "kernelEigenvalues" => Self::Eigenvalues,
+            "kernelNullspace" => Self::Nullspace,
+            "kernelEigenvectors" => Self::Eigenvectors,
+            "kernelQr" => Self::Qr,
             _ => return None,
         })
     }

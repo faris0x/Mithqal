@@ -187,7 +187,8 @@ impl<'a> Evaluator<'a> {
                         "linear algebra function received the wrong number of arguments",
                     ));
                 }
-                let original = self.arena.intern_call(head, args);
+                let public = self.arena.builtin_head(Self::linear_public_name(function));
+                let original = self.held_public_call(public, args);
                 Ok(self.apply_linear(function, args).unwrap_or(original))
             }
             KernelFunction::NumberTheory(function) => {
@@ -361,7 +362,7 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    fn held_public_call(&mut self, head: ExprId, args: &[ExprId]) -> ExprId {
+    pub(super) fn held_public_call(&mut self, head: ExprId, args: &[ExprId]) -> ExprId {
         let call = self.arena.intern_call(head, args);
         let hold = self.arena.builtin_head("unevaluated");
         self.arena.intern_call(hold, &[call])
@@ -383,10 +384,42 @@ impl<'a> Evaluator<'a> {
         }
     }
 
+    fn calculus_public_name(function: CalculusHead) -> &'static str {
+        match function {
+            CalculusHead::Differentiate => "differentiate",
+            CalculusHead::Integrate => "integrate",
+            CalculusHead::Limit => "limit",
+            CalculusHead::Series => "series",
+            CalculusHead::Converges => "converges",
+        }
+    }
+
+    fn linear_public_name(function: LinearHead) -> &'static str {
+        match function {
+            LinearHead::Determinant => "det",
+            LinearHead::Rank => "rank",
+            LinearHead::Transpose => "transpose",
+            LinearHead::Inverse => "inverse",
+            LinearHead::Rref => "rref",
+            LinearHead::Trace => "trace",
+            LinearHead::Matmul => "matmul",
+            LinearHead::Identity => "identity",
+            LinearHead::SolveLinear => "solveLinear",
+            LinearHead::Dot => "dot",
+            LinearHead::Cross => "cross",
+            LinearHead::Plu => "plu",
+            LinearHead::Charpoly => "charpoly",
+            LinearHead::Eigenvalues => "eigenvalues",
+            LinearHead::Nullspace => "nullspace",
+            LinearHead::Eigenvectors => "eigenvectors",
+            LinearHead::Qr => "qr",
+        }
+    }
+
     pub(super) fn apply_calculus(
         &mut self,
         function: CalculusHead,
-        head: ExprId,
+        _head: ExprId,
         args: &[ExprId],
     ) -> Result<ExprId, Diagnostic> {
         let normalized = match (function, args) {
@@ -466,18 +499,21 @@ impl<'a> Evaluator<'a> {
                 "calculus function received the wrong number of arguments",
             ));
         }
-        let original = self.arena.intern_call(head, args);
+        let public = self
+            .arena
+            .builtin_head(Self::calculus_public_name(function));
+        let original = self.held_public_call(public, args);
         if self.arena.symbol_id(args[1]).is_none() {
             return Ok(original);
         }
         if matches!(function, CalculusHead::Limit) {
-            return self.apply_limit(head, args);
+            return self.apply_limit(public, args);
         }
         if matches!(function, CalculusHead::Series) {
-            return self.apply_series(head, args);
+            return self.apply_series(public, args);
         }
         if matches!(function, CalculusHead::Converges) {
-            return self.apply_converges(head, args);
+            return self.apply_converges(public, args);
         }
         if matches!(function, CalculusHead::Integrate) && args.len() == 4 {
             return Ok(self

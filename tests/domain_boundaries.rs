@@ -19,6 +19,8 @@ fn algebra_and_calculus_policy_is_library_code() {
     assert_eq!(eval(&["algebra"], "factor(x^2-1)"), "(-1+x)*(1+x)");
     assert_eq!(eval(&["calculus"], "differentiate(x^2,x)"), "2*x");
     assert_eq!(eval(&["calculus"], "integrate(x^2,0,5)"), "125/3");
+    assert_eq!(eval(&["calculus"], "limit(sin(x)/x,x,0)"), "1");
+    assert_eq!(eval(&["calculus"], "derive(x^3,x)"), "3*x^2");
 }
 
 #[test]
@@ -28,7 +30,12 @@ fn linear_algebra_policy_is_library_code() {
         "[[19,22],[43,50]]"
     );
     assert_eq!(eval(&["linearalgebra"], "det([[1,2],[3,4]])"), "-2");
+    assert_eq!(eval(&["linearalgebra"], "kernelDet([[1,2],[3,4]])"), "-2");
     assert_eq!(eval(&["linearalgebra"], "trace(identity(3))"), "3");
+    assert_eq!(
+        eval(&["linearalgebra"], "inverse([[1,2],[3,4]])"),
+        "[[-2,1],[3/2,-1/2]]"
+    );
 }
 
 #[test]
@@ -51,5 +58,6 @@ fn kernel_accelerators_remain_available() {
         "[[2,2],[3,1]]"
     );
     assert_eq!(eval(&["linearalgebra"], "det([[1,2],[3,4]])"), "-2");
+    assert_eq!(eval(&["linearalgebra"], "kernelDet([[1,2],[3,4]])"), "-2");
     assert_eq!(eval(&["algebra"], "kernelExpand((x+1)^2)"), "1+x^2+2*x");
 }

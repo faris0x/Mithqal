@@ -14,7 +14,7 @@ impl<'a> Evaluator<'a> {
         head: ExprId,
         args: &[ExprId],
     ) -> Result<ExprId, Diagnostic> {
-        let original = self.arena.intern_call(head, args);
+        let original = self.held_public_call(head, args);
         let side = if args.len() == 4 {
             match self.limit_side(args[3]) {
                 Some(side) => side,

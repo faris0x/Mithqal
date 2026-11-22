@@ -16,9 +16,9 @@
 #[macro_use]
 extern crate alloc;
 
-mod algebra;
 #[allow(dead_code)]
-mod analytic;
+mod accelerators;
+mod algebra;
 pub mod api;
 pub mod builtins;
 mod calculus;

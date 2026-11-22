@@ -12,20 +12,18 @@
 #[allow(unused_imports)]
 use crate::prelude::*;
 
-mod dense;
+pub(crate) mod dense;
 mod factor;
 mod hensel;
 mod hensel_fast;
 #[cfg(feature = "numberfields")]
 #[allow(dead_code)]
-mod intmatrix;
+pub(crate) mod intmatrix;
 #[cfg(feature = "numberfields")]
 #[allow(dead_code)]
-mod lattice;
+pub(crate) mod lattice;
 mod multivariate;
 #[cfg(feature = "numberfields")]
-#[allow(dead_code)]
-pub(crate) mod numberfield;
 #[allow(dead_code)]
 mod padic;
 #[cfg(feature = "numberfields")]
@@ -35,7 +33,7 @@ mod polynomial;
 mod rational;
 #[cfg(feature = "numberfields")]
 #[allow(dead_code)]
-mod ratmatrix;
+pub(crate) mod ratmatrix;
 mod roots;
 mod solve;
 

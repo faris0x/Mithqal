@@ -416,7 +416,7 @@ Symbolic algebra policy over the native polynomial kernels.
 
 ## linearalgebra
 
-Elementary matrix operations are defined in Mithqal over lists of rows. Determinants, inverses, decompositions, characteristic polynomials, and eigenvalue routines remain native kernel functions.
+Matrix policy is defined in Mithqal. Elementary operations are implemented directly, and determinants, inverses, decompositions, characteristic polynomials, and eigenvalue routines call the native `kernel` accelerators.
 
 | Function | Meaning |
 |---|---|
@@ -426,22 +426,22 @@ Elementary matrix operations are defined in Mithqal over lists of rows. Determin
 | `dot(left,right)` | vector dot product |
 | `cross(left,right)` | three-dimensional cross product |
 | `matmul(left,right)` | matrix product |
-| `det(matrix)` | determinant, kernel function |
-| `rank(matrix)` | rank, kernel function |
-| `inverse(matrix)` | matrix inverse, kernel function |
-| `rref(matrix)` | reduced row echelon form, kernel function |
-| `solveLinear(matrix,rhs)` | linear solve, kernel function |
-| `plu(matrix)` | PLU decomposition, kernel function |
-| `charpoly(matrix)` | characteristic polynomial, kernel function |
-| `eigenvalues(matrix)` | eigenvalues, kernel function |
-| `nullspace(matrix)` | nullspace, kernel function |
-| `kernel(matrix)` | nullspace alias, kernel function |
-| `eigenvectors(matrix)` | eigenvectors, kernel function |
-| `qr(matrix)` | QR decomposition, kernel function |
+| `det(matrix)` | determinant through `kernelDet` |
+| `rank(matrix)` | rank through `kernelRank` |
+| `inverse(matrix)` | matrix inverse through `kernelInverse` |
+| `rref(matrix)` | reduced row echelon form through `kernelRref` |
+| `solveLinear(matrix,rhs)` | linear solve through `kernelSolveLinear` |
+| `plu(matrix)` | PLU decomposition through `kernelPlu` |
+| `charpoly(matrix)` | characteristic polynomial through `kernelCharpoly` |
+| `eigenvalues(matrix)` | eigenvalues through `kernelEigenvalues` |
+| `nullspace(matrix)` | nullspace through `kernelNullspace` |
+| `kernel(matrix)` | nullspace alias through `kernelNullspace` |
+| `eigenvectors(matrix)` | eigenvectors through `kernelEigenvectors` |
+| `qr(matrix)` | QR decomposition through `kernelQr` |
 
 ## calculus
 
-The calculus module expresses differentiation and integration rules in Mithqal. Forms that the rules do not handle fall back to the `kernelDifferentiate` and `kernelIntegrate` accelerators.
+The calculus module defines the public `differentiate`, `integrate`, `limit`, `series`, and `converges` entry points. The rule layer handles common elementary forms and the native `kernel` accelerators supply the remaining symbolic and numerical machinery.
 
 | Function | Meaning |
 |---|---|

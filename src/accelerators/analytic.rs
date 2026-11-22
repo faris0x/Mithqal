@@ -1,3 +1,5 @@
+//! Native analytic number theory accelerator.
+//!
 //! Experimental analytic zeta and Dirichlet L-function evaluation.
 //!
 //! The Hurwitz zeta function uses Euler-Maclaurin summation in the form
@@ -426,7 +428,7 @@ pub(crate) fn dirichlet_l(s: Complex, character: &DirichletCharacter) -> Option<
 /// quadratic fields.
 #[cfg(feature = "numberfields")]
 pub(crate) fn certified_quadratic_l_one(modulus: u64) -> Option<f64> {
-    use crate::algebra::numberfield::{NumberField, class_group, maximal_order, unit_group};
+    use crate::accelerators::numberfield::{NumberField, class_group, maximal_order, unit_group};
     use crate::algebra::poly_z::ZPoly;
     use crate::num::Int;
 

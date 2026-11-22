@@ -1,12 +1,34 @@
 // Calculus rules written in Mithqal over the native kernels.
 //
 // The rules below cover the common elementary forms. Anything they do not
-// handle falls back to the native differentiate and integrate kernels, which
-// also supply polynomial and limit machinery.
+// handle fall back to the native accelerators, which also supply polynomial
+// and limit machinery.
 
 mod calculus
 
-export derive,antiderivative
+import algebra
+
+export differentiate,integrate,limit,series,converges,derive,antiderivative
+
+def differentiate(expression)=kernelDifferentiate(expression)
+def differentiate(expression,variable)=kernelDifferentiate(expression,variable)
+
+def integrate(expression)=kernelIntegrate(expression)
+def integrate(expression,variable)=kernelIntegrate(expression,variable)
+def integrate(expression,lower,upper)=kernelIntegrate(expression,lower,upper)
+def integrate(expression,variable,lower,upper)=kernelIntegrate(expression,variable,lower,upper)
+
+def limit(expression,point)=kernelLimit(expression,point)
+def limit(expression,point,side)=kernelLimit(expression,point,side)
+def limit(expression,variable,point,side)=kernelLimit(expression,variable,point,side)
+
+def series(expression,point,order)=kernelSeries(expression,point,order)
+def series(expression,point,order,evaluate)=kernelSeries(expression,point,order,evaluate)
+def series(expression,variable,point,order)=kernelSeries(expression,variable,point,order)
+def series(expression,variable,point,order,evaluate)=kernelSeries(expression,variable,point,order,evaluate)
+
+def converges(expression,point)=kernelConverges(expression,point)
+def converges(expression,variable,point)=kernelConverges(expression,variable,point)
 
 def productOf(items)=fold(fn(acc,item)=>acc*item,1,items)
 
@@ -31,7 +53,7 @@ def d(tanh(u_),x)=d(u,x)/power(cosh(u),2)
 def d(asinh(u_),x)=d(u,x)/sqrt(1+power(u,2))
 def d(acosh(u_),x)=d(u,x)/sqrt(power(u,2)-1)
 def d(atanh(u_),x)=d(u,x)/(1-power(u,2))
-def d(expr,x)=differentiate(expr,x)
+def d(expr,x)=kernelDifferentiate(expr,x)
 
 def a(v_,v_)=power(v,2)/2
 def a(plus(a_,b__),x)=a(a,x)+fold(fn(acc,term)=>acc+a(term,x),0,list(b))
@@ -48,7 +70,7 @@ def a(sqrt(v_),v_)=(2/3)*power(v,3/2)
 def a(asin(v_),v_)=v*asin(v)+sqrt(1-power(v,2))
 def a(acos(v_),v_)=v*acos(v)-sqrt(1-power(v,2))
 def a(atan(v_),v_)=v*atan(v)-ln(1+power(v,2))/2
-def a(expr,x)=integrate(expr,x)
+def a(expr,x)=kernelIntegrate(expr,x)
 
 def unwrapCancel(cancel(inner_))=inner
 def unwrapCancel(value_)=value

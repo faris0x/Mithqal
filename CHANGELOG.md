@@ -382,6 +382,10 @@ Initial kernel work.
 - Added algebraic number theory policy for quadratic discriminants, class numbers, fundamental Pell units, and regulators.
 - Extended analytic number theory in Mithqal with summatory von Mangoldt, truncated Riemann zeta, Dirichlet beta, and prime zeta.
 - Added `kernelPrimeCount` and `kernelIsList` as narrow native primitives for library policy.
+- Moved public calculus entry points into `lib/calculus.mith`, with `kernelDifferentiate`, `kernelIntegrate`, `kernelLimit`, `kernelSeries`, and `kernelConverges` as accelerators.
+- Moved all public linear algebra entry points into `lib/linearalgebra.mith`, retaining only `kernel` accelerators in dispatch.
+- Moved the number field, ray class, and analytic evaluation stacks under `src/accelerators` as explicitly native modules.
+- Added held public-call reconstruction so unsupported library operations retain their public heads without re-evaluation.
 - Added general ray class group orders for arbitrary finite moduli and real-place subsets, with exact congruence-kernel invariants and certified full structure when the class number is one.
 - Added saturation completion for totally real unit groups by bounded Cholesky enumeration, with explicit witnesses and a documented enumeration envelope.
 - Added interval regulator bounds for totally real fields using exact rational root isolation and interval arithmetic.

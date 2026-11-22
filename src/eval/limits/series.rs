@@ -11,7 +11,7 @@ impl<'a> Evaluator<'a> {
         head: ExprId,
         args: &[ExprId],
     ) -> Result<ExprId, Diagnostic> {
-        let original = self.arena.intern_call(head, args);
+        let original = self.held_public_call(head, args);
         match self.limit_value(args[0], args[1], args[2], LimitSide::Both) {
             Some(LimitValue::Finite(_)) => return Ok(self.heads.true_value),
             Some(_) => return Ok(self.heads.false_value),
@@ -32,7 +32,7 @@ impl<'a> Evaluator<'a> {
         head: ExprId,
         args: &[ExprId],
     ) -> Result<ExprId, Diagnostic> {
-        let original = self.arena.intern_call(head, args);
+        let original = self.held_public_call(head, args);
         let Some(order) = nonnegative_integer(self.arena, args[3]) else {
             return Ok(original);
         };
