@@ -128,7 +128,7 @@ fn floor_ceil_round_corpus() {
 #[test]
 fn language_execution_corpus() {
     for value in 0i64..=20 {
-        let source = format!("mod m\nlet x={value}\nprt x+1\nend\n");
+        let source = format!("module m.\nlet x be {value}.\nprint x + 1.\nend module.");
         let mut session = Session::new();
         session.eval_source(&source).unwrap();
         assert_eq!(session.output(), &[(value + 1).to_string()]);

@@ -1,63 +1,50 @@
-// Information theory over finite exact distributions.
-//
-// log2 is exact for probabilities that are integer powers of two. Other
-// probabilities remain symbolic through ln.
+module information.
 
-mod information
+use lists.
+use sets.
+use probability.
+use relations.
 
-import lists
-import sets
-import probability
-import relations
+export log2, entropy, jointEntropy, marginal, marginalLeft, marginalRight, conditionalEntropy, mutualInformation, klDivergence, crossEntropy.
 
-export log2,entropy,jointEntropy,marginal,marginalLeft,marginalRight,conditionalEntropy,mutualInformation,klDivergence,crossEntropy
+we define positiveLog2(p, k) = k, where same(p, 1).
 
-def positiveLog2(p,k) when same(p,1)=k
-def positiveLog2(p,k) when p<1=undefined
-def positiveLog2(p,k)=positiveLog2(p/2,k+1)
+we define positiveLog2(p, k) = undefined, where p < 1.
 
-def negativeLog2(p,k) when same(p,1)=-k
-def negativeLog2(p,k) when p>1=undefined
-def negativeLog2(p,k)=negativeLog2(p*2,k+1)
+we define positiveLog2(p, k) = positiveLog2(p / 2, k + 1).
 
-def log2Exact(p) when p<=0=undefined
-def log2Exact(p) when same(p,1)=0
-def log2Exact(p) when p>1=positiveLog2(p,0)
-def log2Exact(p)=negativeLog2(p,0)
+we define negativeLog2(p, k) = -k, where same(p, 1).
 
-def log2(p)=
-let exponent=log2Exact(p)
-if(same(exponent,undefined),ln(p)/ln(2),exponent)
-end
+we define negativeLog2(p, k) = undefined, where p > 1.
 
-def entropy(distribution)=
-fold(fn(acc,pair)=>let([p=nth(pair,1)],if(same(p,0),acc,acc-p*log2(p))),0,distribution)
-end
+we define negativeLog2(p, k) = negativeLog2(p * 2, k + 1).
 
-def jointEntropy(distribution)=entropy(distribution)
+we define log2Exact(p) = undefined, where p <= 0.
 
-def marginal(distribution,projection)=
-let values=setOf(map(distribution,fn(pair)=>projection(nth(pair,0))))
-setOf(map(values,fn(value)=>[value,fold(fn(acc,pair)=>if(same(projection(nth(pair,0)),value),acc+nth(pair,1),acc),0,distribution)]))
-end
+we define log2Exact(p) = 0, where same(p, 1).
 
-def marginalLeft(distribution)=marginal(distribution,fn(outcome)=>nth(outcome,0))
-def marginalRight(distribution)=marginal(distribution,fn(outcome)=>nth(outcome,1))
+we define log2Exact(p) = positiveLog2(p, 0), where p > 1.
 
-def conditionalEntropy(distribution,projection)=
-entropy(distribution)-entropy(marginal(distribution,projection))
-end
+we define log2Exact(p) = negativeLog2(p, 0).
 
-def mutualInformation(distribution)=
-entropy(marginalLeft(distribution))+entropy(marginalRight(distribution))-entropy(distribution)
-end
+we define log2(p) = let exponent = log2Exact(p) in if(same(exponent, undefined), ln(p) / ln(2), exponent).
 
-def klDivergence(p,q)=
-fold(fn(acc,pair)=>let([x=nth(pair,0),px=nth(pair,1)],if(same(px,0),acc,let([qx=applyRelation(q,x)],if(same(qx,undefined),undefined,if(same(qx,0),undefined,acc+px*log2(px/qx)))))),0,p)
-end
+we define entropy(distribution) = fold(fn(acc, pair) => let p = nth(pair, 1) in if(same(p, 0), acc, acc - p * log2(p)), 0, distribution).
 
-def crossEntropy(p,q)=
-fold(fn(acc,pair)=>let([x=nth(pair,0),px=nth(pair,1)],if(same(px,0),acc,let([qx=applyRelation(q,x)],if(same(qx,undefined),undefined,if(same(qx,0),undefined,acc-px*log2(qx)))))),0,p)
-end
+we define jointEntropy(distribution) = entropy(distribution).
 
-end
+we define marginal(distribution, projection) = let values = setOf(map(distribution, fn(pair) => projection(nth(pair, 0)))) in setOf(map(values, fn(value) => [value, fold(fn(acc, pair) => if(same(projection(nth(pair, 0)), value), acc + nth(pair, 1), acc), 0, distribution)])).
+
+we define marginalLeft(distribution) = marginal(distribution, fn(outcome) => nth(outcome, 0)).
+
+we define marginalRight(distribution) = marginal(distribution, fn(outcome) => nth(outcome, 1)).
+
+we define conditionalEntropy(distribution, projection) = entropy(distribution) - entropy(marginal(distribution, projection)).
+
+we define mutualInformation(distribution) = entropy(marginalLeft(distribution)) + entropy(marginalRight(distribution)) - entropy(distribution).
+
+we define klDivergence(p, q) = fold(fn(acc, pair) => let x = nth(pair, 0) in let px = nth(pair, 1) in if(same(px, 0), acc, let qx = applyRelation(q, x) in if(same(qx, undefined), undefined, if(same(qx, 0), undefined, acc + px * log2(px / qx)))), 0, p).
+
+we define crossEntropy(p, q) = fold(fn(acc, pair) => let x = nth(pair, 0) in let px = nth(pair, 1) in if(same(px, 0), acc, let qx = applyRelation(q, x) in if(same(qx, undefined), undefined, if(same(qx, 0), undefined, acc - px * log2(qx)))), 0, p).
+
+end module.

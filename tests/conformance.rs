@@ -11,6 +11,7 @@ const PROFILES: &[&str] = &[
     "modules",
     "embedded",
     "assumptions",
+    "prose",
 ];
 
 #[derive(Debug)]
@@ -100,7 +101,7 @@ fn code(error: &mithqal::Diagnostic) -> String {
 fn run_case(case: &Case) -> Result<(), String> {
     let mut session = match case.profile.as_str() {
         "exact" => Session::with_modules(&["statistics"]),
-        "modules" => Session::new(),
+        "modules" | "prose" => Session::new(),
         _ => Session::with_modules(&[]),
     };
     match case.kind.as_str() {

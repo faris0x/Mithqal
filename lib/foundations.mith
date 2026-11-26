@@ -1,39 +1,27 @@
-// A Peano interface over native integers and the von Neumann numerals.
-//
-// The Peano laws are checked over a finite range. The von Neumann numerals are
-// finite sets, so the encoding is inspectable rather than hidden.
+module foundations.
 
-mod foundations
+use lists.
+use logic.
+use sets.
 
-import lists
-import logic
-import sets
+export peanoZero, peanoSucc, peanoAdd, peanoMul, checkPeano, vonNeumann, checkVonNeumann.
 
-export peanoZero,peanoSucc,peanoAdd,peanoMul,checkPeano,vonNeumann,checkVonNeumann
+we define peanoZero() = 0.
 
-def peanoZero()=0
-def peanoSucc(n)=n+1
-def peanoAdd(a,b)=a+b
-def peanoMul(a,b)=a*b
+we define peanoSucc(n) = n + 1.
 
-def checkPeano(n)=
-let items=rangeList(n)
-let injective=allOf(items,fn(a)=>allOf(items,fn(b)=>if(same(a,b),true,not(same(peanoSucc(a),peanoSucc(b))))))
-let additive=allOf(items,fn(a)=>same(peanoAdd(a,peanoZero()),a))
-let associative=allOf(items,fn(a)=>allOf(items,fn(b)=>allOf(items,fn(c)=>same(peanoAdd(peanoAdd(a,b),c),peanoAdd(a,peanoAdd(b,c))))))
-let distributive=allOf(items,fn(a)=>allOf(items,fn(b)=>same(peanoMul(a,peanoSucc(b)),peanoAdd(peanoMul(a,b),a))))
-injective&&additive&&associative&&distributive
-end
+we define peanoAdd(a, b) = a + b.
 
-def vonNeumann(n) when n<0=undefined
-def vonNeumann(n) when n==0=[]
-def vonNeumann(n)=
-let previous=vonNeumann(n-1)
-setOf(append(previous,[previous]))
-end
+we define peanoMul(a, b) = a * b.
 
-def checkVonNeumann(n)=
-allOf(rangeList(n+1),fn(k)=>same(length(vonNeumann(k)),k))
-end
+we define checkPeano(n) = let items = rangeList(n) in let injective = allOf(items, fn(a) => allOf(items, fn(b) => if(same(a, b), true, not(same(peanoSucc(a), peanoSucc(b)))))) in let additive = allOf(items, fn(a) => same(peanoAdd(a, peanoZero()), a)) in let associative = allOf(items, fn(a) => allOf(items, fn(b) => allOf(items, fn(c) => same(peanoAdd(peanoAdd(a, b), c), peanoAdd(a, peanoAdd(b, c)))))) in let distributive = allOf(items, fn(a) => allOf(items, fn(b) => same(peanoMul(a, peanoSucc(b)), peanoAdd(peanoMul(a, b), a)))) in injective && additive && associative && distributive.
 
-end
+we define vonNeumann(n) = undefined, where n < 0.
+
+we define vonNeumann(n) = [], where n == 0.
+
+we define vonNeumann(n) = let previous = vonNeumann(n - 1) in setOf(append(previous, [previous])).
+
+we define checkVonNeumann(n) = allOf(rangeList(n + 1), fn(k) => same(length(vonNeumann(k)), k)).
+
+end module.

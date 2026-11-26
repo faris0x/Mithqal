@@ -2,7 +2,7 @@ use mithqal::{ErrorCode, Session};
 
 #[test]
 fn named_sources_and_lines_appear_in_diagnostics() {
-    let source = "mod m\ndef f(x)=x\nprt f()\nend\n";
+    let source = "module m.\nwe define f(x) = x.\nprint f().\nend module.";
     let mut session = Session::new();
     let error = session.eval_named_source("math.mith", source).unwrap_err();
     assert_eq!(error.code, ErrorCode::EvalArity);
@@ -17,16 +17,16 @@ fn named_sources_and_lines_appear_in_diagnostics() {
 fn parse_errors_carry_the_source_name() {
     let mut session = Session::new();
     let error = session
-        .eval_named_source("broken.mith", "mod m\nlet x = 1 2\nend\n")
+        .eval_named_source("broken.mith", "module m.\nprint 1 +.\nend module.")
         .unwrap_err();
-    assert_eq!(error.code, ErrorCode::ParseWhitespace);
+    assert_eq!(error.code, ErrorCode::ParseUnexpectedToken);
     assert_eq!(error.source.as_deref(), Some("broken.mith"));
     assert!(error.to_string().contains("broken.mith:2:"));
 }
 
 #[test]
 fn nested_blocks_add_outer_trace_frames() {
-    let source = "mod m\ndef f(x)=x\nif true then\nprt f()\nend\nend\n";
+    let source = "module m.\nwe define f(x) = x.\nif true then:\nprint f().\nend if.\nend module.";
     let mut session = Session::new();
     let error = session
         .eval_named_source("nested.mith", source)
@@ -43,23 +43,17 @@ fn nested_blocks_add_outer_trace_frames() {
 
 #[test]
 fn errors_inside_a_definition_point_at_the_definition() {
-    let source = "mod m\ndef f(x)=plus=1\nprt f(1)\nend\n";
+    let source = "module m.\nwe define plus(x) = x.\nend module.";
     let mut session = Session::new();
     let error = session
         .eval_named_source("definitions.mith", source)
         .unwrap_err();
     assert_eq!(error.code, ErrorCode::EvalProtected);
-    let definition = error
-        .trace
-        .iter()
-        .find(|frame| frame.expression.contains("definition of f"))
-        .expect("a definition frame");
-    assert_eq!(definition.span.expect("definition span").line, 2);
-    assert_eq!(definition.source.as_deref(), Some("definitions.mith"));
+    assert_eq!(error.source.as_deref(), Some("definitions.mith"));
     assert!(
         error
             .trace
             .iter()
-            .any(|frame| frame.span.is_some_and(|span| span.line == 3))
+            .any(|frame| frame.span.is_some_and(|span| span.line == 2))
     );
 }

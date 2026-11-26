@@ -1,6 +1,6 @@
 # Surface Grammar Additions
 
-> Spec version: 0.0.2 (draft)
+> Spec version: 0.0.3 (draft)
 
 This document records the 0.0.2 additions to the surface grammar. The main
 grammar in `grammar.md` remains authoritative for the rest of the language.

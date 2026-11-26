@@ -112,13 +112,13 @@ fn statistics_symbols_are_protected() {
 #[test]
 fn statistics_from_the_language() {
     let source = r#"
-mod stats
-let data=[1,2,2,3,4]
-prt mean(data)
-prt median(data)
-prt mode(data)
-prt variance(data)
-end
+module stats.
+let data be [1, 2, 2, 3, 4].
+print mean(data).
+print median(data).
+print mode(data).
+print variance(data).
+end module.
 "#;
     let mut session = Session::new();
     session.eval_source(source).unwrap();

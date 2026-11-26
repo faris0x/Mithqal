@@ -1,7 +1,7 @@
-//! The source lexer.
+//! Expression lexer.
 //!
-//! Statements occupy one line. Comments occupy whole lines and may nest.
-//! Whitespace inside a statement is a diagnostic.
+//! The prose parser normalizes formulas before passing them here. The lexer
+//! still rejects whitespace, which keeps expression tokens unambiguous.
 
 #[allow(unused_imports)]
 use crate::prelude::*;

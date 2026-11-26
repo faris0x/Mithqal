@@ -1,35 +1,35 @@
 # id	profile	kind	expected	source	rationale
-modules.priv.0001	modules	output	helper(3)	mod c\nprt helper(3)\nend	An undefined name stays unevaluated.
-modules.priv.0002	modules	output	sum([1,2])	mod c\nprt sum([1,2])\nend	A private library helper is not callable.
-modules.export.0001	modules	output	7	mod c\nexport public\ndef public(x)=helper(x)+1\ndef helper(x)=x*2\nprt public(3)\nend	An exported definition calls a private helper.
-modules.export.0002	modules	diagnostic	TGN-EVAL-0014	mod c\nexport missing\nend	Exporting an undefined name is an error.
-modules.import.0001	modules	output	3/2	mod c\nimport statistics\nprt mean([1,2])\nend	An import declares a bundled module dependency.
-modules.import.0002	modules	diagnostic	TGN-EVAL-0014	mod c\nif true then\nimport statistics\nprt 1\nelse\nprt 0\nend\nend	Imports are module level statements.
-modules.set.0001	modules	output	[1,2,3]	mod c\nprt setOf([3,1,3,2])\nend	Finite sets are canonical sorted lists.
-modules.set.0002	modules	output	[[],[1],[2],[1,2]]	mod c\nprt powerSet([1,2])\nend	The power set of a finite set.
-modules.relation.0001	modules	output	[[1,3]]	mod c\nprt composeRelations(relationOf([[1,2]]),relationOf([[2,3]]))\nend	Relational composition.
-modules.structure.0001	modules	output	true	mod c\nprt monoidHolds(monoid([0,1,2],fn(a,b)=>mod(a+b,3),0))\nend	A finite monoid law check.
-modules.foundation.0001	modules	output	[[],[[]],[[],[[]]]]	mod c\nprt vonNeumann(3)\nend	The von Neumann numeral three as a finite set.
-modules.combinatorics.0001	modules	output	42	mod c\nprt catalan(5)\nend	An exact Catalan number.
-modules.combinatorics.0002	modules	output	[[1,2],[1,3],[2,3]]	mod c\nprt combinationsOf([1,2,3],2)\nend	All subsets of a fixed size.
-modules.probability.0001	modules	output	1/2	mod c\nprt probabilityOf(uniform([1,2,3,4]),[1,2])\nend	An exact event probability.
-modules.probability.0002	modules	output	5/4	mod c\nprt varianceOf(uniform([1,2,3,4]),fn(x)=>x)\nend	An exact variance.
-modules.decision.0001	modules	output	17/2	mod c\nprt decisionValue(uniform([1,2]),[a,b],fn(action,state)=>if(same(action,a),state,10-state))\nend	An exact expected utility maximum.
-modules.decision.0002	modules	output	[b]	mod c\nprt bestActions(uniform([1,2]),[a,b],fn(action,state)=>if(same(action,a),state,10-state))\nend	The action set with maximal expected utility.
-modules.games.0001	modules	output	[[a,a],[b,b]]	mod c\nprt pureNash(game([a,b],[a,b],setOf([[[a,a],[1,1]],[[a,b],[0,0]],[[b,a],[0,0]],[[b,b],[2,2]]])))\nend	A coordination game has two pure equilibria.
-modules.games.0002	modules	output	[]	mod c\nprt pureNash(game([h,t],[h,t],setOf([[[h,h],[1,-1]],[[h,t],[-1,1]],[[t,h],[-1,1]],[[t,t],[1,-1]]])))\nend	Matching pennies has no pure equilibrium.
-modules.games.0003	modules	output	[[b,b]]	mod c\nprt paretoOptimal(game([a,b],[a,b],setOf([[[a,a],[1,1]],[[a,b],[0,0]],[[b,a],[0,0]],[[b,b],[2,2]]])))\nend	Only the efficient coordination outcome survives.
-modules.graphs.0001	modules	output	[1,3]	mod c\nprt neighbors(graph([1,2,3,4],[[1,2],[2,3],[3,4]]),2)\nend	Undirected neighbors.
-modules.graphs.0002	modules	output	true	mod c\nprt isTree(graph([1,2,3,4],[[1,2],[2,3],[3,4]]))\nend	A connected path is a tree.
-modules.graphs.0003	modules	output	[[3],[1,2]]	mod c\nprt components(graph([1,2,3],[[1,2]]))\nend	Components of a disconnected graph.
-modules.graphs.0004	modules	output	true	mod c\nprt isAcyclic(directedGraph([1,2,3],[[1,2],[2,3]]))\nend	A directed path is acyclic.
-modules.graphs.0005	modules	output	[[1,1],[1,2],[1,3],[2,2],[2,3],[3,3]]	mod c\nprt reachabilityRelation(directedGraph([1,2,3],[[1,2],[2,3]]))\nend	The reachability relation of a directed path.
-modules.information.0001	modules	output	2	mod c\nprt entropy(uniform([1,2,3,4]))\nend	Entropy of a uniform four outcome distribution.
-modules.information.0002	modules	output	0	mod c\nprt mutualInformation(productDistribution(uniform([0,1]),uniform([0,1])))\nend	Independent bits carry no mutual information.
-modules.information.0003	modules	output	1	mod c\nprt klDivergence(uniform([1,2]),uniform([1,2,3,4]))\nend	An exact divergence with dyadic ratios.
-modules.information.0004	modules	output	0	mod c\nprt conditionalEntropy(distribution(setOf([[[0,0],1/2],[[1,1],1/2]])),fn(outcome)=>nth(outcome,0))\nend	A deterministic joint distribution has zero conditional entropy.
-modules.calculus.0001	modules	output	2+3*x^2	mod c\nprt derive(x^3+2*x,x)\nend	The sum and power rules.
-modules.calculus.0002	modules	output	cos(x)	mod c\nprt derive(sin(x),x)\nend	The sine rule.
-modules.calculus.0003	modules	output	2/x	mod c\nprt derive(ln(x^2),x)\nend	The chain rule with rational cancellation.
-modules.calculus.0004	modules	output	(1/3)*x^3	mod c\nprt antiderivative(x^2,x)\nend	The power rule for integration.
-modules.calculus.0005	modules	output	-cos(x)	mod c\nprt antiderivative(sin(x),x)\nend	The sine antiderivative.
+modules.priv.0001	modules	output	helper(3)	module c.\nprint helper(3).\nend module.	An undefined name stays unevaluated.
+modules.priv.0002	modules	output	sum([1,2])	module c.\nprint sum([1,2]).\nend module.	A private library helper is not callable.
+modules.export.0001	modules	output	7	module c.\nexport public.\nwe define public(x) = helper(x) + 1.\nwe define helper(x) = x * 2.\nprint public(3).\nend module.	An exported definition calls a private helper.
+modules.export.0002	modules	diagnostic	TGN-EVAL-0014	module c.\nexport missing.\nend module.	Exporting an undefined name is an error.
+modules.import.0001	modules	output	3/2	module c.\nuse statistics.\nprint mean([1, 2]).\nend module.	An import declares a bundled module dependency.
+modules.import.0002	modules	diagnostic	TGN-EVAL-0014	module c.\nif true then:\n  use statistics.\n  print 1.\nelse:\n  print 0.\nend if.\nend module.	Imports are module level statements.
+modules.set.0001	modules	output	[1,2,3]	module c.\nprint setOf([3,1,3,2]).\nend module.	Finite sets are canonical sorted lists.
+modules.set.0002	modules	output	[[],[1],[2],[1,2]]	module c.\nprint powerSet([1,2]).\nend module.	The power set of a finite set.
+modules.relation.0001	modules	output	[[1,3]]	module c.\nprint composeRelations(relationOf([[1,2]]),relationOf([[2,3]])).\nend module.	Relational composition.
+modules.structure.0001	modules	output	true	module c.\nprint monoidHolds(monoid([0,1,2],fn(a,b)=>mod(a+b,3),0)).\nend module.	A finite monoid law check.
+modules.foundation.0001	modules	output	[[],[[]],[[],[[]]]]	module c.\nprint vonNeumann(3).\nend module.	The von Neumann numeral three as a finite set.
+modules.combinatorics.0001	modules	output	42	module c.\nprint catalan(5).\nend module.	An exact Catalan number.
+modules.combinatorics.0002	modules	output	[[1,2],[1,3],[2,3]]	module c.\nprint combinationsOf([1,2,3],2).\nend module.	All subsets of a fixed size.
+modules.probability.0001	modules	output	1/2	module c.\nprint probabilityOf(uniform([1,2,3,4]),[1,2]).\nend module.	An exact event probability.
+modules.probability.0002	modules	output	5/4	module c.\nprint varianceOf(uniform([1,2,3,4]),fn(x)=>x).\nend module.	An exact variance.
+modules.decision.0001	modules	output	17/2	module c.\nprint decisionValue(uniform([1,2]),[a,b],fn(action,state)=>if(same(action,a),state,10-state)).\nend module.	An exact expected utility maximum.
+modules.decision.0002	modules	output	[b]	module c.\nprint bestActions(uniform([1,2]),[a,b],fn(action,state)=>if(same(action,a),state,10-state)).\nend module.	The action set with maximal expected utility.
+modules.games.0001	modules	output	[[a,a],[b,b]]	module c.\nprint pureNash(game([a,b],[a,b],setOf([[[a,a],[1,1]],[[a,b],[0,0]],[[b,a],[0,0]],[[b,b],[2,2]]]))).\nend module.	A coordination game has two pure equilibria.
+modules.games.0002	modules	output	[]	module c.\nprint pureNash(game([h,t],[h,t],setOf([[[h,h],[1,-1]],[[h,t],[-1,1]],[[t,h],[-1,1]],[[t,t],[1,-1]]]))).\nend module.	Matching pennies has no pure equilibrium.
+modules.games.0003	modules	output	[[b,b]]	module c.\nprint paretoOptimal(game([a,b],[a,b],setOf([[[a,a],[1,1]],[[a,b],[0,0]],[[b,a],[0,0]],[[b,b],[2,2]]]))).\nend module.	Only the efficient coordination outcome survives.
+modules.graphs.0001	modules	output	[1,3]	module c.\nprint neighbors(graph([1,2,3,4],[[1,2],[2,3],[3,4]]),2).\nend module.	Undirected neighbors.
+modules.graphs.0002	modules	output	true	module c.\nprint isTree(graph([1,2,3,4],[[1,2],[2,3],[3,4]])).\nend module.	A connected path is a tree.
+modules.graphs.0003	modules	output	[[3],[1,2]]	module c.\nprint components(graph([1,2,3],[[1,2]])).\nend module.	Components of a disconnected graph.
+modules.graphs.0004	modules	output	true	module c.\nprint isAcyclic(directedGraph([1,2,3],[[1,2],[2,3]])).\nend module.	A directed path is acyclic.
+modules.graphs.0005	modules	output	[[1,1],[1,2],[1,3],[2,2],[2,3],[3,3]]	module c.\nprint reachabilityRelation(directedGraph([1,2,3],[[1,2],[2,3]])).\nend module.	The reachability relation of a directed path.
+modules.information.0001	modules	output	2	module c.\nprint entropy(uniform([1,2,3,4])).\nend module.	Entropy of a uniform four outcome distribution.
+modules.information.0002	modules	output	0	module c.\nprint mutualInformation(productDistribution(uniform([0,1]),uniform([0,1]))).\nend module.	Independent bits carry no mutual information.
+modules.information.0003	modules	output	1	module c.\nprint klDivergence(uniform([1,2]),uniform([1,2,3,4])).\nend module.	An exact divergence with dyadic ratios.
+modules.information.0004	modules	output	0	module c.\nprint conditionalEntropy(distribution(setOf([[[0,0],1/2],[[1,1],1/2]])),fn(outcome)=>nth(outcome,0)).\nend module.	A deterministic joint distribution has zero conditional entropy.
+modules.calculus.0001	modules	output	2+3*x^2	module c.\nprint derive(x^3+2*x,x).\nend module.	The sum and power rules.
+modules.calculus.0002	modules	output	cos(x)	module c.\nprint derive(sin(x),x).\nend module.	The sine rule.
+modules.calculus.0003	modules	output	2/x	module c.\nprint derive(ln(x^2),x).\nend module.	The chain rule with rational cancellation.
+modules.calculus.0004	modules	output	(1/3)*x^3	module c.\nprint antiderivative(x^2,x).\nend module.	The power rule for integration.
+modules.calculus.0005	modules	output	-cos(x)	module c.\nprint antiderivative(sin(x),x).\nend module.	The sine antiderivative.

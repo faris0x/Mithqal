@@ -80,18 +80,18 @@ fn logic_symbols_are_protected() {
 #[test]
 fn logic_from_the_language() {
     let source = r#"
-mod logic
-let n=17
-if and(isPrime(n),isOdd(n)) then
-  prt 1
-else
-  prt 0
-end
-if xor(isEven(n),isPrime(n)) then
-  prt 2
-end
-prt implies(isPrime(4),isPrime(6))
-end
+module logic.
+let n be 17.
+if and(isPrime(n), isOdd(n)) then:
+  print 1.
+else:
+  print 0.
+end if.
+if xor(isEven(n), isPrime(n)) then:
+  print 2.
+end if.
+print implies(isPrime(4), isPrime(6)).
+end module.
 "#;
     let mut session = Session::new();
     session.eval_source(source).unwrap();

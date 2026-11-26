@@ -1,72 +1,52 @@
-// Algebraic structures as dictionaries with finitely checkable laws.
-//
-// A structure is a list. The first item is a tag and the remaining items are
-// the structure data. The law checkers quantify over a finite carrier, so they
-// verify a model rather than prove the laws.
+module structures.
 
-mod structures
+use lists.
+use logic.
 
-import lists
-import logic
+export monoid, group, ring, carrierOf, opOf, identityOf, inverseOf, addOf, mulOf, zeroOf, oneOf, negateOf, associativeOn, commutativeOn, identityOn, inverseOn, distributiveOn, monoidHolds, groupHolds, ringHolds.
 
-export monoid,group,ring,carrierOf,opOf,identityOf,inverseOf,addOf,mulOf,zeroOf,oneOf,negateOf,associativeOn,commutativeOn,identityOn,inverseOn,distributiveOn,monoidHolds,groupHolds,ringHolds
+we define monoid(carrier, op, identity) = [monoidKind, carrier, op, identity].
 
-def monoid(carrier,op,identity)=[monoidKind,carrier,op,identity]
-def group(carrier,op,identity,inverse)=[groupKind,carrier,op,identity,inverse]
-def ring(carrier,add,mul,zero,one,negate)=[ringKind,carrier,add,mul,zero,one,negate]
+we define group(carrier, op, identity, inverse) = [groupKind, carrier, op, identity, inverse].
 
-def carrierOf(structure)=nth(structure,1)
-def opOf(structure)=nth(structure,2)
-def identityOf(structure)=nth(structure,3)
-def inverseOf(structure)=nth(structure,4)
-def addOf(structure)=nth(structure,2)
-def mulOf(structure)=nth(structure,3)
-def zeroOf(structure)=nth(structure,4)
-def oneOf(structure)=nth(structure,5)
-def negateOf(structure)=nth(structure,6)
+we define ring(carrier, add, mul, zero, one, negate) = [ringKind, carrier, add, mul, zero, one, negate].
 
-def pairsOf(items)=concat(map(items,fn(a)=>map(items,fn(b)=>[a,b])))
+we define carrierOf(structure) = nth(structure, 1).
 
-def triples(items)=
-concat(map(items,fn(a)=>concat(map(items,fn(b)=>map(items,fn(c)=>[a,b,c])))))
-end
+we define opOf(structure) = nth(structure, 2).
 
-def associativeOn(op,items)=
-allOf(triples(items),fn(triple)=>same(op(op(nth(triple,0),nth(triple,1)),nth(triple,2)),op(nth(triple,0),op(nth(triple,1),nth(triple,2)))))
-end
+we define identityOf(structure) = nth(structure, 3).
 
-def commutativeOn(op,items)=
-allOf(pairsOf(items),fn(pair)=>same(op(nth(pair,0),nth(pair,1)),op(nth(pair,1),nth(pair,0))))
-end
+we define inverseOf(structure) = nth(structure, 4).
 
-def identityOn(op,identity,items)=
-allOf(items,fn(item)=>same(op(item,identity),item)&&same(op(identity,item),item))
-end
+we define addOf(structure) = nth(structure, 2).
 
-def inverseOn(op,identity,inverse,items)=
-allOf(items,fn(item)=>same(op(item,inverse(item)),identity)&&same(op(inverse(item),item),identity))
-end
+we define mulOf(structure) = nth(structure, 3).
 
-def distributiveOn(add,mul,items)=
-allOf(triples(items),fn(triple)=>same(mul(nth(triple,0),add(nth(triple,1),nth(triple,2))),add(mul(nth(triple,0),nth(triple,1)),mul(nth(triple,0),nth(triple,2)))))
-end
+we define zeroOf(structure) = nth(structure, 4).
 
-def monoidHolds(structure)=
-associativeOn(opOf(structure),carrierOf(structure))&&identityOn(opOf(structure),identityOf(structure),carrierOf(structure))
-end
+we define oneOf(structure) = nth(structure, 5).
 
-def groupHolds(structure)=
-monoidHolds(structure)&&inverseOn(opOf(structure),identityOf(structure),inverseOf(structure),carrierOf(structure))
-end
+we define negateOf(structure) = nth(structure, 6).
 
-def ringHolds(structure)=
-let items=carrierOf(structure)
-let add=addOf(structure)
-let mul=mulOf(structure)
-let zero=zeroOf(structure)
-let one=oneOf(structure)
-let negate=negateOf(structure)
-associativeOn(add,items)&&commutativeOn(add,items)&&identityOn(add,zero,items)&&inverseOn(add,zero,negate,items)&&associativeOn(mul,items)&&identityOn(mul,one,items)&&distributiveOn(add,mul,items)
-end
+we define pairsOf(items) = concat(map(items, fn(a) => map(items, fn(b) => [a, b]))).
 
-end
+we define triples(items) = concat(map(items, fn(a) => concat(map(items, fn(b) => map(items, fn(c) => [a, b, c]))))).
+
+we define associativeOn(op, items) = allOf(triples(items), fn(triple) => same(op(op(nth(triple, 0), nth(triple, 1)), nth(triple, 2)), op(nth(triple, 0), op(nth(triple, 1), nth(triple, 2))))).
+
+we define commutativeOn(op, items) = allOf(pairsOf(items), fn(pair) => same(op(nth(pair, 0), nth(pair, 1)), op(nth(pair, 1), nth(pair, 0)))).
+
+we define identityOn(op, identity, items) = allOf(items, fn(item) => same(op(item, identity), item) && same(op(identity, item), item)).
+
+we define inverseOn(op, identity, inverse, items) = allOf(items, fn(item) => same(op(item, inverse(item)), identity) && same(op(inverse(item), item), identity)).
+
+we define distributiveOn(add, mul, items) = allOf(triples(items), fn(triple) => same(mul(nth(triple, 0), add(nth(triple, 1), nth(triple, 2))), add(mul(nth(triple, 0), nth(triple, 1)), mul(nth(triple, 0), nth(triple, 2))))).
+
+we define monoidHolds(structure) = associativeOn(opOf(structure), carrierOf(structure)) && identityOn(opOf(structure), identityOf(structure), carrierOf(structure)).
+
+we define groupHolds(structure) = monoidHolds(structure) && inverseOn(opOf(structure), identityOf(structure), inverseOf(structure), carrierOf(structure)).
+
+we define ringHolds(structure) = let items = carrierOf(structure) in let add = addOf(structure) in let mul = mulOf(structure) in let zero = zeroOf(structure) in let one = oneOf(structure) in let negate = negateOf(structure) in associativeOn(add, items) && commutativeOn(add, items) && identityOn(add, zero, items) && inverseOn(add, zero, negate, items) && associativeOn(mul, items) && identityOn(mul, one, items) && distributiveOn(add, mul, items).
+
+end module.

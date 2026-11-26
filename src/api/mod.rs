@@ -57,6 +57,7 @@ pub struct Session {
     compiled_results: HashMap<(ExprId, u64, u64), ExprId, FnvBuildHasher>,
     output: Vec<String>,
     language_scopes: Vec<HashMap<SymbolId, ExprId, FnvBuildHasher>>,
+    module_assumptions: Vec<ExprId>,
     source_name: Option<String>,
     definition_source: Option<u32>,
     structures: HashMap<String, Vec<String>>,

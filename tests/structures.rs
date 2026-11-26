@@ -1,24 +1,24 @@
 use mithqal::{ErrorCode, Session};
 
 const MONOID: &str = r#"
-mod s
-structure testMonoid
-field carrier
-field op
-field identity
-law associative: forall(a,carrier,forall(b,carrier,forall(c,carrier,same(op(op(a,b),c),op(a,op(b,c))))))
-law neutral: forall(a,carrier,same(op(a,identity),a))
-end
-instance cyclic : testMonoid
-carrier = [0,1,2]
-op = fn(a,b)=>mod(a+b,3)
-identity = 0
-end
-prt testMonoidHolds(cyclic)
-prt testMonoidCarrier(cyclic)
-prt testMonoidIdentity(cyclic)
-prt apply(testMonoidOp(cyclic),[1,2])
-end
+module s.
+structure testMonoid.
+field carrier.
+field op.
+field identity.
+law associative: forall(a, carrier, forall(b, carrier, forall(c, carrier, same(op(op(a, b), c), op(a, op(b, c)))))).
+law neutral: forall(a, carrier, same(op(a, identity), a)).
+end structure.
+instance cyclic : testMonoid.
+carrier = [0, 1, 2].
+op = fn(a, b) => mod(a + b, 3).
+identity = 0.
+end instance.
+print testMonoidHolds(cyclic).
+print testMonoidCarrier(cyclic).
+print testMonoidIdentity(cyclic).
+print apply(testMonoidOp(cyclic), [1, 2]).
+end module.
 "#;
 
 #[test]
@@ -45,19 +45,19 @@ fn accessors_and_law_checks_work_after_declaration() {
 #[test]
 fn failing_laws_are_rejected() {
     let source = r#"
-mod s
-structure testMonoid
-field carrier
-field op
-field identity
-law associative: forall(a,carrier,forall(b,carrier,forall(c,carrier,same(op(op(a,b),c),op(a,op(b,c))))))
-end
-instance bad : testMonoid
-carrier = [0,1,2]
-op = fn(a,b)=>mod(a-b,3)
-identity = 0
-end
-end
+module s.
+structure testMonoid.
+field carrier.
+field op.
+field identity.
+law associative: forall(a, carrier, forall(b, carrier, forall(c, carrier, same(op(op(a, b), c), op(a, op(b, c)))))).
+end structure.
+instance bad : testMonoid.
+carrier = [0, 1, 2].
+op = fn(a, b) => mod(a - b, 3).
+identity = 0.
+end instance.
+end module.
 "#;
     let mut session = Session::new();
     let error = session.eval_source(source).unwrap_err();
@@ -67,19 +67,19 @@ end
 #[test]
 fn assumed_instances_skip_law_checking() {
     let source = r#"
-mod s
-structure testMonoid
-field carrier
-field op
-field identity
-law associative: forall(a,carrier,forall(b,carrier,forall(c,carrier,same(op(op(a,b),c),op(a,op(b,c))))))
-end
-instance symbolic : testMonoid assumed
-carrier = y
-op = fn(a,b)=>a+b
-identity = 0
-end
-end
+module s.
+structure testMonoid.
+field carrier.
+field op.
+field identity.
+law associative: forall(a, carrier, forall(b, carrier, forall(c, carrier, same(op(op(a, b), c), op(a, op(b, c)))))).
+end structure.
+instance symbolic : testMonoid assumed.
+carrier = y.
+op = fn(a, b) => a + b.
+identity = 0.
+end instance.
+end module.
 "#;
     let mut session = Session::new();
     session.eval_source(source).unwrap();
@@ -92,32 +92,32 @@ end
 #[test]
 fn missing_and_unknown_fields_are_rejected() {
     let missing = r#"
-mod s
-structure testPair
-field left
-field right
-end
-instance broken : testPair
-left = 1
-end
-end
+module s.
+structure testPair.
+field left.
+field right.
+end structure.
+instance broken : testPair.
+left = 1.
+end instance.
+end module.
 "#;
     let mut session = Session::new();
     let error = session.eval_source(missing).unwrap_err();
     assert_eq!(error.code, ErrorCode::EvalDefinition);
 
     let unknown = r#"
-mod s
-structure testPair
-field left
-field right
-end
-instance broken : testPair
-left = 1
-right = 2
-extra = 3
-end
-end
+module s.
+structure testPair.
+field left.
+field right.
+end structure.
+instance broken : testPair.
+left = 1.
+right = 2.
+extra = 3.
+end instance.
+end module.
 "#;
     let mut session = Session::new();
     let error = session.eval_source(unknown).unwrap_err();
@@ -127,20 +127,20 @@ end
 #[test]
 fn strict_modules_keep_structure_names_private() {
     let source = r#"
-mod s
-export cyclic
-structure testMonoid
-field carrier
-field op
-field identity
-law associative: forall(a,carrier,forall(b,carrier,forall(c,carrier,same(op(op(a,b),c),op(a,op(b,c))))))
-end
-instance cyclic : testMonoid
-carrier = [0,1,2]
-op = fn(a,b)=>mod(a+b,3)
-identity = 0
-end
-end
+module s.
+export cyclic.
+structure testMonoid.
+field carrier.
+field op.
+field identity.
+law associative: forall(a, carrier, forall(b, carrier, forall(c, carrier, same(op(op(a, b), c), op(a, op(b, c)))))).
+end structure.
+instance cyclic : testMonoid.
+carrier = [0, 1, 2].
+op = fn(a, b) => mod(a + b, 3).
+identity = 0.
+end instance.
+end module.
 "#;
     let mut session = Session::new();
     session.eval_source(source).unwrap();

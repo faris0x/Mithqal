@@ -1,82 +1,123 @@
-// Calculus rules written in Mithqal over the native kernels.
-//
-// The rules below cover the common elementary forms. Anything they do not
-// handle fall back to the native accelerators, which also supply polynomial
-// and limit machinery.
+module calculus.
 
-mod calculus
+use algebra.
+use lists.
 
-import algebra
+export differentiate, integrate, limit, series, converges, derive, antiderivative.
 
-export differentiate,integrate,limit,series,converges,derive,antiderivative
+we define differentiate(expression) = kernelDifferentiate(expression).
 
-def differentiate(expression)=kernelDifferentiate(expression)
-def differentiate(expression,variable)=kernelDifferentiate(expression,variable)
+we define differentiate(expression, variable) = kernelDifferentiate(expression, variable).
 
-def integrate(expression)=kernelIntegrate(expression)
-def integrate(expression,variable)=kernelIntegrate(expression,variable)
-def integrate(expression,lower,upper)=kernelIntegrate(expression,lower,upper)
-def integrate(expression,variable,lower,upper)=kernelIntegrate(expression,variable,lower,upper)
+we define integrate(expression) = kernelIntegrate(expression).
 
-def limit(expression,point)=kernelLimit(expression,point)
-def limit(expression,point,side)=kernelLimit(expression,point,side)
-def limit(expression,variable,point,side)=kernelLimit(expression,variable,point,side)
+we define integrate(expression, variable) = kernelIntegrate(expression, variable).
 
-def series(expression,point,order)=kernelSeries(expression,point,order)
-def series(expression,point,order,evaluate)=kernelSeries(expression,point,order,evaluate)
-def series(expression,variable,point,order)=kernelSeries(expression,variable,point,order)
-def series(expression,variable,point,order,evaluate)=kernelSeries(expression,variable,point,order,evaluate)
+we define integrate(expression, lower, upper) = kernelIntegrate(expression, lower, upper).
 
-def converges(expression,point)=kernelConverges(expression,point)
-def converges(expression,variable,point)=kernelConverges(expression,variable,point)
+we define integrate(expression, variable, lower, upper) = kernelIntegrate(expression, variable, lower, upper).
 
-def productOf(items)=fold(fn(acc,item)=>acc*item,1,items)
+we define limit(expression, point) = kernelLimit(expression, point).
 
+we define limit(expression, point, side) = kernelLimit(expression, point, side).
 
-def d(v_,v_)=1
-def d(plus(a_,b__),x)=d(a,x)+fold(fn(acc,term)=>acc+d(term,x),0,list(b))
-def d(negate(u_),x)=-d(u,x)
-def d(times(a_,b__),x)=let([rest=productOf(list(b))],d(a,x)*rest+a*d(rest,x))
-def d(power(u_,n_),x) when isNumber(n)&&floor(n)==n=n*power(u,n-1)*d(u,x)
-def d(sin(u_),x)=cos(u)*d(u,x)
-def d(cos(u_),x)=-sin(u)*d(u,x)
-def d(tan(u_),x)=d(u,x)/power(cos(u),2)
-def d(exp(u_),x)=exp(u)*d(u,x)
-def d(ln(u_),x)=d(u,x)/u
-def d(sqrt(u_),x)=d(u,x)/(2*sqrt(u))
-def d(asin(u_),x)=d(u,x)/sqrt(1-power(u,2))
-def d(acos(u_),x)=-d(u,x)/sqrt(1-power(u,2))
-def d(atan(u_),x)=d(u,x)/(1+power(u,2))
-def d(sinh(u_),x)=cosh(u)*d(u,x)
-def d(cosh(u_),x)=sinh(u)*d(u,x)
-def d(tanh(u_),x)=d(u,x)/power(cosh(u),2)
-def d(asinh(u_),x)=d(u,x)/sqrt(1+power(u,2))
-def d(acosh(u_),x)=d(u,x)/sqrt(power(u,2)-1)
-def d(atanh(u_),x)=d(u,x)/(1-power(u,2))
-def d(expr,x)=kernelDifferentiate(expr,x)
+we define limit(expression, variable, point, side) = kernelLimit(expression, variable, point, side).
 
-def a(v_,v_)=power(v,2)/2
-def a(plus(a_,b__),x)=a(a,x)+fold(fn(acc,term)=>acc+a(term,x),0,list(b))
-def a(negate(u_),x)=-a(u,x)
-def a(times(c_,u__),x) when isNumber(c)=c*a(productOf(list(u)),x)
-def a(power(v_,-1),v_)=ln(v)
-def a(power(v_,n_),v_) when isNumber(n)&&floor(n)==n=power(v,n+1)/(n+1)
-def a(exp(v_),v_)=exp(v)
-def a(sin(v_),v_)=-cos(v)
-def a(cos(v_),v_)=sin(v)
-def a(tan(v_),v_)=-ln(cos(v))
-def a(ln(v_),v_)=v*ln(v)-v
-def a(sqrt(v_),v_)=(2/3)*power(v,3/2)
-def a(asin(v_),v_)=v*asin(v)+sqrt(1-power(v,2))
-def a(acos(v_),v_)=v*acos(v)-sqrt(1-power(v,2))
-def a(atan(v_),v_)=v*atan(v)-ln(1+power(v,2))/2
-def a(expr,x)=kernelIntegrate(expr,x)
+we define series(expression, point, order) = kernelSeries(expression, point, order).
 
-def unwrapCancel(cancel(inner_))=inner
-def unwrapCancel(value_)=value
-def simplify(expression)=unwrapCancel(cancel(expression))
+we define series(expression, point, order, evaluate) = kernelSeries(expression, point, order, evaluate).
 
-def derive(expression,variable)=simplify(d(expression,variable))
-def antiderivative(expression,variable)=simplify(a(expression,variable))
+we define series(expression, variable, point, order) = kernelSeries(expression, variable, point, order).
 
-end
+we define series(expression, variable, point, order, evaluate) = kernelSeries(expression, variable, point, order, evaluate).
+
+we define converges(expression, point) = kernelConverges(expression, point).
+
+we define converges(expression, variable, point) = kernelConverges(expression, variable, point).
+
+we define productOf(items) = fold(fn(acc, item) => acc * item, 1, items).
+
+we define d(plus(a, rest...))/dx = d(a)/dx + fold(fn(acc, term) => acc + d(term)/dx, 0, list(rest)).
+
+we define d(negate(u))/dx = -d(u)/dx.
+
+we define d(times(a, rest...))/dx = let restProduct = productOf(list(rest)) in d(a)/dx * restProduct + a * d(restProduct)/dx.
+
+we define d(power(u, n))/dx = n * power(u, n - 1) * d(u)/dx, where isNumber(n) && floor(n) == n.
+
+we define d(sin(u))/dx = cos(u) * d(u)/dx.
+
+we define d(cos(u))/dx = -sin(u) * d(u)/dx.
+
+we define d(tan(u))/dx = d(u)/dx / power(cos(u), 2).
+
+we define d(exp(u))/dx = exp(u) * d(u)/dx.
+
+we define d(ln(u))/dx = d(u)/dx / u.
+
+we define d(sqrt(u))/dx = d(u)/dx / (2 * sqrt(u)).
+
+we define d(asin(u))/dx = d(u)/dx / sqrt(1 - power(u, 2)).
+
+we define d(acos(u))/dx = -d(u)/dx / sqrt(1 - power(u, 2)).
+
+we define d(atan(u))/dx = d(u)/dx / (1 + power(u, 2)).
+
+we define d(sinh(u))/dx = cosh(u) * d(u)/dx.
+
+we define d(cosh(u))/dx = sinh(u) * d(u)/dx.
+
+we define d(tanh(u))/dx = d(u)/dx / power(cosh(u), 2).
+
+we define d(asinh(u))/dx = d(u)/dx / sqrt(1 + power(u, 2)).
+
+we define d(acosh(u))/dx = d(u)/dx / sqrt(power(u, 2) - 1).
+
+we define d(atanh(u))/dx = d(u)/dx / (1 - power(u, 2)).
+
+we define d(expression)/dx = differentiate(expression, x).
+
+we define a(v, x) = power(v, 2) / 2, where same(v, x).
+
+we define a(plus(first, rest...), x) = a(first, x) + fold(fn(acc, term) => acc + a(term, x), 0, list(rest)).
+
+we define a(negate(u), x) = -a(u, x).
+
+we define a(times(c, rest...), x) = c * a(productOf(list(rest)), x), where isNumber(c).
+
+we define a(power(v, -1), v) = ln(v).
+
+we define a(power(v, n), v) = power(v, n + 1) / (n + 1), where isNumber(n) && floor(n) == n.
+
+we define a(exp(v), v) = exp(v).
+
+we define a(sin(v), v) = -cos(v).
+
+we define a(cos(v), v) = sin(v).
+
+we define a(tan(v), v) = -ln(cos(v)).
+
+we define a(ln(v), v) = v * ln(v) - v.
+
+we define a(sqrt(v), v) = (2 / 3) * power(v, 3 / 2).
+
+we define a(asin(v), v) = v * asin(v) + sqrt(1 - power(v, 2)).
+
+we define a(acos(v), v) = v * acos(v) - sqrt(1 - power(v, 2)).
+
+we define a(atan(v), v) = v * atan(v) - ln(1 + power(v, 2)) / 2.
+
+we define a(expression, x) = integrate(expression, x).
+
+we define derive(expression, variable) = derivative(expression, variable).
+
+we define antiderivative(expression, variable) = a(expression, variable).
+
+theorem derivative_of_sine.
+for every expression u in x,
+d(sin(u))/dx = cos(u) * d(u)/dx.
+proof:
+by the definition of d.
+end proof.
+
+end module.

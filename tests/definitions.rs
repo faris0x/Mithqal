@@ -273,7 +273,7 @@ fn kernel_heads_cannot_be_redefined() {
 fn nested_call_patterns_in_parameters() {
     let mut session = Session::new();
     session
-        .eval_source("mod m\ndef unwrap(g(x_))=x\nend\n")
+        .eval_source("module m.\nwe define unwrap(g(x)) = x.\nend module.")
         .unwrap();
     let value = session.eval_statement("unwrap(g(5))").unwrap();
     assert_eq!(session.format_infix(value).unwrap(), "5");

@@ -1,65 +1,41 @@
-// Finite two player normal form games.
-//
-// A game is a list of row actions, column actions, and a set of payoff entries.
-// A payoff entry is [[rowAction,colAction],[rowPayoff,colPayoff]].
+module games.
 
-mod games
+use lists.
+use logic.
+use sets.
+use relations.
+use statistics.
 
-import lists
-import logic
-import sets
-import relations
-import statistics
+export game, rowActionsOf, colActionsOf, payoffsOf, payoff, rowPayoff, colPayoff, bestRows, bestColumns, pureNash, dominantRowActions, dominantColumnActions, paretoOptimal, isZeroSum.
 
-export game,rowActionsOf,colActionsOf,payoffsOf,payoff,rowPayoff,colPayoff,bestRows,bestColumns,pureNash,dominantRowActions,dominantColumnActions,paretoOptimal,isZeroSum
+we define game(rowActions, colActions, payoffs) = [rowActions, colActions, payoffs].
 
-def game(rowActions,colActions,payoffs)=[rowActions,colActions,payoffs]
-def rowActionsOf(game)=nth(game,0)
-def colActionsOf(game)=nth(game,1)
-def payoffsOf(game)=nth(game,2)
+we define rowActionsOf(game) = nth(game, 0).
 
-def payoff(game,rowAction,colAction)=applyRelation(payoffsOf(game),[rowAction,colAction])
-def rowPayoff(game,row,col)=nth(payoff(game,row,col),0)
-def colPayoff(game,row,col)=nth(payoff(game,row,col),1)
+we define colActionsOf(game) = nth(game, 1).
 
-def bestRows(game,colAction)=
-let entries=map(rowActionsOf(game),fn(row)=>[row,rowPayoff(game,row,colAction)])
-let best=maximum(map(entries,fn(entry)=>nth(entry,1)))
-map(filter(entries,fn(entry)=>same(nth(entry,1),best)),fn(entry)=>nth(entry,0))
-end
+we define payoffsOf(game) = nth(game, 2).
 
-def bestColumns(game,rowAction)=
-let entries=map(colActionsOf(game),fn(column)=>[column,colPayoff(game,rowAction,column)])
-let best=maximum(map(entries,fn(entry)=>nth(entry,1)))
-map(filter(entries,fn(entry)=>same(nth(entry,1),best)),fn(entry)=>nth(entry,0))
-end
+we define payoff(game, rowAction, colAction) = applyRelation(payoffsOf(game), [rowAction, colAction]).
 
-def pureNash(game)=
-let outcomes=cartesian(rowActionsOf(game),colActionsOf(game))
-setOf(filter(outcomes,fn(outcome)=>member(bestRows(game,nth(outcome,1)),nth(outcome,0))&&member(bestColumns(game,nth(outcome,0)),nth(outcome,1))))
-end
+we define rowPayoff(game, row, col) = nth(payoff(game, row, col), 0).
 
-def dominantRowActions(game)=
-filter(rowActionsOf(game),fn(row)=>allOf(colActionsOf(game),fn(column)=>member(bestRows(game,column),row)))
-end
+we define colPayoff(game, row, col) = nth(payoff(game, row, col), 1).
 
-def dominantColumnActions(game)=
-filter(colActionsOf(game),fn(column)=>allOf(rowActionsOf(game),fn(row)=>member(bestColumns(game,row),column)))
-end
+we define bestRows(game, colAction) = let entries = map(rowActionsOf(game), fn(row) => [row, rowPayoff(game, row, colAction)]) in let best = maximum(map(entries, fn(entry) => nth(entry, 1))) in map(filter(entries, fn(entry) => same(nth(entry, 1), best)), fn(entry) => nth(entry, 0)).
 
-def dominates(game,other,outcome)=
-let otherPayoff=payoff(game,nth(other,0),nth(other,1))
-let thisPayoff=payoff(game,nth(outcome,0),nth(outcome,1))
-nth(otherPayoff,0)>=nth(thisPayoff,0)&&nth(otherPayoff,1)>=nth(thisPayoff,1)&&(nth(otherPayoff,0)>nth(thisPayoff,0)||nth(otherPayoff,1)>nth(thisPayoff,1))
-end
+we define bestColumns(game, rowAction) = let entries = map(colActionsOf(game), fn(column) => [column, colPayoff(game, rowAction, column)]) in let best = maximum(map(entries, fn(entry) => nth(entry, 1))) in map(filter(entries, fn(entry) => same(nth(entry, 1), best)), fn(entry) => nth(entry, 0)).
 
-def paretoOptimal(game)=
-let outcomes=cartesian(rowActionsOf(game),colActionsOf(game))
-setOf(filter(outcomes,fn(outcome)=>allOf(outcomes,fn(other)=>not(dominates(game,other,outcome)))))
-end
+we define pureNash(game) = let outcomes = cartesian(rowActionsOf(game), colActionsOf(game)) in setOf(filter(outcomes, fn(outcome) => member(bestRows(game, nth(outcome, 1)), nth(outcome, 0)) && member(bestColumns(game, nth(outcome, 0)), nth(outcome, 1)))).
 
-def isZeroSum(game)=
-allOf(payoffsOf(game),fn(entry)=>same(nth(nth(entry,1),0)+nth(nth(entry,1),1),0))
-end
+we define dominantRowActions(game) = filter(rowActionsOf(game), fn(row) => allOf(colActionsOf(game), fn(column) => member(bestRows(game, column), row))).
 
-end
+we define dominantColumnActions(game) = filter(colActionsOf(game), fn(column) => allOf(rowActionsOf(game), fn(row) => member(bestColumns(game, row), column))).
+
+we define dominates(game, other, outcome) = let otherPayoff = payoff(game, nth(other, 0), nth(other, 1)) in let thisPayoff = payoff(game, nth(outcome, 0), nth(outcome, 1)) in nth(otherPayoff, 0) >= nth(thisPayoff, 0) && nth(otherPayoff, 1) >= nth(thisPayoff, 1) && (nth(otherPayoff, 0) > nth(thisPayoff, 0) || nth(otherPayoff, 1) > nth(thisPayoff, 1)).
+
+we define paretoOptimal(game) = let outcomes = cartesian(rowActionsOf(game), colActionsOf(game)) in setOf(filter(outcomes, fn(outcome) => allOf(outcomes, fn(other) => not(dominates(game, other, outcome))))).
+
+we define isZeroSum(game) = allOf(payoffsOf(game), fn(entry) => same(nth(nth(entry, 1), 0) + nth(nth(entry, 1), 1), 0)).
+
+end module.

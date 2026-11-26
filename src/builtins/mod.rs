@@ -102,7 +102,7 @@ pub fn attributes(name: &str) -> Option<Attributes> {
             A::new().with(A::PROTECTED)
         }
         "gcd" | "lcm" | "factorial" | "binomial" | "floor" | "ceil" | "round" | "gamma"
-        | "lgamma" | "erf" | "erfc" | "erfi" => A::new().with(A::PROTECTED),
+        | "lgamma" | "erf" | "erfc" | "erfi" | "isInteger" => A::new().with(A::PROTECTED),
         "kernelDet" | "kernelRank" | "kernelTranspose" | "kernelInverse" | "kernelRref"
         | "kernelTrace" | "kernelMatmul" | "kernelIdentity" | "kernelSolveLinear" | "kernelDot"
         | "kernelCross" | "kernelPlu" | "kernelCharpoly" | "kernelEigenvalues"
@@ -111,7 +111,7 @@ pub fn attributes(name: &str) -> Option<Attributes> {
         | "kernelPrimeCount" | "isPerfectSquare" | "modInverse" | "jacobi" => {
             A::new().with(A::PROTECTED)
         }
-        "xor" | "implies" | "all" | "any" => A::new().with(A::PROTECTED),
+        "xor" | "implies" | "all" | "any" | "freeOf" => A::new().with(A::PROTECTED),
         "length" | "sort" | "first" | "rest" | "cons" | "nth" | "reverse" | "isNumber"
         | "kernelIsList" => A::new().with(A::PROTECTED),
         "pattern" | "blank" | "blankSequence" | "blankNullSequence" | "condition" => {

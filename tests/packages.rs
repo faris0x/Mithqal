@@ -25,12 +25,12 @@ fn packages_load_imports_and_keep_private_names_private() {
     let dependency = write_package(
         &directory,
         "pkg_b.mith",
-        "mod pkgB\nexport external\ndef external(x)=x*2\nend\n",
+        "module pkgB.\nexport external.\nwe define external(x) = x * 2.\nend module.",
     );
     let package = write_package(
         &directory,
         "pkg_a.mith",
-        "mod pkgA\nexport public\nimport \"pkg_b.mith\"\ndef public(x)=helper(x)\ndef helper(x)=external(x)+1\nend\n",
+        "module pkgA.\nexport public.\nuse \"pkg_b.mith\".\nwe define public(x) = helper(x).\nwe define helper(x) = external(x) + 1.\nend module.",
     );
     let mut session = Session::new();
     let _ = dependency;
@@ -56,8 +56,16 @@ fn package_import_cycles_are_rejected() {
         .join(format!("mithqal-cycle-{}", std::process::id()));
     let _ = fs::remove_dir_all(&directory);
     fs::create_dir_all(&directory).unwrap();
-    let a = write_package(&directory, "a.mith", "mod a\nimport \"b.mith\"\nend\n");
-    let _ = write_package(&directory, "b.mith", "mod b\nimport \"a.mith\"\nend\n");
+    let a = write_package(
+        &directory,
+        "a.mith",
+        "module a.\nuse \"b.mith\".\nend module.",
+    );
+    let _ = write_package(
+        &directory,
+        "b.mith",
+        "module b.\nuse \"a.mith\".\nend module.",
+    );
     let mut session = Session::new();
     assert!(session.needs(&a.to_string_lossy()).is_err());
     let _ = fs::remove_dir_all(&directory);
@@ -80,12 +88,12 @@ fn loaded_modules_evaluate_assumptions_without_restarting() {
     let positive = write_package(
         &directory,
         "positive.mith",
-        "mod assumptionPositive\nexport positiveX\ndef positiveX()=assume(x>0,abs(x))\nend\n",
+        "module assumptionPositive.\nexport positiveX.\nwe define positiveX() = assume(x > 0, abs(x)).\nend module.",
     );
     let negative = write_package(
         &directory,
         "negative.mith",
-        "mod assumptionNegative\nexport negativeX\ndef negativeX()=assume(x<0,abs(x))\nend\n",
+        "module assumptionNegative.\nexport negativeX.\nwe define negativeX() = assume(x < 0, abs(x)).\nend module.",
     );
     let mut session = Session::new();
     session.needs(&positive.to_string_lossy()).unwrap();

@@ -174,12 +174,12 @@ fn linalg_symbols_are_protected() {
 #[test]
 fn linalg_works_from_the_language() {
     let source = r#"
-mod matrix
-let a=[[1,2],[3,4]]
-prt det(a)
-prt transpose(a)
-prt matmul(a,identity(2))
-end
+module matrix.
+let a be [[1, 2], [3, 4]].
+print det(a).
+print transpose(a).
+print matmul(a, identity(2)).
+end module.
 "#;
     let mut session = Session::new();
     session.eval_source(source).unwrap();

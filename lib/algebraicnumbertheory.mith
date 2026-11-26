@@ -1,94 +1,63 @@
-// Algebraic number theory and local arithmetic.
-//
-// Quadratic field elements are pairs [a,b] representing a+b*sqrt(d).
-// Eisenstein integers are pairs [a,b] representing a+b*omega with
-// omega^2+omega+1=0. p-adic functions expose valuations and truncated
-// expansions without pretending to implement a general p-adic field.
+module algebraicnumbertheory.
 
-mod algebraicnumbertheory
+use lists.
+use numbertheory.
+use quadraticforms.
 
-import lists
-import numbertheory
-import quadraticforms
+export quadraticFieldDiscriminant, quadraticClassNumber, quadraticFundamentalUnit, quadraticRegulator, quadraticConjugate, quadraticNorm, quadraticTrace, quadraticAdd, quadraticMultiply, quadraticInverse, quadraticIsUnit, quadraticPower, eisensteinNorm, eisensteinMultiply, eisensteinIsPrime, padicValuation, padicNorm, padicUnit, padicExpansion, padicDigit.
 
-export quadraticFieldDiscriminant, quadraticClassNumber, quadraticFundamentalUnit, quadraticRegulator, quadraticConjugate, quadraticNorm, quadraticTrace, quadraticAdd, quadraticMultiply, quadraticInverse, quadraticIsUnit, quadraticPower, eisensteinNorm, eisensteinMultiply, eisensteinIsPrime, padicValuation, padicNorm, padicUnit, padicExpansion, padicDigit
+we define quadraticFieldDiscriminant(radicand) = if(mod(radicand, 4) == 1, radicand, 4 * radicand).
 
-def quadraticFieldDiscriminant(radicand)=
-if(mod(radicand,4)==1,radicand,4*radicand)
-end
+we define quadraticClassNumber(radicand) = if(radicand >= 0, undefined, binaryFormClassNumber(quadraticFieldDiscriminant(radicand))).
 
-def quadraticClassNumber(radicand)=
-if(radicand>=0,undefined,binaryFormClassNumber(quadraticFieldDiscriminant(radicand)))
-end
+we define quadraticFundamentalUnit(d) = undefined, where d <= 1.
 
-def quadraticFundamentalUnit(d) when d<=1=undefined
-def quadraticFundamentalUnit(d)=
-let a0=floorSqrt(d)
-pellStep(d,0,1,a0,a0,1,a0,0,1)
-end
+we define quadraticFundamentalUnit(d) = let a0 = floorSqrt(d) in pellStep(d, 0, 1, a0, a0, 1, a0, 0, 1).
 
-def pellStep(d,m,den,a,a0,h0,h1,k0,k1)=
-if(h1*h1-d*k1*k1==1||h1*h1-d*k1*k1==-1,[h1,k1],pellNext(d,m,den,a,a0,h0,h1,k0,k1))
-end
+we define pellStep(d, m, den, a, a0, h0, h1, k0, k1) = if(h1 * h1 - d * k1 * k1 == 1 || h1 * h1 - d * k1 * k1 == -1, [h1, k1], pellNext(d, m, den, a, a0, h0, h1, k0, k1)).
 
-def pellNext(d,m,den,a,a0,h0,h1,k0,k1)=
-let nextM=den*a-m
-let nextDen=(d-nextM*nextM)/den
-let nextA=floor((a0+nextM)/nextDen)
-let nextH1=nextA*h1+h0
-let nextK1=nextA*k1+k0
-pellStep(d,nextM,nextDen,nextA,a0,h1,nextH1,k1,nextK1)
-end
+we define pellNext(d, m, den, a, a0, h0, h1, k0, k1) = let nextM = den * a - m in let nextDen = (d - nextM * nextM) / den in let nextA = floor((a0 + nextM) / nextDen) in let nextH1 = nextA * h1 + h0 in let nextK1 = nextA * k1 + k0 in pellStep(d, nextM, nextDen, nextA, a0, h1, nextH1, k1, nextK1).
 
-def quadraticRegulator(d)=
-let unit=quadraticFundamentalUnit(d)
-if(same(unit,undefined),undefined,ln(nth(unit,0)+nth(unit,1)*sqrt(d)))
-end
+we define quadraticRegulator(d) = let unit = quadraticFundamentalUnit(d) in if(same(unit, undefined), undefined, ln(nth(unit, 0) + nth(unit, 1) * sqrt(d))).
 
-def quadraticConjugate(a,b)=[a,-b]
-def quadraticTrace(a,b)=2*a
-def quadraticNorm(a,b,d)=a*a-d*b*b
-def quadraticAdd(a,b,c,d)=[a+c,b+d]
-def quadraticMultiply(a,b,c,d,radicand)=[a*c+radicand*b*d,a*d+b*c]
+we define quadraticConjugate(a, b) = [a, -b].
 
-def quadraticInverse(a,b,d)=
-let norm=quadraticNorm(a,b,d)
-if(norm==0,undefined,[a/norm,-b/norm])
-end
+we define quadraticTrace(a, b) = 2 * a.
 
-def quadraticIsUnit(a,b,d)=
-let norm=quadraticNorm(a,b,d)
-norm==1||norm==-1
-end
+we define quadraticNorm(a, b, d) = a * a - d * b * b.
 
-def quadraticPower(a,b,d,n) when n==0=[1,0]
-def quadraticPower(a,b,d,n)=
-let previous=quadraticPower(a,b,d,n-1)
-quadraticMultiply(a,b,nth(previous,0),nth(previous,1),d)
-end
+we define quadraticAdd(a, b, c, d) = [a + c, b + d].
 
-def eisensteinNorm(a,b)=a*a-a*b+b*b
-def eisensteinMultiply(a,b,c,d)=[a*c-b*d,a*d+b*c-b*d]
+we define quadraticMultiply(a, b, c, d, radicand) = [a * c + radicand * b * d, a * d + b * c].
 
-def eisensteinIsPrime(a,b)=
-let norm=eisensteinNorm(a,b)
-if(isPrime(norm),mod(norm,3)==1,if(isPerfectSquare(norm),eisensteinPrimeSquare(norm),false))
-end
+we define quadraticInverse(a, b, d) = let norm = quadraticNorm(a, b, d) in if(norm == 0, undefined, [a / norm, -b / norm]).
 
-def eisensteinPrimeSquare(n)=
-let p=floorSqrt(n)
-p*p==n&&isPrime(p)&&mod(p,3)==2
-end
+we define quadraticIsUnit(a, b, d) = let norm = quadraticNorm(a, b, d) in norm == 1 || norm == -1.
 
-def padicValuation(n,p)=primeExponent(n,p)
-def padicNorm(n,p)=1/power(p,padicValuation(n,p))
-def padicUnit(n,p)=n/power(p,padicValuation(n,p))
+we define quadraticPower(a, b, d, n) = [1, 0], where n == 0.
 
-def padicExpansion(n,p,digits)=padicExpansionStep(n,p,digits)
+we define quadraticPower(a, b, d, n) = let previous = quadraticPower(a, b, d, n - 1) in quadraticMultiply(a, b, nth(previous, 0), nth(previous, 1), d).
 
-def padicExpansionStep(n,p,digits) when digits<=0=[]
-def padicExpansionStep(n,p,digits)=cons(mod(n,p),padicExpansionStep(floor(n/p),p,digits-1))
+we define eisensteinNorm(a, b) = a * a - a * b + b * b.
 
-def padicDigit(n,p,k)=mod(floor(n/power(p,k)),p)
+we define eisensteinMultiply(a, b, c, d) = [a * c - b * d, a * d + b * c - b * d].
 
-end
+we define eisensteinIsPrime(a, b) = let norm = eisensteinNorm(a, b) in if(isPrime(norm), mod(norm, 3) == 1, if(isPerfectSquare(norm), eisensteinPrimeSquare(norm), false)).
+
+we define eisensteinPrimeSquare(n) = let p = floorSqrt(n) in p * p == n && isPrime(p) && mod(p, 3) == 2.
+
+we define padicValuation(n, p) = primeExponent(n, p).
+
+we define padicNorm(n, p) = 1 / power(p, padicValuation(n, p)).
+
+we define padicUnit(n, p) = n / power(p, padicValuation(n, p)).
+
+we define padicExpansion(n, p, digits) = padicExpansionStep(n, p, digits).
+
+we define padicExpansionStep(n, p, digits) = [], where digits <= 0.
+
+we define padicExpansionStep(n, p, digits) = cons(mod(n, p), padicExpansionStep(floor(n / p), p, digits - 1)).
+
+we define padicDigit(n, p, k) = mod(floor(n / power(p, k)), p).
+
+end module.

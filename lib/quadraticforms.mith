@@ -1,79 +1,48 @@
-// Binary quadratic forms.
-//
-// Positive definite forms ax^2+bxy+cy^2 with discriminant D=b^2-4ac.
-// The reduction and class-number functions are exact and intended for
-// negative discriminants.
+module quadraticforms.
 
-mod quadraticforms
+use lists.
+use numbertheory.
 
-import lists
-import numbertheory
+export binaryFormDiscriminant, isReducedBinaryForm, reduceBinaryForm, reducedForms, binaryFormClassNumber, binaryFormValue, binaryFormRepresents.
 
-export binaryFormDiscriminant, isReducedBinaryForm, reduceBinaryForm, reducedForms, binaryFormClassNumber, binaryFormValue, binaryFormRepresents
+we define binaryFormDiscriminant(a, b, c) = b * b - 4 * a * c.
 
-def binaryFormDiscriminant(a,b,c)=b*b-4*a*c
+we define isReducedBinaryForm(a, b, c) = a > 0 && abs(b) <= a && a <= c && (b >= 0 || (abs(b) < a && a < c)).
 
-def isReducedBinaryForm(a,b,c)=
-a>0&&abs(b)<=a&&a<=c&&(b>=0||(abs(b)<a&&a<c))
-end
+we define reduceBinaryForm(a, b, c) = [a, b, c], where isReducedBinaryForm(a, b, c).
 
-def reduceBinaryForm(a,b,c) when isReducedBinaryForm(a,b,c)=[a,b,c]
-def reduceBinaryForm(a,b,c)=
-if(a>c,reduceBinaryForm(c,-b,a),reduceStep(a,b,c))
-end
+we define reduceBinaryForm(a, b, c) = if(a > c, reduceBinaryForm(c, -b, a), reduceStep(a, b, c)).
 
-def reduceStep(a,b,c)=
-if(b<0&&(abs(b)==a||a==c),reduceBinaryForm(a,-b,c),reduceAdjust(a,b,c))
-end
+we define reduceStep(a, b, c) = if(b < 0 && (abs(b) == a || a == c), reduceBinaryForm(a, -b, c), reduceAdjust(a, b, c)).
 
-def reduceAdjust(a,b,c)=
-let d=binaryFormDiscriminant(a,b,c)
-let adjustment=round(b/(2*a))
-let nextB=b-2*a*adjustment
-let nextC=(nextB*nextB-d)/(4*a)
-reduceBinaryForm(a,nextB,nextC)
-end
+we define reduceAdjust(a, b, c) = let d = binaryFormDiscriminant(a, b, c) in let adjustment = round(b / (2 * a)) in let nextB = b - 2 * a * adjustment in let nextC = (nextB * nextB - d) / (4 * a) in reduceBinaryForm(a, nextB, nextC).
 
-def reducedForms(d)=
-if(d>=0,[],reducedFormsA(d,1,floorSqrt(-d/3)))
-end
+we define reducedForms(d) = if(d >= 0, [], reducedFormsA(d, 1, floorSqrt(-d / 3))).
 
-def reducedFormsA(d,a,limit) when a>limit=[]
-def reducedFormsA(d,a,limit)=
-append(reducedFormsB(d,a,-a,a),reducedFormsA(d,a+1,limit))
-end
+we define reducedFormsA(d, a, limit) = [], where a > limit.
 
-def reducedFormsB(d,a,b,limit) when b>limit=[]
-def reducedFormsB(d,a,b,limit)=
-let candidate=reducedFormCandidate(d,a,b)
-append(candidate,reducedFormsB(d,a,b+1,limit))
-end
+we define reducedFormsA(d, a, limit) = append(reducedFormsB(d, a, -a, a), reducedFormsA(d, a + 1, limit)).
 
-def reducedFormCandidate(d,a,b)=
-if(mod(b*b-d,4*a)=/=0,[],reducedFormBuild(d,a,b,(b*b-d)/(4*a)))
-end
+we define reducedFormsB(d, a, b, limit) = [], where b > limit.
 
-def reducedFormBuild(d,a,b,c)=
-if(isReducedBinaryForm(a,b,c),[[a,b,c]],[])
-end
+we define reducedFormsB(d, a, b, limit) = let candidate = reducedFormCandidate(d, a, b) in append(candidate, reducedFormsB(d, a, b + 1, limit)).
 
-def binaryFormClassNumber(d)=length(reducedForms(d))
+we define reducedFormCandidate(d, a, b) = if(mod(b * b - d, 4 * a) != 0, [], reducedFormBuild(d, a, b, (b * b - d) / (4 * a))).
 
-def binaryFormValue(a,b,c,x,y)=a*x*x+b*x*y+c*y*y
+we define reducedFormBuild(d, a, b, c) = if(isReducedBinaryForm(a, b, c), [[a, b, c]], []).
 
-def binaryFormRepresents(n,a,b,c)=
-let limit=floorSqrt(abs(n))+abs(a)+abs(c)
-binaryFormRepresentsStep(n,a,b,c,-limit,limit)
-end
+we define binaryFormClassNumber(d) = length(reducedForms(d)).
 
-def binaryFormRepresentsStep(n,a,b,c,x,limit) when x>limit=false
-def binaryFormRepresentsStep(n,a,b,c,x,limit)=
-if(binaryFormRepresentsY(n,a,b,c,x,-limit,limit),true,binaryFormRepresentsStep(n,a,b,c,x+1,limit))
-end
+we define binaryFormValue(a, b, c, x, y) = a * x * x + b * x * y + c * y * y.
 
-def binaryFormRepresentsY(n,a,b,c,x,y,limit) when y>limit=false
-def binaryFormRepresentsY(n,a,b,c,x,y,limit)=
-if(binaryFormValue(a,b,c,x,y)==n,true,binaryFormRepresentsY(n,a,b,c,x,y+1,limit))
-end
+we define binaryFormRepresents(n, a, b, c) = let limit = floorSqrt(abs(n)) + abs(a) + abs(c) in binaryFormRepresentsStep(n, a, b, c, -limit, limit).
 
-end
+we define binaryFormRepresentsStep(n, a, b, c, x, limit) = false, where x > limit.
+
+we define binaryFormRepresentsStep(n, a, b, c, x, limit) = if(binaryFormRepresentsY(n, a, b, c, x, -limit, limit), true, binaryFormRepresentsStep(n, a, b, c, x + 1, limit)).
+
+we define binaryFormRepresentsY(n, a, b, c, x, y, limit) = false, where y > limit.
+
+we define binaryFormRepresentsY(n, a, b, c, x, y, limit) = if(binaryFormValue(a, b, c, x, y) == n, true, binaryFormRepresentsY(n, a, b, c, x, y + 1, limit)).
+
+end module.

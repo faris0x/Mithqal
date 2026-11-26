@@ -20,7 +20,7 @@ This document records the support level of each public area. Stable areas follow
 | Statistics | Stable | Implemented in the Mithqal standard library (`lib/statistics.mith`). |
 | Standard library and list primitives | Experimental | Bundled Mithqal modules with dependency-aware selective loading through `Session::with_modules`. |
 | Assumptions | Partial | Local sign, domain, parity, equality, and ordered facts over interned symbols, with conjunction, disjunction, and negation. |
-| Surface language, IR, VM, collector | Experimental | Internal surfaces may change while the language design settles. |
+| Surface language, IR, VM, collector | Experimental | Controlled mathematical prose surface, IR, VM, and collector may change while the language design settles. |
 | Arena internals | Experimental | Hidden from public documentation and not part of the stable contract. |
 | Command line frontend | Stable | REPL evaluation, assignments, commands, completion, history, and license reporting. |
 | Language specification and conformance corpus | Experimental | `spec/` is normative. The corpus runs in `tests/conformance.rs`. |

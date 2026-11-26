@@ -9,14 +9,11 @@ fn output(source: &str) -> Vec<String> {
 #[test]
 fn body_definitions_are_local_and_capture_parameters() {
     let source = r#"
-mod local
-def outer(x)=
-def helper(y)=x+y
-helper(2)
-end
-prt outer(10)
-prt helper(2)
-end
+module local.
+we define outer(x) = let helper(y) = x + y in helper(2).
+print outer(10).
+print helper(2).
+end module.
 "#;
     assert_eq!(output(source), vec!["12", "helper(2)"]);
 }
@@ -24,15 +21,11 @@ end
 #[test]
 fn body_definitions_can_recurse() {
     let source = r#"
-mod local
-def fact(n)=
-def loop(0,acc)=acc
-def loop(k,acc)=loop(k-1,acc*k)
-loop(n,1)
-end
-prt fact(5)
-prt fact(7)
-end
+module local.
+we define fact(n) = let loop(0, acc) = acc, loop(k, acc) = loop(k - 1, acc * k) in loop(n, 1).
+print fact(5).
+print fact(7).
+end module.
 "#;
     assert_eq!(output(source), vec!["120", "5040"]);
 }
@@ -40,17 +33,11 @@ end
 #[test]
 fn body_definitions_can_be_mutually_recursive() {
     let source = r#"
-mod local
-def parity(n)=
-def even(0)=true
-def even(k)=odd(k-1)
-def odd(0)=false
-def odd(k)=even(k-1)
-even(n)
-end
-prt parity(10)
-prt parity(7)
-end
+module local.
+we define parity(n) = let even(0) = true, even(k) = odd(k - 1), odd(0) = false, odd(k) = even(k - 1) in even(n).
+print parity(10).
+print parity(7).
+end module.
 "#;
     assert_eq!(output(source), vec!["true", "false"]);
 }
@@ -58,15 +45,12 @@ end
 #[test]
 fn body_definitions_shadow_globals_only_inside_the_body() {
     let source = r#"
-mod local
-def f(x)=x+1
-def outer(x)=
-def f(y)=y+100
-f(x)
-end
-prt outer(1)
-prt f(1)
-end
+module local.
+we define f(x) = x + 1.
+we define outer(x) = let f(y) = y + 100 in f(x).
+print outer(1).
+print f(1).
+end module.
 "#;
     assert_eq!(output(source), vec!["101", "2"]);
 }
@@ -74,18 +58,14 @@ end
 #[test]
 fn local_definitions_in_conditional_blocks_are_scoped() {
     let source = r#"
-mod local
-def outer(x)=
-if x>0 then
-def positive(y)=y>0
-positive(x)
-else
-0
-end
-end
-prt outer(5)
-prt positive(5)
-end
+module local.
+let x be 5.
+if x > 0 then:
+  we define positive(y) = y > 0.
+  print positive(x).
+end if.
+print positive(5).
+end module.
 "#;
     assert_eq!(output(source), vec!["true", "positive(5)"]);
 }
@@ -93,13 +73,10 @@ end
 #[test]
 fn local_definitions_cannot_shadow_protected_symbols() {
     let source = r#"
-mod local
-def outer(x)=
-def plus(a,b)=a+b
-x
-end
-prt outer(1)
-end
+module local.
+we define outer(x) = let plus(a, b) = a + b in x.
+print outer(1).
+end module.
 "#;
     let mut session = Session::new();
     let error = session.eval_source(source).unwrap_err();
@@ -110,7 +87,7 @@ end
 fn local_definitions_report_arity_errors() {
     let mut session = Session::new();
     session
-        .eval_source("mod local\ndef outer(x)=\ndef helper(a,b)=a+b\nhelper(x)\nend\nend\n")
+        .eval_source("module local.\nwe define outer(x) = let helper(a, b) = a + b in helper(x).\nend module.")
         .unwrap();
     let error = session.eval_statement("outer(1)").unwrap_err();
     assert_eq!(error.code, ErrorCode::EvalArity);
@@ -120,7 +97,9 @@ fn local_definitions_report_arity_errors() {
 fn local_definitions_do_not_leak_between_calls() {
     let mut session = Session::new();
     session
-        .eval_source("mod local\ndef outer(x)=\ndef helper(y)=y+1\nhelper(x)\nend\nend\n")
+        .eval_source(
+            "module local.\nwe define outer(x) = let helper(y) = y + 1 in helper(x).\nend module.",
+        )
         .unwrap();
     let value = session.eval_statement("outer(1)").unwrap();
     assert_eq!(session.format_infix(value).unwrap(), "2");

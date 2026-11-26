@@ -1,52 +1,31 @@
-// Finite relations and functions, represented as sets of pairs.
-//
-// A pair is a two item list. A relation is a canonical set of pairs.
+module relations.
 
-mod relations
+use lists.
+use logic.
+use sets.
 
-import lists
-import logic
-import sets
+export relationOf, domainOf, rangeOf, imageOf, inverseRelation, composeRelations, isFunction, applyRelation, isReflexive, isSymmetric, isTransitive.
 
-export relationOf,domainOf,rangeOf,imageOf,inverseRelation,composeRelations,isFunction,applyRelation,isReflexive,isSymmetric,isTransitive
+we define relationOf(pairs) = setOf(pairs).
 
-def relationOf(pairs)=setOf(pairs)
+we define domainOf(relation) = setOf(map(relation, fn(pair) => nth(pair, 0))).
 
-def domainOf(relation)=setOf(map(relation,fn(pair)=>nth(pair,0)))
-def rangeOf(relation)=setOf(map(relation,fn(pair)=>nth(pair,1)))
+we define rangeOf(relation) = setOf(map(relation, fn(pair) => nth(pair, 1))).
 
-def imageOf(relation,items)=
-setOf(map(filter(relation,fn(pair)=>member(items,nth(pair,0))),fn(pair)=>nth(pair,1)))
-end
+we define imageOf(relation, items) = setOf(map(filter(relation, fn(pair) => member(items, nth(pair, 0))), fn(pair) => nth(pair, 1))).
 
-def inverseRelation(relation)=
-setOf(map(relation,fn(pair)=>[nth(pair,1),nth(pair,0)]))
-end
+we define inverseRelation(relation) = setOf(map(relation, fn(pair) => [nth(pair, 1), nth(pair, 0)])).
 
-def composeRelations(first,second)=
-let pairs=concat(map(first,fn(pair)=>map(filter(second,fn(other)=>same(nth(other,0),nth(pair,1))),fn(other)=>[nth(pair,0),nth(other,1)])))
-setOf(pairs)
-end
+we define composeRelations(first, second) = let pairs = concat(map(first, fn(pair) => map(filter(second, fn(other) => same(nth(other, 0), nth(pair, 1))), fn(other) => [nth(pair, 0), nth(other, 1)]))) in setOf(pairs).
 
-def isFunction(relation)=
-allOf(relation,fn(pair)=>length(filter(relation,fn(other)=>same(nth(other,0),nth(pair,0))))==1)
-end
+we define isFunction(relation) = allOf(relation, fn(pair) => length(filter(relation, fn(other) => same(nth(other, 0), nth(pair, 0)))) == 1).
 
-def applyRelation(relation,value)=
-let matches=filter(relation,fn(pair)=>same(nth(pair,0),value))
-if(length(matches)==1,nth(first(matches),1),undefined)
-end
+we define applyRelation(relation, value) = let matches = filter(relation, fn(pair) => same(nth(pair, 0), value)) in if(length(matches) == 1, nth(first(matches), 1), undefined).
 
-def isReflexive(relation,items)=
-allOf(items,fn(item)=>member(relation,[item,item]))
-end
+we define isReflexive(relation, items) = allOf(items, fn(item) => member(relation, [item, item])).
 
-def isSymmetric(relation)=
-allOf(relation,fn(pair)=>member(relation,[nth(pair,1),nth(pair,0)]))
-end
+we define isSymmetric(relation) = allOf(relation, fn(pair) => member(relation, [nth(pair, 1), nth(pair, 0)])).
 
-def isTransitive(relation)=
-allOf(relation,fn(pair)=>allOf(relation,fn(other)=>if(same(nth(pair,1),nth(other,0)),member(relation,[nth(pair,0),nth(other,1)]),true)))
-end
+we define isTransitive(relation) = allOf(relation, fn(pair) => allOf(relation, fn(other) => if(same(nth(pair, 1), nth(other, 0)), member(relation, [nth(pair, 0), nth(other, 1)]), true))).
 
-end
+end module.

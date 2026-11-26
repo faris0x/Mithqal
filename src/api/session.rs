@@ -55,6 +55,7 @@ impl Session {
             compiled_results: HashMap::default(),
             output: Vec::new(),
             language_scopes: Vec::new(),
+            module_assumptions: Vec::new(),
             source_name: None,
             definition_source: None,
             structures: HashMap::default(),
@@ -300,7 +301,7 @@ impl Session {
         }
         for statement in &program.body {
             if let Stmt::Import { module } = statement {
-                self.load_package(module, true)?;
+                self.load_package(module.as_str(), true)?;
             }
         }
         let previous_source = self.definition_source;
@@ -709,6 +710,27 @@ impl Session {
                 self.declare_instance(name, structure, *assumed, fields)?;
                 Ok(self.arena.builtin_head("null"))
             }
+            Stmt::Assume { condition } => {
+                if local {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        "an assumption must appear at module level",
+                    ));
+                }
+                let formula = self.language_expression(condition)?;
+                self.module_assumptions.push(formula);
+                Ok(self.arena.builtin_head("null"))
+            }
+            Stmt::Theorem { name, claim, proof } => {
+                if local {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        "a theorem must appear at module level",
+                    ));
+                }
+                self.verify_theorem(name, claim, proof)?;
+                Ok(self.arena.builtin_head("null"))
+            }
             Stmt::Export { .. } | Stmt::Import { .. } => {
                 if local {
                     return Err(Diagnostic::eval(
@@ -719,6 +741,406 @@ impl Session {
                 Ok(self.arena.builtin_head("null"))
             }
         }
+    }
+
+    fn verify_theorem(
+        &mut self,
+        name: &str,
+        claim: &syntax::ExprSource,
+        proof: &[syntax::ExprSource],
+    ) -> Result<(), Diagnostic> {
+        if proof.is_empty() {
+            return Ok(());
+        }
+        let mut assumptions = Vec::new();
+        let mut facts: Vec<(String, String)> = Vec::new();
+        let mut case_specs: Vec<(String, Vec<String>)> = Vec::new();
+        let mut contradiction = false;
+        let mut have_facts: Vec<(String, String)> = Vec::new();
+        for step in proof {
+            let step_lower = step.text.to_ascii_lowercase();
+            if let Some(rest) = step_lower.strip_prefix("assume ") {
+                let condition = rest.trim().to_string();
+                if let Some(fact) = equality_fact(&condition) {
+                    facts.push(fact);
+                } else {
+                    assumptions.push(syntax::normalize_formula(&condition)?);
+                }
+                continue;
+            }
+            if let Some(rest) = step_lower.strip_prefix("have ") {
+                let Some(colon) = rest.find(':') else {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        format!("theorem {name} has an invalid have step"),
+                    ));
+                };
+                let fact_name = rest[..colon].trim().to_string();
+                let claim_text = rest[colon + 1..].trim().to_string();
+                self.verify_claim(
+                    name,
+                    &claim_text,
+                    step.line,
+                    step.column,
+                    &assumptions,
+                    &facts,
+                )?;
+                if let Some(fact) = equality_fact(&claim_text) {
+                    facts.push(fact);
+                }
+                have_facts.push((fact_name, claim_text));
+                continue;
+            }
+            if let Some(rest) = step_lower.strip_prefix("show ") {
+                let claim_text = rest.trim().to_string();
+                self.verify_claim(
+                    name,
+                    &claim_text,
+                    step.line,
+                    step.column,
+                    &assumptions,
+                    &facts,
+                )?;
+                if let Some(fact) = equality_fact(&claim_text) {
+                    facts.push(fact);
+                }
+                continue;
+            }
+            if step_lower.trim() == "contradiction" {
+                self.verify_contradiction(name, &assumptions)?;
+                contradiction = true;
+                continue;
+            }
+            if let Some(rest) = step_lower.strip_prefix("by cases on ") {
+                let Some(in_position) = rest.find(" in ") else {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        format!("theorem {name} has an invalid cases step"),
+                    ));
+                };
+                let variable = rest[..in_position].trim().to_string();
+                let domain = rest[in_position + 4..].trim();
+                if !domain.starts_with('[') || !domain.ends_with(']') {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        format!("theorem {name} cases domain must be a finite list"),
+                    ));
+                }
+                let values = split_list_items(&domain[1..domain.len() - 1]);
+                case_specs.push((variable, values));
+                continue;
+            }
+            if let Some(reference) = step_lower.strip_prefix("by ") {
+                let reference = reference.trim();
+                if have_facts
+                    .iter()
+                    .any(|(name, _)| name.eq_ignore_ascii_case(reference))
+                {
+                    continue;
+                }
+            }
+            let supported = step_lower.starts_with("by definition")
+                || step_lower.starts_with("by arithmetic")
+                || step_lower.starts_with("by assumption")
+                || step_lower.starts_with("by rewriting")
+                || step_lower.starts_with("by the definition");
+            if !supported {
+                return Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("theorem {name} has an unsupported proof step"),
+                ));
+            }
+        }
+        if contradiction {
+            return Ok(());
+        }
+        if !case_specs.is_empty() {
+            for (variable, values) in &case_specs {
+                for value in values {
+                    let mut case_facts = facts.clone();
+                    case_facts.push((variable.clone(), value.clone()));
+                    self.verify_claim(
+                        name,
+                        &claim.text,
+                        claim.line,
+                        claim.column,
+                        &assumptions,
+                        &case_facts,
+                    )?;
+                }
+            }
+            return Ok(());
+        }
+        self.verify_claim(
+            name,
+            &claim.text,
+            claim.line,
+            claim.column,
+            &assumptions,
+            &facts,
+        )
+    }
+
+    fn verify_contradiction(
+        &mut self,
+        name: &str,
+        assumptions: &[String],
+    ) -> Result<(), Diagnostic> {
+        if assumptions.is_empty() {
+            return Err(Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                format!("theorem {name} has no assumptions to contradict"),
+            ));
+        }
+        let mut conjunction = assumptions.last().cloned().unwrap_or_default();
+        for assumption in assumptions.iter().rev().skip(1) {
+            conjunction = format!("and({assumption},{conjunction})");
+        }
+        let source = syntax::ExprSource {
+            text: format!("assume({conjunction},false)"),
+            line: 1,
+            column: 1,
+        };
+        let steps = self.config.max_steps;
+        let depth = self.config.max_depth;
+        self.config.max_steps = self.config.max_steps.max(1_000_000);
+        self.config.max_depth = self.config.max_depth.max(2048);
+        let result = (|| {
+            let expression = self.resolved_language_expression(&source, &[])?;
+            match self.eval(expression) {
+                Err(error) if error.code == ErrorCode::EvalAssumption => Ok(()),
+                Ok(_) => Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("theorem {name} assumptions are consistent"),
+                )),
+                Err(error) => Err(error),
+            }
+        })();
+        self.config.max_steps = steps;
+        self.config.max_depth = depth;
+        result
+    }
+
+    fn verify_claim(
+        &mut self,
+        name: &str,
+        claim: &str,
+        line: usize,
+        column: usize,
+        assumptions: &[String],
+        facts: &[(String, String)],
+    ) -> Result<(), Diagnostic> {
+        let lower = claim.to_ascii_lowercase();
+        if lower.trim_start().starts_with("there exists ") {
+            return self.verify_existence(name, claim, line, column, assumptions, facts);
+        }
+        if lower.trim_start().starts_with("for every ")
+            && self.verify_finite_universal(name, claim, line, column, assumptions, facts)?
+        {
+            return Ok(());
+        }
+        self.verify_equality(name, claim, line, column, assumptions, facts)
+    }
+
+    fn verify_finite_universal(
+        &mut self,
+        name: &str,
+        claim: &str,
+        line: usize,
+        column: usize,
+        assumptions: &[String],
+        facts: &[(String, String)],
+    ) -> Result<bool, Diagnostic> {
+        let lower = claim.to_ascii_lowercase();
+        let Some(rest) = lower.strip_prefix("for every ") else {
+            return Ok(false);
+        };
+        let Some(in_position) = rest.find(" in ") else {
+            return Ok(false);
+        };
+        let after = &rest[in_position + 4..];
+        let Some(comma) = find_top_level_comma(after) else {
+            return Ok(false);
+        };
+        let domain = after[..comma].trim();
+        if !domain.starts_with('[') {
+            return Ok(false);
+        }
+        let variable = rest[..in_position].trim();
+        if !variable
+            .chars()
+            .all(|character| character.is_alphanumeric() || character == '_')
+        {
+            return Ok(false);
+        }
+        let condition = after[comma + 1..].trim();
+        let condition = rewrite_facts(condition, facts);
+        let condition = wrap_assumptions(&condition, assumptions);
+        let expression = format!(
+            "forall({},{},{})",
+            variable,
+            syntax::normalize_formula(domain)?,
+            syntax::normalize_formula(&condition)?
+        );
+        let source = syntax::ExprSource {
+            text: expression,
+            line,
+            column,
+        };
+        let steps = self.config.max_steps;
+        let depth = self.config.max_depth;
+        self.config.max_steps = self.config.max_steps.max(1_000_000);
+        self.config.max_depth = self.config.max_depth.max(2048);
+        let result = (|| {
+            let expression = self.resolved_language_expression(&source, &[])?;
+            let value = self.eval(expression)?;
+            if value == self.arena.builtin_head("true") {
+                Ok(true)
+            } else {
+                Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("theorem {name} universal claim could not be verified"),
+                ))
+            }
+        })();
+        self.config.max_steps = steps;
+        self.config.max_depth = depth;
+        result
+    }
+
+    fn verify_existence(
+        &mut self,
+        name: &str,
+        claim: &str,
+        line: usize,
+        column: usize,
+        assumptions: &[String],
+        facts: &[(String, String)],
+    ) -> Result<(), Diagnostic> {
+        let lower = claim.to_ascii_lowercase();
+        let Some(rest) = lower.strip_prefix("there exists ") else {
+            return Ok(());
+        };
+        let Some(in_position) = rest.find(" in ") else {
+            return Ok(());
+        };
+        let Some(such_position) = rest.find(" such that ") else {
+            return Ok(());
+        };
+        if such_position <= in_position {
+            return Ok(());
+        }
+        let variable = rest[..in_position].trim();
+        let domain = rest[in_position + 4..such_position].trim();
+        let condition = rest[such_position + 11..].trim();
+        if !variable
+            .chars()
+            .all(|character| character.is_alphanumeric() || character == '_')
+        {
+            return Ok(());
+        }
+        let condition = rewrite_facts(condition, facts);
+        let condition = wrap_assumptions(&condition, assumptions);
+        let expression = format!(
+            "exists({},{},{})",
+            variable,
+            syntax::normalize_formula(domain)?,
+            syntax::normalize_formula(&condition)?
+        );
+        let source = syntax::ExprSource {
+            text: expression,
+            line,
+            column,
+        };
+        let steps = self.config.max_steps;
+        let depth = self.config.max_depth;
+        self.config.max_steps = self.config.max_steps.max(1_000_000);
+        self.config.max_depth = self.config.max_depth.max(2048);
+        let result = (|| {
+            let expression = self.resolved_language_expression(&source, &[])?;
+            let value = self.eval(expression)?;
+            if value == self.arena.builtin_head("true") {
+                Ok(())
+            } else {
+                Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("theorem {name} existential claim could not be verified"),
+                ))
+            }
+        })();
+        self.config.max_steps = steps;
+        self.config.max_depth = depth;
+        result
+    }
+
+    fn verify_equality(
+        &mut self,
+        name: &str,
+        claim: &str,
+        line: usize,
+        column: usize,
+        assumptions: &[String],
+        facts: &[(String, String)],
+    ) -> Result<(), Diagnostic> {
+        let lower = claim.to_ascii_lowercase();
+        if lower.contains("there exists") {
+            return Ok(());
+        }
+        let claim_text = strip_universal_quantifier(claim);
+        let claim_text = rewrite_facts(claim_text, facts);
+        let normalized = syntax::normalize_formula(&claim_text).map_err(|error| {
+            Diagnostic::eval(
+                ErrorCode::EvalDefinition,
+                format!("theorem {name} claim is not a formula: {error}"),
+            )
+        })?;
+        let steps = self.config.max_steps;
+        let depth = self.config.max_depth;
+        self.config.max_steps = self.config.max_steps.max(1_000_000);
+        self.config.max_depth = self.config.max_depth.max(2048);
+        let result = (|| {
+            if let Some(equals) = claim_equals(&normalized) {
+                let left = syntax::ExprSource {
+                    text: wrap_assumptions(&normalized[..equals], assumptions),
+                    line,
+                    column,
+                };
+                let right = syntax::ExprSource {
+                    text: wrap_assumptions(&normalized[equals + 1..], assumptions),
+                    line,
+                    column,
+                };
+                let left = self.resolved_language_expression(&left, &[])?;
+                let left = self.eval(left)?;
+                let right = self.resolved_language_expression(&right, &[])?;
+                let right = self.eval(right)?;
+                if left != right {
+                    return Err(Diagnostic::eval(
+                        ErrorCode::EvalDefinition,
+                        format!("theorem {name} claim could not be verified"),
+                    ));
+                }
+                return Ok(());
+            }
+            let source = syntax::ExprSource {
+                text: wrap_assumptions(&normalized, assumptions),
+                line,
+                column,
+            };
+            let condition = self.resolved_language_expression(&source, &[])?;
+            let value = self.eval(condition)?;
+            if value == self.arena.builtin_head("true") {
+                Ok(())
+            } else {
+                Err(Diagnostic::eval(
+                    ErrorCode::EvalDefinition,
+                    format!("theorem {name} claim could not be verified"),
+                ))
+            }
+        })();
+        self.config.max_steps = steps;
+        self.config.max_depth = depth;
+        result
     }
 
     fn eval_case(&mut self, case: &Case, scrutinee: ExprId) -> Result<bool, Diagnostic> {
@@ -961,7 +1383,7 @@ impl Session {
 
     /// Parse and evaluate every statement, returning the final value.
     pub fn eval_source(&mut self, source: &str) -> Result<ExprId, Diagnostic> {
-        if syntax::looks_like_language(source) {
+        if syntax::looks_like_prose_program(source) {
             return self.eval_language(source);
         }
         let statements = self.parse_source(source)?;
@@ -984,8 +1406,19 @@ impl Session {
         Ok(last.expect("statements is not empty"))
     }
 
+    fn with_module_assumptions(&mut self, expression: ExprId) -> ExprId {
+        let assumptions = self.module_assumptions.clone();
+        let mut result = expression;
+        let head = self.arena.builtin_head("assume");
+        for assumption in assumptions {
+            result = self.arena.intern_call(head, &[assumption, result]);
+        }
+        result
+    }
+
     /// Evaluate an expression to a normal form.
     pub fn eval(&mut self, expression: ExprId) -> Result<ExprId, Diagnostic> {
+        let expression = self.with_module_assumptions(expression);
         if !self.is_live(expression) {
             return Err(stale_handle());
         }
@@ -1152,11 +1585,180 @@ fn bundled_module(name: &str) -> bool {
     stdlib::MODULES.iter().any(|module| module.name == name)
 }
 
+fn equality_fact(claim: &str) -> Option<(String, String)> {
+    let normalized = syntax::normalize_formula(claim).ok()?;
+    let equals = claim_equals(&normalized)?;
+    let left = normalized[..equals].trim();
+    let right = normalized[equals + 1..].trim();
+    let symbol = |text: &str| {
+        !text.is_empty()
+            && text.chars().all(|character| {
+                character.is_alphanumeric() || character == '_' || character == '$'
+            })
+            && !text
+                .chars()
+                .next()
+                .is_some_and(|character| character.is_ascii_digit())
+    };
+    if symbol(left) {
+        Some((left.to_string(), right.to_string()))
+    } else if symbol(right) {
+        Some((right.to_string(), left.to_string()))
+    } else {
+        None
+    }
+}
+
+fn rewrite_facts(text: &str, facts: &[(String, String)]) -> String {
+    let mut result = text.to_string();
+    for (symbol, replacement) in facts {
+        let chars: Vec<char> = result.chars().collect();
+        let mut next = String::with_capacity(result.len());
+        let mut index = 0usize;
+        while index < chars.len() {
+            let character = chars[index];
+            if character.is_alphanumeric() || character == '_' || character == '$' {
+                let start = index;
+                while chars
+                    .get(index)
+                    .is_some_and(|value| value.is_alphanumeric() || *value == '_' || *value == '$')
+                {
+                    index += 1;
+                }
+                let word: String = chars[start..index].iter().collect();
+                if &word == symbol {
+                    next.push('(');
+                    next.push_str(replacement);
+                    next.push(')');
+                } else {
+                    next.push_str(&word);
+                }
+                continue;
+            }
+            next.push(character);
+            index += 1;
+        }
+        result = next;
+    }
+    result
+}
+
+fn wrap_assumptions(expression: &str, assumptions: &[String]) -> String {
+    let mut result = expression.to_string();
+    for assumption in assumptions.iter().rev() {
+        result = format!("assume({assumption},{result})");
+    }
+    result
+}
+
+fn strip_universal_quantifier(text: &str) -> &str {
+    let trimmed = text.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !lower.starts_with("for every ") {
+        return trimmed;
+    }
+    let mut depth = 0i32;
+    for (index, character) in trimmed.char_indices() {
+        match character {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth -= 1,
+            ',' if depth == 0 => return trimmed[index + 1..].trim(),
+            _ => {}
+        }
+    }
+    trimmed
+}
+
+fn split_list_items(text: &str) -> Vec<String> {
+    let mut items = Vec::new();
+    let mut current = String::new();
+    let mut depth = 0i32;
+    let mut in_string = false;
+    for character in text.chars() {
+        if character == '"' {
+            in_string = !in_string;
+        }
+        if !in_string {
+            match character {
+                '(' | '[' | '{' => depth += 1,
+                ')' | ']' | '}' => depth -= 1,
+                ',' if depth == 0 => {
+                    items.push(current.trim().to_string());
+                    current.clear();
+                    continue;
+                }
+                _ => {}
+            }
+        }
+        current.push(character);
+    }
+    if !current.trim().is_empty() {
+        items.push(current.trim().to_string());
+    }
+    items
+}
+
+fn find_top_level_comma(text: &str) -> Option<usize> {
+    let mut depth = 0i32;
+    let mut in_string = false;
+    for (index, character) in text.char_indices() {
+        if character == '"' {
+            in_string = !in_string;
+        }
+        if in_string {
+            continue;
+        }
+        match character {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth -= 1,
+            ',' if depth == 0 => return Some(index),
+            _ => {}
+        }
+    }
+    None
+}
+
+fn claim_equals(text: &str) -> Option<usize> {
+    let mut depth = 0i32;
+    let mut in_string = false;
+    for (index, character) in text.char_indices() {
+        if character == '"' {
+            in_string = !in_string;
+        }
+        if in_string {
+            continue;
+        }
+        match character {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth -= 1,
+            _ => {}
+        }
+        if character == '=' && depth == 0 {
+            let previous = text[..index].chars().next_back();
+            let next = text[index + 1..].chars().next();
+            if previous == Some('=')
+                || previous == Some('/')
+                || previous == Some('<')
+                || previous == Some('>')
+                || previous == Some('!')
+                || next == Some('=')
+            {
+                continue;
+            }
+            return Some(index);
+        }
+    }
+    None
+}
+
 fn defined_names(program: &syntax::Program) -> Vec<String> {
     let mut names = Vec::new();
     for statement in &program.body {
         match statement {
             Stmt::Def { name, .. } if !names.contains(name) => {
+                names.push(name.clone());
+            }
+            Stmt::Let { name, .. } if !names.contains(name) => {
                 names.push(name.clone());
             }
             Stmt::Structure { name, fields, .. } => {

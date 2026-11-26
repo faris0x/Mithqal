@@ -1,45 +1,34 @@
-// Exact combinatorial counts and finite enumerations.
+module combinatorics.
 
-mod combinatorics
+use lists.
+use sets.
 
-import lists
-import sets
+export permutationCount, multinomial, catalan, derangementCount, stirlingSecond, permutationsOf, combinationsOf.
 
-export permutationCount,multinomial,catalan,derangementCount,stirlingSecond,permutationsOf,combinationsOf
+we define permutationCount(n, k) = binomial(n, k) * factorial(k).
 
-def permutationCount(n,k)=binomial(n,k)*factorial(k)
+we define multinomial(counts) = let totalCount = fold(fn(acc, n) => acc + n, 0, counts) in let denominator = fold(fn(acc, n) => acc * factorial(n), 1, counts) in factorial(totalCount) / denominator.
 
-def multinomial(counts)=
-let totalCount=fold(fn(acc,n)=>acc+n,0,counts)
-let denominator=fold(fn(acc,n)=>acc*factorial(n),1,counts)
-factorial(totalCount)/denominator
-end
+we define catalan(n) = binomial(2 * n, n) / (n + 1).
 
-def catalan(n)=binomial(2*n,n)/(n+1)
+we define derangementCount(n) = let terms = map(rangeList(n + 1), fn(k) => if(isEven(k), binomial(n, k) * factorial(n - k), -binomial(n, k) * factorial(n - k))) in fold(fn(acc, term) => acc + term, 0, terms).
 
-def derangementCount(n)=
-let terms=map(rangeList(n+1),fn(k)=>if(isEven(k),binomial(n,k)*factorial(n-k),-binomial(n,k)*factorial(n-k)))
-fold(fn(acc,term)=>acc+term,0,terms)
-end
+we define stirlingSecond(n, k) = 1, where n == 0 && k == 0.
 
-def stirlingSecond(n,k) when n==0&&k==0=1
-def stirlingSecond(n,k) when n==0=0
-def stirlingSecond(n,k) when k==0=0
-def stirlingSecond(n,k) when k>n=0
-def stirlingSecond(n,k)=k*stirlingSecond(n-1,k)+stirlingSecond(n-1,k-1)
+we define stirlingSecond(n, k) = 0, where n == 0.
 
-def insertions(item,xs)=
-cons(cons(item,xs),if(length(xs)==0,[],map(insertions(item,rest(xs)),fn(ys)=>cons(first(xs),ys))))
-end
+we define stirlingSecond(n, k) = 0, where k == 0.
 
-def permutationsOf(items) when length(items)==0=[[]]
-def permutationsOf(items)=
-let item=first(items)
-let restItems=rest(items)
-let restPermutations=permutationsOf(restItems)
-concat(map(restPermutations,fn(permutation)=>insertions(item,permutation)))
-end
+we define stirlingSecond(n, k) = 0, where k > n.
 
-def combinationsOf(items,k)=filter(powerSet(items),fn(subset)=>length(subset)==k)
+we define stirlingSecond(n, k) = k * stirlingSecond(n - 1, k) + stirlingSecond(n - 1, k - 1).
 
-end
+we define insertions(item, xs) = cons(cons(item, xs), if(length(xs) == 0, [], map(insertions(item, rest(xs)), fn(ys) => cons(first(xs), ys)))).
+
+we define permutationsOf(items) = [[]], where length(items) == 0.
+
+we define permutationsOf(items) = let item = first(items) in let restItems = rest(items) in let restPermutations = permutationsOf(restItems) in concat(map(restPermutations, fn(permutation) => insertions(item, permutation))).
+
+we define combinationsOf(items, k) = filter(powerSet(items), fn(subset) => length(subset) == k).
+
+end module.

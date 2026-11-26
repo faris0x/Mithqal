@@ -1,8 +1,8 @@
 //! A symbolic math engine.
 //!
-//! The current version defines the expression kernel, source reader, evaluator,
-//! virtual machine, garbage collector, public library API, and the 0.0.2 data
-//! and control layer.
+//! Version 0.0.3 defines the expression kernel, controlled mathematical prose
+//! reader, evaluator, virtual machine, garbage collector, public library API,
+//! and the 0.0.2 data and control layer.
 //!
 //! The library builds with `core` and `alloc` when the `std` feature is
 //! disabled.

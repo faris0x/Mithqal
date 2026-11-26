@@ -1,72 +1,55 @@
-// Number theory with a cryptographic and certification flavor.
-//
-// Pseudoprime tests, Carmichael numbers, Lucas-Lehmer, RSA, and finite-field
-// Diffie-Hellman. These are teaching and small-parameter implementations, not
-// hardened cryptographic primitives.
+module cryptonumbertheory.
 
-mod cryptonumbertheory
+use lists.
+use logic.
+use numbertheory.
 
-import lists
-import logic
-import numbertheory
+export millerRabinWitness, isStrongPseudoprime, isCarmichael, isPoulet, lucasLehmer, isMersennePrimeLucasLehmer, trialDivisionFactor, rsaEncrypt, rsaDecrypt, diffieHellman, isWieferichPrime, isWilsonPrime, isEulerPseudoprime, orderOfElement.
 
-export millerRabinWitness, isStrongPseudoprime, isCarmichael, isPoulet, lucasLehmer, isMersennePrimeLucasLehmer, trialDivisionFactor, rsaEncrypt, rsaDecrypt, diffieHellman, isWieferichPrime, isWilsonPrime, isEulerPseudoprime, orderOfElement
+we define millerRabinWitness(a, n) = if(n < 3 || isEven(n), false, mrWitnessStep(mod(a, n), n)).
 
-def millerRabinWitness(a,n)=
-if(n<3||isEven(n),false,mrWitnessStep(mod(a,n),n))
-end
+we define mrWitnessStep(a, n) = let d = n - 1 in let s = valuation(d, 2) in let odd = d / power(2, s) in let x = powerMod(a, odd, n) in if(x == 1 || x == n - 1, false, mrWitnessLoop(x, s, n, 1)).
 
-def mrWitnessStep(a,n)=
-let d=n-1
-let s=valuation(d,2)
-let odd=d/power(2,s)
-let x=powerMod(a,odd,n)
-if(x==1||x==n-1,false,mrWitnessLoop(x,s,n,1))
-end
+we define mrWitnessLoop(x, s, n, index) = true, where index >= s.
 
-def mrWitnessLoop(x,s,n,index) when index>=s=true
-def mrWitnessLoop(x,s,n,index)=
-let next=mod(x*x,n)
-if(next==n-1,false,mrWitnessLoop(next,s,n,index+1))
-end
+we define mrWitnessLoop(x, s, n, index) = let next = mod(x * x, n) in if(next == n - 1, false, mrWitnessLoop(next, s, n, index + 1)).
 
-def isStrongPseudoprime(a,n)=n>2&&isOdd(n)&&!isPrime(n)&&!millerRabinWitness(a,n)
+we define isStrongPseudoprime(a, n) = n > 2 && isOdd(n) && !isPrime(n) && !millerRabinWitness(a, n).
 
-def isCarmichael(n)=
-let factors=factorInteger(n)
-if(length(factors)<2,false,isCarmichaelFactors(factors,n))
-end
+we define isCarmichael(n) = let factors = factorInteger(n) in if(length(factors) < 2, false, isCarmichaelFactors(factors, n)).
 
-def isCarmichaelFactors(factors,n)=if(not(all(map(factors,fn(pe)=>nth(pe,1)==1))),false,all(map(factors,fn(pe)=>divides(nth(pe,0)-1,n-1))))
+we define isCarmichaelFactors(factors, n) = if(not(all(map(factors, fn(pe) => nth(pe, 1) == 1))), false, all(map(factors, fn(pe) => divides(nth(pe, 0) - 1, n - 1)))).
 
-def isPoulet(n)=n>1&&!isPrime(n)&&powerMod(2,n-1,n)==1
+we define isPoulet(n) = n > 1 && !isPrime(n) && powerMod(2, n - 1, n) == 1.
 
-def lucasLehmer(p) when p==2=true
-def lucasLehmer(p)=
-let m=power(2,p)-1
-lucasLehmerStep(4,p-2,m)
-end
+we define lucasLehmer(p) = true, where p == 2.
 
-def lucasLehmerStep(s,count,m) when count<=0=s==0
-def lucasLehmerStep(s,count,m)=lucasLehmerStep(mod(s*s-2,m),count-1,m)
+we define lucasLehmer(p) = let m = power(2, p) - 1 in lucasLehmerStep(4, p - 2, m).
 
-def isMersennePrimeLucasLehmer(p)=isPrime(p)&&lucasLehmer(p)
+we define lucasLehmerStep(s, count, m) = s == 0, where count <= 0.
 
-def trialDivisionFactor(n)=trialDivisionStep(n,2)
+we define lucasLehmerStep(s, count, m) = lucasLehmerStep(mod(s * s - 2, m), count - 1, m).
 
-def trialDivisionStep(n,p) when p*p>n=undefined
-def trialDivisionStep(n,p)=if(mod(n,p)==0,p,trialDivisionStep(n,nextPrime(p)))
+we define isMersennePrimeLucasLehmer(p) = isPrime(p) && lucasLehmer(p).
 
-def rsaEncrypt(message,exponent,modulus)=powerMod(message,exponent,modulus)
-def rsaDecrypt(ciphertext,exponent,modulus)=powerMod(ciphertext,exponent,modulus)
-def diffieHellman(generator,alice,bob,prime)=powerMod(generator,alice*bob,prime)
+we define trialDivisionFactor(n) = trialDivisionStep(n, 2).
 
-def isWieferichPrime(p)=isPrime(p)&&p>2&&powerMod(2,p-1,p*p)==1
+we define trialDivisionStep(n, p) = undefined, where p * p > n.
 
-def isWilsonPrime(p)=isPrime(p)&&mod(factorial(p-1)+1,p*p)==0
+we define trialDivisionStep(n, p) = if(mod(n, p) == 0, p, trialDivisionStep(n, nextPrime(p))).
 
-def isEulerPseudoprime(a,n)=n>2&&isOdd(n)&&!isPrime(n)&&mod(powerMod(a,(n-1)/2,n),n)==jacobi(a,n)
+we define rsaEncrypt(message, exponent, modulus) = powerMod(message, exponent, modulus).
 
-def orderOfElement(a,n)=multiplicativeOrder(a,n)
+we define rsaDecrypt(ciphertext, exponent, modulus) = powerMod(ciphertext, exponent, modulus).
 
-end
+we define diffieHellman(generator, alice, bob, prime) = powerMod(generator, alice * bob, prime).
+
+we define isWieferichPrime(p) = isPrime(p) && p > 2 && powerMod(2, p - 1, p * p) == 1.
+
+we define isWilsonPrime(p) = isPrime(p) && mod(factorial(p - 1) + 1, p * p) == 0.
+
+we define isEulerPseudoprime(a, n) = n > 2 && isOdd(n) && !isPrime(n) && mod(powerMod(a, (n - 1) / 2, n), n) == jacobi(a, n).
+
+we define orderOfElement(a, n) = multiplicativeOrder(a, n).
+
+end module.

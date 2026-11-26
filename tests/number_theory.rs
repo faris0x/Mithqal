@@ -181,15 +181,15 @@ fn number_theory_symbols_are_protected() {
 #[test]
 fn number_theory_from_the_language() {
     let source = r#"
-mod numbers
-let n=36
-prt isPrime(n+1)
-prt divisors(n)
-prt totient(n)
-if isEven(n) then
-  prt mod(n,5)
-end
-end
+module numbers.
+let n be 36.
+print isPrime(n + 1).
+print divisors(n).
+print totient(n).
+if isEven(n) then:
+  print mod(n, 5).
+end if.
+end module.
 "#;
     let mut session = Session::new();
     session.eval_source(source).unwrap();

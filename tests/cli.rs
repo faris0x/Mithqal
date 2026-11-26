@@ -112,7 +112,7 @@ fn definitions_do_not_print_null_results() {
 
 #[test]
 fn module_output_is_not_duplicated() {
-    let source = "mod example\ndef polynomial(x)=x^3+2*x\nprt polynomial(2)\nprt derive(polynomial(x),x)\nend\n";
+    let source = "module example.\nwe define polynomial(x) = x^3 + 2 * x.\nprint polynomial(2).\nprint derive(polynomial(x), x).\nend module.";
     let output = run(&["--eval", source]);
     assert!(output.status.success());
     assert_eq!(stdout(&output), "12\n2+3*x^2\n");

@@ -24,7 +24,7 @@ Included:
 - One-sided endpoint limits for improper integrals, transcendental interior singularity checks, and a staged multivariate factorization pipeline with binary, homogeneous, recursive quadratic, polynomial-leading, content extraction, specialization root lifting, bivariate Hensel lifting, generic multivariate interpolation through eight variables, and power extraction stages. It also includes bounded bivariate Hensel lifting to total degree sixteen.
 - Bounded Hensel lifting for univariate integer polynomials.
 - Local assumptions over interned symbol identity, including signs, domains, parity, equality, ordering, conjunction, disjunction, negation, introspection, and conditional simplification.
-- A line based surface language with modules, exports, imports, definitions with block bodies, local definitions, literal and constructor patterns, guards, lexical bindings, conditionals, match blocks, canonical binders, structure and instance declarations, and print statements.
+- A controlled mathematical prose surface with modules, exports, imports, definitions and clauses, local definitions, literal and constructor patterns, guards, lexical bindings, conditionals, match blocks, canonical binders, structure and instance declarations, assumptions, and theorem skeletons.
 - Exact gcd, lcm, factorial, binomial, floor, ceil, and round functions.
 - Exact rational and symbolic matrix linear algebra with determinants, rank, inverses, row reduction, matrix products, PLU factorization, characteristic polynomials, eigenvalues, eigenvectors, null spaces, QR factorization, and linear solving.
 - Broader polynomial algebra with degrees, coefficients, polynomial division, discriminants, and sum or difference of cubes factoring.

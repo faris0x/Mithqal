@@ -1,53 +1,29 @@
-// Finite probability spaces over exact rational probabilities.
-//
-// A distribution is a canonical set of outcome and probability pairs. Each
-// outcome occurs once and the probabilities sum to one.
+module probability.
 
-mod probability
+use lists.
+use logic.
+use sets.
+use relations.
+use statistics.
 
-import lists
-import logic
-import sets
-import relations
-import statistics
+export distribution, isDistribution, uniform, support, probabilityOf, expectation, varianceOf, conditional, productDistribution.
 
-export distribution,isDistribution,uniform,support,probabilityOf,expectation,varianceOf,conditional,productDistribution
+we define distribution(pairs) = setOf(pairs).
 
-def distribution(pairs)=setOf(pairs)
+we define isDistribution(distribution) = let probabilities = map(distribution, fn(pair) => nth(pair, 1)) in isFunction(distribution) && allOf(probabilities, fn(p) => isNumber(p) && p > 0) && same(total(probabilities), 1).
 
-def isDistribution(distribution)=
-let probabilities=map(distribution,fn(pair)=>nth(pair,1))
-isFunction(distribution)&&allOf(probabilities,fn(p)=>isNumber(p)&&p>0)&&same(total(probabilities),1)
-end
+we define uniform(items) = let outcomes = setOf(items) in let probability = 1 / length(outcomes) in setOf(map(outcomes, fn(item) => [item, probability])).
 
-def uniform(items)=
-let outcomes=setOf(items)
-let probability=1/length(outcomes)
-setOf(map(outcomes,fn(item)=>[item,probability]))
-end
+we define support(distribution) = setOf(map(distribution, fn(pair) => nth(pair, 0))).
 
-def support(distribution)=setOf(map(distribution,fn(pair)=>nth(pair,0)))
+we define probabilityOf(distribution, event) = fold(fn(acc, pair) => if(member(event, nth(pair, 0)), acc + nth(pair, 1), acc), 0, distribution).
 
-def probabilityOf(distribution,event)=
-fold(fn(acc,pair)=>if(member(event,nth(pair,0)),acc+nth(pair,1),acc),0,distribution)
-end
+we define expectation(distribution, observable) = fold(fn(acc, pair) => acc + nth(pair, 1) * observable(nth(pair, 0)), 0, distribution).
 
-def expectation(distribution,observable)=
-fold(fn(acc,pair)=>acc+nth(pair,1)*observable(nth(pair,0)),0,distribution)
-end
+we define varianceOf(distribution, observable) = expectation(distribution, fn(x) => observable(x) * observable(x)) - expectation(distribution, observable) * expectation(distribution, observable).
 
-def varianceOf(distribution,observable)=
-expectation(distribution,fn(x)=>observable(x)*observable(x))-expectation(distribution,observable)*expectation(distribution,observable)
-end
+we define conditional(distribution, event) = let probability = probabilityOf(distribution, event) in if(same(probability, 0), undefined, setOf(map(filter(distribution, fn(pair) => member(event, nth(pair, 0))), fn(pair) => [nth(pair, 0), nth(pair, 1) / probability]))).
 
-def conditional(distribution,event)=
-let probability=probabilityOf(distribution,event)
-if(same(probability,0),undefined,setOf(map(filter(distribution,fn(pair)=>member(event,nth(pair,0))),fn(pair)=>[nth(pair,0),nth(pair,1)/probability])))
-end
+we define productDistribution(left, right) = let outcomes = cartesian(support(left), support(right)) in setOf(map(outcomes, fn(pair) => [pair, applyRelation(left, nth(pair, 0)) * applyRelation(right, nth(pair, 1))])).
 
-def productDistribution(left,right)=
-let outcomes=cartesian(support(left),support(right))
-setOf(map(outcomes,fn(pair)=>[pair,applyRelation(left,nth(pair,0))*applyRelation(right,nth(pair,1))]))
-end
-
-end
+end module.

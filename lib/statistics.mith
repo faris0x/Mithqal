@@ -1,70 +1,53 @@
-// Exact descriptive statistics.
-//
-// This module is part of the Mithqal standard library. It is written in the
-// Mithqal language and is loaded when a session is created. Only the exported
-// names are visible outside the module; the helpers below are private.
+module statistics.
 
-mod statistics
+export mean, median, minimum, maximum, range, total, count, variance, sampleVariance, standardDeviation, sampleStandardDeviation, frequency, mode.
 
-export mean,median,minimum,maximum,range,total,count,variance,sampleVariance,standardDeviation,sampleStandardDeviation,frequency,mode
+we define numeric(xs) = length(xs) > 0 && all(map(xs, fn(x) => isNumber(x))).
 
-// Internal helpers.
+we define sum(xs) = fold(fn(a, b) => a + b, 0, xs).
 
-def numeric(xs)=length(xs)>0&&all(map(xs,fn(x)=>isNumber(x)))
-def sum(xs)=fold(fn(a,b)=>a+b,0,xs)
-def squares(xs)=fold(fn(a,b)=>a+b,0,map(xs,fn(x)=>x*x))
+we define squares(xs) = fold(fn(a, b) => a + b, 0, map(xs, fn(x) => x * x)).
 
-def runs(xs,value,count,acc) when length(xs)==0=reverse(cons([value,count],acc))
-def runs(xs,value,count,acc) when first(xs)==value=runs(rest(xs),value,count+1,acc)
-def runs(xs,value,count,acc)=runs(rest(xs),first(xs),1,cons([value,count],acc))
+we define runs(xs, value, count, acc) = reverse(cons([value, count], acc)), where length(xs) == 0.
 
-def maxCount(xs,best) when length(xs)==0=best
-def maxCount(xs,best)=maxCount(rest(xs),if(nth(first(xs),1)>best,nth(first(xs),1),best))
+we define runs(xs, value, count, acc) = runs(rest(xs), value, count + 1, acc), where first(xs) == value.
 
-def pick(xs,best) when length(xs)==0=[]
-def pick(xs,best) when nth(first(xs),1)==best=cons(nth(first(xs),0),pick(rest(xs),best))
-def pick(xs,best)=pick(rest(xs),best)
+we define runs(xs, value, count, acc) = runs(rest(xs), first(xs), 1, cons([value, count], acc)).
 
-// Public functions.
+we define maxCount(xs, best) = best, where length(xs) == 0.
 
-def total(xs) when numeric(xs)=sum(xs)
-def count(xs) when numeric(xs)=length(xs)
-def mean(xs) when numeric(xs)=sum(xs)/length(xs)
-def minimum(xs) when numeric(xs)=fold(fn(a,b)=>if(a<b,a,b),first(xs),rest(xs))
-def maximum(xs) when numeric(xs)=fold(fn(a,b)=>if(a>b,a,b),first(xs),rest(xs))
-def range(xs) when numeric(xs)=maximum(xs)-minimum(xs)
+we define maxCount(xs, best) = maxCount(rest(xs), if(nth(first(xs), 1) > best, nth(first(xs), 1), best)).
 
-def median(xs) when numeric(xs)=
-let ys=sort(xs)
-let n=length(xs)
-if(isEven(n),(nth(ys,n/2-1)+nth(ys,n/2))/2,nth(ys,floor(n/2)))
-end
+we define pick(xs, best) = [], where length(xs) == 0.
 
-def variance(xs) when numeric(xs)=
-let n=length(xs)
-let s=sum(xs)
-let q=squares(xs)
-(n*q-s*s)/(n*n)
-end
+we define pick(xs, best) = cons(nth(first(xs), 0), pick(rest(xs), best)), where nth(first(xs), 1) == best.
 
-def sampleVariance(xs) when numeric(xs)&&length(xs)>1=
-let n=length(xs)
-let s=sum(xs)
-let q=squares(xs)
-(n*q-s*s)/(n*(n-1))
-end
+we define pick(xs, best) = pick(rest(xs), best).
 
-def standardDeviation(xs) when numeric(xs)=sqrt(variance(xs))
-def sampleStandardDeviation(xs) when numeric(xs)&&length(xs)>1=sqrt(sampleVariance(xs))
+we define total(xs) = sum(xs), where numeric(xs).
 
-def frequency(xs) when numeric(xs)=
-let ys=sort(xs)
-runs(rest(ys),first(ys),1,[])
-end
+we define count(xs) = length(xs), where numeric(xs).
 
-def mode(xs) when numeric(xs)=
-let fs=frequency(xs)
-pick(fs,maxCount(fs,0))
-end
+we define mean(xs) = sum(xs) / length(xs), where numeric(xs).
 
-end
+we define minimum(xs) = fold(fn(a, b) => if(a < b, a, b), first(xs), rest(xs)), where numeric(xs).
+
+we define maximum(xs) = fold(fn(a, b) => if(a > b, a, b), first(xs), rest(xs)), where numeric(xs).
+
+we define range(xs) = maximum(xs) - minimum(xs), where numeric(xs).
+
+we define median(xs) = let ys = sort(xs) in let n = length(xs) in if(isEven(n), (nth(ys, n / 2 - 1) + nth(ys, n / 2)) / 2, nth(ys, floor(n / 2))), where numeric(xs).
+
+we define variance(xs) = let n = length(xs) in let s = sum(xs) in let q = squares(xs) in (n * q - s * s) / (n * n), where numeric(xs).
+
+we define sampleVariance(xs) = let n = length(xs) in let s = sum(xs) in let q = squares(xs) in (n * q - s * s) / (n * (n - 1)), where numeric(xs) && length(xs) > 1.
+
+we define standardDeviation(xs) = sqrt(variance(xs)), where numeric(xs).
+
+we define sampleStandardDeviation(xs) = sqrt(sampleVariance(xs)), where numeric(xs) && length(xs) > 1.
+
+we define frequency(xs) = let ys = sort(xs) in runs(rest(ys), first(ys), 1, []), where numeric(xs).
+
+we define mode(xs) = let fs = frequency(xs) in pick(fs, maxCount(fs, 0)), where numeric(xs).
+
+end module.

@@ -1,27 +1,31 @@
-// Generic list helpers used by the definitional modules.
+module lists.
 
-mod lists
+export append, concat, contains, unique, filter, rangeList.
 
-export append,concat,contains,unique,filter,rangeList
+we define append(xs, ys) = ys, where length(xs) == 0.
 
-def append(xs,ys) when length(xs)==0=ys
-def append(xs,ys)=cons(first(xs),append(rest(xs),ys))
+we define append(xs, ys) = cons(first(xs), append(rest(xs), ys)).
 
-def concat(xss)=fold(fn(acc,xs)=>append(acc,xs),[],xss)
+we define concat(xss) = fold(fn(acc, xs) => append(acc, xs), [], xss).
 
-def contains(xs,value)=fold(fn(acc,item)=>acc||same(item,value),false,xs)
+we define contains(xs, value) = fold(fn(acc, item) => acc || same(item, value), false, xs).
 
-def filter(xs,predicate) when length(xs)==0=[]
-def filter(xs,predicate)=if(predicate(first(xs)),cons(first(xs),filter(rest(xs),predicate)),filter(rest(xs),predicate))
+we define filter(xs, predicate) = [], where length(xs) == 0.
 
-def dedupe(xs) when length(xs)==0=[]
-def dedupe(xs) when length(xs)==1=xs
-def dedupe(xs) when same(first(xs),first(rest(xs)))=dedupe(rest(xs))
-def dedupe(xs)=cons(first(xs),dedupe(rest(xs)))
+we define filter(xs, predicate) = if(predicate(first(xs)), cons(first(xs), filter(rest(xs), predicate)), filter(rest(xs), predicate)).
 
-def unique(xs)=dedupe(sort(xs))
+we define dedupe(xs) = [], where length(xs) == 0.
 
-def rangeList(n) when n<1=[]
-def rangeList(n)=append(rangeList(n-1),[n-1])
+we define dedupe(xs) = xs, where length(xs) == 1.
 
-end
+we define dedupe(xs) = dedupe(rest(xs)), where same(first(xs), first(rest(xs))).
+
+we define dedupe(xs) = cons(first(xs), dedupe(rest(xs))).
+
+we define unique(xs) = dedupe(sort(xs)).
+
+we define rangeList(n) = [], where n < 1.
+
+we define rangeList(n) = append(rangeList(n - 1), [n - 1]).
+
+end module.

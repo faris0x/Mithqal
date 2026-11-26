@@ -1,0 +1,17 @@
+# id	profile	kind	expected	source	rationale
+prose.eval.0001	prose	output	7	module c.\nprint 1+2+4.\nend module.	Prose integer addition.
+prose.def.0001	prose	output	25	module c.\nwe define square(x) = x * x.\nprint square(5).\nend module.	Prose definition and call.
+prose.guard.0001	prose	output	2	module c.\nwe define f(x) = 1, where x > 0.\nwe define f(x) = 2.\nprint f(-1).\nend module.	A false prose guard selects the next rule.
+prose.local.0001	prose	output	120	module c.\nwe define fact(n) = let loop(0, acc) = acc, loop(k, acc) = loop(k - 1, acc * k) in loop(n, 1).\nprint fact(5).\nend module.	Prose local definitions.
+prose.derivative.0001	prose	output	2*x	module c.\nprint differentiate(x^2, x).\nend module.	Prose derivative notation policy.
+prose.theorem.0001	prose	output	2	module c.\ntheorem two.\n1 + 1 = 2.\nproof:\nby arithmetic.\nend proof.\nprint 2.\nend module.	A checked prose theorem.
+prose.if.0001	prose	output	5	module c.\nlet x be 5.\nif x > 3 then:\nprint x.\nelse:\nprint 0.\nend if.\nend module.	Prose conditional true branch.
+prose.if.0002	prose	output	0	module c.\nlet x be 1.\nif x > 3 then:\nprint x.\nelse:\nprint 0.\nend if.\nend module.	Prose conditional false branch.
+prose.match.0001	prose	output	12	module c.\nlet x be 2.\nmatch x with:\ncase 0:\nprint 100.\ncase 1:\nprint 200.\ncase n:\nprint n + 10.\nelse:\nprint -1.\nend match.\nend module.	Prose match with a bound case.
+prose.assume.0001	prose	output	x	module c.\nassume x is positive.\nprint abs(x).\nend module.	Prose module assumption reaches evaluation.
+prose.theorem.0002	prose	output	2	module c.\ntheorem positive.\nfor every n in [1, 2, 3], n > 0.\nproof:\nby arithmetic.\nend proof.\nprint 2.\nend module.	Finite universal theorem.
+prose.theorem.0003	prose	output	2	module c.\ntheorem exists_two.\nthere exists n in [1, 2, 3] such that n == 2.\nproof:\nby arithmetic.\nend proof.\nprint 2.\nend module.	Finite existential theorem.
+prose.structure.0001	prose	output	true	module c.\nstructure testMonoid.\nfield carrier.\nfield op.\nfield identity.\nlaw associative: forall(a, carrier, forall(b, carrier, forall(c, carrier, same(op(op(a, b), c), op(a, op(b, c)))))).\nend structure.\ninstance cyclic : testMonoid.\ncarrier = [0, 1, 2].\nop = fn(a, b) => mod(a + b, 3).\nidentity = 0.\nend instance.\nprint testMonoidHolds(cyclic).\nend module.	Prose structure and instance law check.
+prose.local.0002	prose	output	120	module c.\nwe define fact(n) = let loop(0, acc) = acc, loop(k, acc) = loop(k - 1, acc * k) in loop(n, 1).\nprint fact(5).\nend module.	Prose local recursive functions.
+prose.comments.0001	prose	output	3	// leading comment\nmodule c.\n// inner comment\nlet x be 1 + 2. // trailing comment\nprint x.\nend module.	Prose line comments.
+prose.theorem.0004	prose	output	2	module c.\ntheorem abs_positive.\nabs(x) = x.\nproof:\nassume x > 0.\nby arithmetic.\nend proof.\nprint 2.\nend module.	Proof-local assumption.

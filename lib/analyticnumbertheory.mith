@@ -1,83 +1,50 @@
-// Analytic number theory.
-//
-// Arithmetic sums, Chebyshev functions, Bernoulli numbers, and truncated
-// Dirichlet series. These are exact where the underlying quantities are
-// exact and remain symbolic where logarithms appear.
+module analyticnumbertheory.
 
-mod analyticnumbertheory
+use lists.
+use numbertheory.
 
-import lists
-import numbertheory
+export bernoulliNumber, bernoulliPolynomial, vonMangoldt, mangoldt, chebyshevTheta, chebyshevPsi, summatoryLiouville, summatoryMobius, summatoryVonMangoldt, zetaInteger, riemannZetaApprox, dirichletEta, dirichletBeta, primeZeta, eulerNumber, primeHarmonic.
 
-export bernoulliNumber, bernoulliPolynomial, vonMangoldt, mangoldt, chebyshevTheta, chebyshevPsi, summatoryLiouville, summatoryMobius, summatoryVonMangoldt, zetaInteger, riemannZetaApprox, dirichletEta, dirichletBeta, primeZeta, eulerNumber, primeHarmonic
+we define bernoulliNumber(n) = 1, where n == 0.
 
-def bernoulliNumber(n) when n==0=1
-def bernoulliNumber(n)=
-let terms=map(rangeList(n),fn(k)=>binomial(n+1,k)*bernoulliNumber(k))
--1/(n+1)*fold(fn(acc,term)=>acc+term,0,terms)
-end
+we define bernoulliNumber(n) = let terms = map(rangeList(n), fn(k) => binomial(n + 1, k) * bernoulliNumber(k)) in -1 / (n + 1) * fold(fn(acc, term) => acc + term, 0, terms).
 
-def bernoulliPolynomial(n,x)=
-let terms=map(rangeList(n+1),fn(k)=>binomial(n,k)*bernoulliNumber(k)*power(x,n-k))
-fold(fn(acc,term)=>acc+term,0,terms)
-end
+we define bernoulliPolynomial(n, x) = let terms = map(rangeList(n + 1), fn(k) => binomial(n, k) * bernoulliNumber(k) * power(x, n - k)) in fold(fn(acc, term) => acc + term, 0, terms).
 
-def vonMangoldt(n) when n<2=0
-def vonMangoldt(n)=
-let factors=factorInteger(n)
-if(length(factors)==1,ln(nth(first(factors),0)),0)
-end
+we define vonMangoldt(n) = 0, where n < 2.
 
-def mangoldt(n)=vonMangoldt(n)
+we define vonMangoldt(n) = let factors = factorInteger(n) in if(length(factors) == 1, ln(nth(first(factors), 0)), 0).
 
-def primesBelow(n)=filter(rangeList(n),fn(k)=>isPrime(k))
+we define mangoldt(n) = vonMangoldt(n).
 
-def chebyshevTheta(n)=
-fold(fn(acc,p)=>acc+ln(p),0,primesBelow(n+1))
-end
+we define primesBelow(n) = filter(rangeList(n), fn(k) => isPrime(k)).
 
-def chebyshevPsi(n)=
-fold(fn(acc,k)=>acc+vonMangoldt(k),0,map(rangeList(n+1),fn(k)=>k))
-end
+we define chebyshevTheta(n) = fold(fn(acc, p) => acc + ln(p), 0, primesBelow(n + 1)).
 
-def summatoryLiouville(n)=
-fold(fn(acc,k)=>acc+liouville(k),0,map(rangeList(n),fn(k)=>k+1))
-end
+we define chebyshevPsi(n) = fold(fn(acc, k) => acc + vonMangoldt(k), 0, map(rangeList(n + 1), fn(k) => k)).
 
-def summatoryMobius(n)=mertens(n)
+we define summatoryLiouville(n) = fold(fn(acc, k) => acc + liouville(k), 0, map(rangeList(n), fn(k) => k + 1)).
 
-def zetaInteger(s,terms)=
-fold(fn(acc,k)=>acc+1/power(k,s),0,map(rangeList(terms),fn(k)=>k+1))
-end
+we define summatoryMobius(n) = mertens(n).
 
-def dirichletEta(s,terms)=
-fold(fn(acc,k)=>acc+if(isEven(k),1,-1)/power(k+1,s),0,rangeList(terms))
-end
+we define zetaInteger(s, terms) = fold(fn(acc, k) => acc + 1 / power(k, s), 0, map(rangeList(terms), fn(k) => k + 1)).
 
-def eulerNumber(n) when n==0=1
-def eulerNumber(n) when isOdd(n)=0
-def eulerNumber(n)=
-let ks=filter(rangeList(n),fn(k)=>isEven(k))
-let terms=map(ks,fn(k)=>binomial(n,k)*eulerNumber(k))
--fold(fn(acc,term)=>acc+term,0,terms)
-end
+we define dirichletEta(s, terms) = fold(fn(acc, k) => acc + if(isEven(k), 1, -1) / power(k + 1, s), 0, rangeList(terms)).
 
-def summatoryVonMangoldt(n)=
-fold(fn(acc,k)=>acc+vonMangoldt(k),0,map(rangeList(n),fn(k)=>k+1))
-end
+we define eulerNumber(n) = 1, where n == 0.
 
-def riemannZetaApprox(s,terms)=zetaInteger(s,terms)
+we define eulerNumber(n) = 0, where isOdd(n).
 
-def dirichletBeta(s,terms)=
-fold(fn(acc,k)=>acc+if(isEven(k),1,-1)/power(2*k+1,s),0,rangeList(terms))
-end
+we define eulerNumber(n) = let ks = filter(rangeList(n), fn(k) => isEven(k)) in let terms = map(ks, fn(k) => binomial(n, k) * eulerNumber(k)) in -fold(fn(acc, term) => acc + term, 0, terms).
 
-def primeZeta(s,terms)=
-fold(fn(acc,p)=>acc+1/power(p,s),0,primesBelow(terms))
-end
+we define summatoryVonMangoldt(n) = fold(fn(acc, k) => acc + vonMangoldt(k), 0, map(rangeList(n), fn(k) => k + 1)).
 
-def primeHarmonic(n)=
-fold(fn(acc,p)=>acc+1/p,0,primesBelow(n+1))
-end
+we define riemannZetaApprox(s, terms) = zetaInteger(s, terms).
 
-end
+we define dirichletBeta(s, terms) = fold(fn(acc, k) => acc + if(isEven(k), 1, -1) / power(2 * k + 1, s), 0, rangeList(terms)).
+
+we define primeZeta(s, terms) = fold(fn(acc, p) => acc + 1 / power(p, s), 0, primesBelow(terms)).
+
+we define primeHarmonic(n) = fold(fn(acc, p) => acc + 1 / p, 0, primesBelow(n + 1)).
+
+end module.

@@ -1,6 +1,6 @@
 # Abstract Terms
 
-> Spec version: 0.0.2 (draft)
+> Spec version: 0.0.3 (draft)
 
 ## Terms
 

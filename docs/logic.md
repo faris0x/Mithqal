@@ -37,12 +37,12 @@ Symbolic operands leave the connective unevaluated when a result cannot be deter
 The language conditional accepts these booleans directly:
 
 ```text
-mod logic
-let n=17
-if and(isPrime(n),isOdd(n)) then
-  prt 1
-else
-  prt 0
-end
-end
+module logic.
+let n be 17.
+if and(isPrime(n), isOdd(n)) then:
+  print 1.
+else:
+  print 0.
+end if.
+end module.
 ```

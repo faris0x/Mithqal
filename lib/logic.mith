@@ -1,13 +1,13 @@
-// Finite quantification over lists.
+module logic.
 
-mod logic
+use lists.
 
-import lists
+export allOf, exists, countWhere.
 
-export allOf,exists,countWhere
+we define allOf(items, predicate) = all(map(items, predicate)).
 
-def allOf(items,predicate)=all(map(items,predicate))
-def exists(items,predicate)=any(map(items,predicate))
-def countWhere(items,predicate)=length(filter(items,predicate))
+we define exists(items, predicate) = any(map(items, predicate)).
 
-end
+we define countWhere(items, predicate) = length(filter(items, predicate)).
+
+end module.

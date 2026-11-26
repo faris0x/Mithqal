@@ -1,58 +1,58 @@
-// Linear algebra over lists of rows.
-//
-// Elementary matrix operations are implemented here in Mithqal. The native
-// kernels remain available as accelerators for the operations that need
-// pivoting, polynomial characteristic data, or numerical decomposition.
+module linearalgebra.
 
-mod linearalgebra
+use lists.
+use logic.
 
-import lists
-import logic
+export det, rank, transpose, inverse, rref, trace, matmul, identity, solveLinear, dot, cross, plu, charpoly, eigenvalues, nullspace, kernel, eigenvectors, qr.
 
-export det, rank, transpose, inverse, rref, trace, matmul, identity, solveLinear, dot, cross, plu, charpoly, eigenvalues, nullspace, kernel, eigenvectors, qr
+we define transpose(matrix) = [], where kernelIsList(matrix) && length(matrix) == 0.
 
-def transpose(matrix) when kernelIsList(matrix)&&length(matrix)==0=[]
-def transpose(matrix) when kernelIsList(matrix)&&kernelIsList(first(matrix))=
-let columns=length(first(matrix))
-map(rangeList(columns),fn(j)=>map(matrix,fn(row)=>nth(row,j)))
-end
-def transpose(matrix)=unevaluated(transpose(matrix))
+we define transpose(matrix) = let columns = length(first(matrix)) in map(rangeList(columns), fn(j) => map(matrix, fn(row) => nth(row, j))), where kernelIsList(matrix) && kernelIsList(first(matrix)).
 
-def identity(n) when isNumber(n)&&floor(n)==n&&n>=0=map(rangeList(n),fn(i)=>map(rangeList(n),fn(j)=>if(i==j,1,0)))
-def identity(n)=unevaluated(identity(n))
+we define transpose(matrix) = unevaluated(transpose(matrix)).
 
-def dot(left,right) when kernelIsList(left)&&kernelIsList(right)&&length(left)==length(right)=
-fold(fn(acc,i)=>acc+nth(left,i)*nth(right,i),0,rangeList(length(left)))
-end
-def dot(left,right)=unevaluated(dot(left,right))
+we define identity(n) = map(rangeList(n), fn(i) => map(rangeList(n), fn(j) => if(i == j, 1, 0))), where isNumber(n) && floor(n) == n && n >= 0.
 
-def cross(left,right) when kernelIsList(left)&&kernelIsList(right)&&length(left)==3&&length(right)==3=
-[nth(left,1)*nth(right,2)-nth(left,2)*nth(right,1),nth(left,2)*nth(right,0)-nth(left,0)*nth(right,2),nth(left,0)*nth(right,1)-nth(left,1)*nth(right,0)]
-end
-def cross(left,right)=unevaluated(cross(left,right))
+we define identity(n) = unevaluated(identity(n)).
 
-def matmul(left,right) when kernelIsList(left)&&kernelIsList(right)&&length(left)>0&&length(right)>0&&kernelIsList(first(left))&&kernelIsList(first(right))&&length(first(left))==length(right)=
-let columns=transpose(right)
-map(left,fn(row)=>map(columns,fn(column)=>dot(row,column)))
-end
-def matmul(left,right)=unevaluated(matmul(left,right))
+we define dot(left, right) = fold(fn(acc, i) => acc + nth(left, i) * nth(right, i), 0, rangeList(length(left))), where kernelIsList(left) && kernelIsList(right) && length(left) == length(right).
 
-def det(matrix)=kernelDet(matrix)
-def rank(matrix)=kernelRank(matrix)
-def inverse(matrix)=kernelInverse(matrix)
-def rref(matrix)=kernelRref(matrix)
-def solveLinear(matrix,rhs)=kernelSolveLinear(matrix,rhs)
-def plu(matrix)=kernelPlu(matrix)
-def charpoly(matrix)=kernelCharpoly(matrix)
-def eigenvalues(matrix)=kernelEigenvalues(matrix)
-def nullspace(matrix)=kernelNullspace(matrix)
-def kernel(matrix)=kernelNullspace(matrix)
-def eigenvectors(matrix)=kernelEigenvectors(matrix)
-def qr(matrix)=kernelQr(matrix)
+we define dot(left, right) = unevaluated(dot(left, right)).
 
-def trace(matrix) when kernelIsList(matrix)&&length(matrix)>0&&kernelIsList(first(matrix))&&length(first(matrix))==length(matrix)=
-fold(fn(acc,i)=>acc+nth(nth(matrix,i),i),0,rangeList(length(matrix)))
-end
-def trace(matrix)=unevaluated(trace(matrix))
+we define cross(left, right) = [nth(left, 1) * nth(right, 2) - nth(left, 2) * nth(right, 1), nth(left, 2) * nth(right, 0) - nth(left, 0) * nth(right, 2), nth(left, 0) * nth(right, 1) - nth(left, 1) * nth(right, 0)], where kernelIsList(left) && kernelIsList(right) && length(left) == 3 && length(right) == 3.
 
-end
+we define cross(left, right) = unevaluated(cross(left, right)).
+
+we define matmul(left, right) = let columns = transpose(right) in map(left, fn(row) => map(columns, fn(column) => dot(row, column))), where kernelIsList(left) && kernelIsList(right) && length(left) > 0 && length(right) > 0 && kernelIsList(first(left)) && kernelIsList(first(right)) && length(first(left)) == length(right).
+
+we define matmul(left, right) = unevaluated(matmul(left, right)).
+
+we define det(matrix) = kernelDet(matrix).
+
+we define rank(matrix) = kernelRank(matrix).
+
+we define inverse(matrix) = kernelInverse(matrix).
+
+we define rref(matrix) = kernelRref(matrix).
+
+we define solveLinear(matrix, rhs) = kernelSolveLinear(matrix, rhs).
+
+we define plu(matrix) = kernelPlu(matrix).
+
+we define charpoly(matrix) = kernelCharpoly(matrix).
+
+we define eigenvalues(matrix) = kernelEigenvalues(matrix).
+
+we define nullspace(matrix) = kernelNullspace(matrix).
+
+we define kernel(matrix) = kernelNullspace(matrix).
+
+we define eigenvectors(matrix) = kernelEigenvectors(matrix).
+
+we define qr(matrix) = kernelQr(matrix).
+
+we define trace(matrix) = fold(fn(acc, i) => acc + nth(nth(matrix, i), i), 0, rangeList(length(matrix))), where kernelIsList(matrix) && length(matrix) > 0 && kernelIsList(first(matrix)) && length(first(matrix)) == length(matrix).
+
+we define trace(matrix) = unevaluated(trace(matrix)).
+
+end module.

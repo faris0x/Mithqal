@@ -177,6 +177,7 @@ pub(crate) enum ExactNumericHead {
     Round,
     Gamma,
     Lgamma,
+    IsInteger,
 }
 
 impl ExactNumericHead {
@@ -191,6 +192,7 @@ impl ExactNumericHead {
             "round" => Self::Round,
             "gamma" => Self::Gamma,
             "lgamma" => Self::Lgamma,
+            "isInteger" => Self::IsInteger,
             _ => return None,
         })
     }
@@ -296,6 +298,7 @@ pub(crate) enum LogicHead {
     Implies,
     All,
     Any,
+    FreeOf,
 }
 
 impl LogicHead {
@@ -305,6 +308,7 @@ impl LogicHead {
             "implies" => Self::Implies,
             "all" => Self::All,
             "any" => Self::Any,
+            "freeOf" => Self::FreeOf,
             _ => return None,
         })
     }

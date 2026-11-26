@@ -1,40 +1,34 @@
-// Finite sets, represented by canonical sorted lists without duplicates.
-//
-// A set value is a list in ascending canonical order. Use setOf to build one
-// from arbitrary items. Set equality is structural equality of the canonical
-// list, so two sets built from the same items are the same term.
+module sets.
 
-mod sets
+use lists.
+use logic.
 
-import lists
-import logic
+export setOf, emptySet, singleton, union, intersection, difference, member, subset, cardinality, isEmpty, powerSet, cartesian.
 
-export setOf,emptySet,singleton,union,intersection,difference,member,subset,cardinality,isEmpty,powerSet,cartesian
+we define setOf(items) = unique(items).
 
-def setOf(items)=unique(items)
-def emptySet()=[]
-def singleton(value)=[value]
+we define emptySet() = [].
 
-def member(items,value)=contains(items,value)
-def subset(left,right)=allOf(left,fn(item)=>member(right,item))
+we define singleton(value) = [value].
 
-def union(left,right)=setOf(append(left,right))
-def intersection(left,right)=filter(left,fn(item)=>member(right,item))
-def difference(left,right)=filter(left,fn(item)=>not(member(right,item)))
+we define member(items, value) = contains(items, value).
 
-def cardinality(items)=length(items)
-def isEmpty(items)=length(items)==0
+we define subset(left, right) = allOf(left, fn(item) => member(right, item)).
 
-def cartesian(left,right)=
-let pairs=concat(map(left,fn(x)=>map(right,fn(y)=>[x,y])))
-setOf(pairs)
-end
+we define union(left, right) = setOf(append(left, right)).
 
-def powerSet(items) when length(items)==0=[[]]
-def powerSet(items)=
-let item=first(items)
-let restSets=powerSet(rest(items))
-setOf(append(restSets,map(restSets,fn(subset)=>setOf(cons(item,subset)))))
-end
+we define intersection(left, right) = filter(left, fn(item) => member(right, item)).
 
-end
+we define difference(left, right) = filter(left, fn(item) => not(member(right, item))).
+
+we define cardinality(items) = length(items).
+
+we define isEmpty(items) = length(items) == 0.
+
+we define cartesian(left, right) = let pairs = concat(map(left, fn(x) => map(right, fn(y) => [x, y]))) in setOf(pairs).
+
+we define powerSet(items) = [[]], where length(items) == 0.
+
+we define powerSet(items) = let item = first(items) in let restSets = powerSet(rest(items)) in setOf(append(restSets, map(restSets, fn(subset) => setOf(cons(item, subset))))).
+
+end module.

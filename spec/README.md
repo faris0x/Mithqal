@@ -1,6 +1,6 @@
 # Mithqal Language Specification
 
-> Spec version: 0.0.2 (draft)
+> Spec version: 0.0.3 (draft)
 
 This directory is the normative definition of the Mithqal language. The
 reference documentation in `docs/` teaches the language. The specification
@@ -51,9 +51,8 @@ diagnostics, or the corpus is unspecified.
 
 ## Status of this version
 
-Version 0.0.2 describes the implemented language: reader, exact and approximate
-numbers, evaluation, definitions, scoping, hygiene, modules, binders, structures,
-instances, the structural primitives, strings, byte arrays, associations,
-contexts, qualified names, indexing, part assignment, evaluation control,
-control flow, and local assumptions. Proofs and notation declarations are
-reserved for later versions.
+Version 0.0.3 describes the implemented language: a controlled mathematical
+prose reader, exact and approximate numbers, evaluation, definitions and
+clauses, scoping, hygiene, modules, binders, structures, instances, conditionals,
+matches, assumptions, theorem skeletons, and the structural primitives. Notation
+declarations remain reserved for later versions.

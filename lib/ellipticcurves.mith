@@ -1,119 +1,77 @@
-// Elliptic curves over the rationals and over prime fields.
-//
-// A point is [x,y]. The point at infinity is undefined. The affine formulas
-// assume characteristic not two or three.
+module ellipticcurves.
 
-mod ellipticcurves
+use lists.
 
-import lists
+export ellipticDiscriminant, ellipticJInvariant, ellipticIsOnCurve, ellipticIsOnCurveMod, ellipticIsSingular, ellipticNegate, ellipticAdd, ellipticDouble, ellipticScalarMul, ellipticPointOrder, ellipticPointCount, ellipticAddMod, ellipticDoubleMod, ellipticScalarMulMod, ellipticCurveDiffieHellman, ellipticTwist.
 
-export ellipticDiscriminant, ellipticJInvariant, ellipticIsOnCurve, ellipticIsOnCurveMod, ellipticIsSingular, ellipticNegate, ellipticAdd, ellipticDouble, ellipticScalarMul, ellipticPointOrder, ellipticPointCount, ellipticAddMod, ellipticDoubleMod, ellipticScalarMulMod, ellipticCurveDiffieHellman, ellipticTwist
+we define ellipticDiscriminant(a, b) = -16 * (4 * power(a, 3) + 27 * power(b, 2)).
 
-def ellipticDiscriminant(a,b)= -16*(4*power(a,3)+27*power(b,2))
-def ellipticJInvariant(a,b)=1728*4*power(a,3)/(4*power(a,3)+27*power(b,2))
-def ellipticIsSingular(a,b)=4*power(a,3)+27*power(b,2)==0
-def ellipticIsOnCurve(a,b,x,y)=power(y,2)==power(x,3)+a*x+b
-def ellipticIsOnCurveMod(a,b,x,y,m)=mod(power(y,2),m)==mod(power(x,3)+a*x+b,m)
-def ellipticTwist(a,b,d)=[a*power(d,2),b*power(d,3)]
+we define ellipticJInvariant(a, b) = 1728 * 4 * power(a, 3) / (4 * power(a, 3) + 27 * power(b, 2)).
 
-def ellipticNegate(point) when same(point,undefined)=undefined
-def ellipticNegate(point)=[nth(point,0),-nth(point,1)]
+we define ellipticIsSingular(a, b) = 4 * power(a, 3) + 27 * power(b, 2) == 0.
 
-def ellipticAdd(a,left,right) when same(left,undefined)=right
-def ellipticAdd(a,left,right) when same(right,undefined)=left
-def ellipticAdd(a,left,right)=
-let x1=nth(left,0)
-let y1=nth(left,1)
-let x2=nth(right,0)
-let y2=nth(right,1)
-if(x1==x2,ellipticSameX(a,x1,y1,y2),ellipticDistinctX(a,x1,y1,x2,y2))
-end
+we define ellipticIsOnCurve(a, b, x, y) = power(y, 2) == power(x, 3) + a * x + b.
 
-def ellipticSameX(a,x,y1,y2)=if(y1+y2==0,undefined,ellipticDouble(a,[x,y1]))
+we define ellipticIsOnCurveMod(a, b, x, y, m) = mod(power(y, 2), m) == mod(power(x, 3) + a * x + b, m).
 
-def ellipticDistinctX(a,x1,y1,x2,y2)=
-let slope=(y2-y1)/(x2-x1)
-let x3=power(slope,2)-x1-x2
-let y3=slope*(x1-x3)-y1
-[x3,y3]
-end
+we define ellipticTwist(a, b, d) = [a * power(d, 2), b * power(d, 3)].
 
-def ellipticDouble(a,point)=
-let x=nth(point,0)
-let y=nth(point,1)
-let slope=(3*power(x,2)+a)/(2*y)
-let x3=power(slope,2)-2*x
-let y3=slope*(x-x3)-y
-[x3,y3]
-end
+we define ellipticNegate(point) = undefined, where same(point, undefined).
 
-def ellipticScalarMul(a,k,point) when k<=0=undefined
-def ellipticScalarMul(a,k,point) when same(point,undefined)=undefined
-def ellipticScalarMul(a,k,point) when k==1=point
-def ellipticScalarMul(a,k,point)=
-if(isEven(k),ellipticScalarMul(a,k/2,ellipticDouble(a,point)),ellipticAdd(a,point,ellipticScalarMul(a,k-1,point)))
-end
+we define ellipticNegate(point) = [nth(point, 0), -nth(point, 1)].
 
-def ellipticPointOrder(a,point,limit)=ellipticPointOrderStep(a,point,1,limit)
+we define ellipticAdd(a, left, right) = right, where same(left, undefined).
 
-def ellipticPointOrderStep(a,point,k,limit) when k>limit=undefined
-def ellipticPointOrderStep(a,point,k,limit)=
-if(same(ellipticScalarMul(a,k,point),undefined),k,ellipticPointOrderStep(a,point,k+1,limit))
-end
+we define ellipticAdd(a, left, right) = left, where same(right, undefined).
 
-def ellipticPointCount(a,b,p)=
-let xs=rangeList(p)
-let points=concat(map(xs,fn(x)=>map(rangeList(p),fn(y)=>if(ellipticIsOnCurveMod(a,b,x,y,p),[[x,y]],[]))))
-length(filter(points,fn(pt)=>length(pt)==1))+1
-end
+we define ellipticAdd(a, left, right) = let x1 = nth(left, 0) in let y1 = nth(left, 1) in let x2 = nth(right, 0) in let y2 = nth(right, 1) in if(x1 == x2, ellipticSameX(a, x1, y1, y2), ellipticDistinctX(a, x1, y1, x2, y2)).
 
-def ellipticAddMod(a,left,right,m) when same(left,undefined)=right
-def ellipticAddMod(a,left,right,m) when same(right,undefined)=left
-def ellipticAddMod(a,left,right,m)=
-let x1=nth(left,0)
-let y1=nth(left,1)
-let x2=nth(right,0)
-let y2=nth(right,1)
-if(mod(x1-x2,m)==0,ellipticSameXMod(a,x1,y1,y2,m),ellipticDistinctXMod(a,x1,y1,x2,y2,m))
-end
+we define ellipticSameX(a, x, y1, y2) = if(y1 + y2 == 0, undefined, ellipticDouble(a, [x, y1])).
 
-def ellipticSameXMod(a,x,y1,y2,m)=if(mod(y1+y2,m)==0,undefined,ellipticDoubleMod(a,[x,y1],m))
+we define ellipticDistinctX(a, x1, y1, x2, y2) = let slope = (y2 - y1) / (x2 - x1) in let x3 = power(slope, 2) - x1 - x2 in let y3 = slope * (x1 - x3) - y1 in [x3, y3].
 
-def ellipticDistinctXMod(a,x1,y1,x2,y2,m)=
-let inverse=modInverse(mod(x2-x1,m),m)
-if(same(inverse,undefined),undefined,ellipticDistinctXStep(x1,y1,x2,y2,inverse,m))
-end
+we define ellipticDouble(a, point) = let x = nth(point, 0) in let y = nth(point, 1) in let slope = (3 * power(x, 2) + a) / (2 * y) in let x3 = power(slope, 2) - 2 * x in let y3 = slope * (x - x3) - y in [x3, y3].
 
-def ellipticDistinctXStep(x1,y1,x2,y2,inverse,m)=
-let slope=mod((y2-y1)*inverse,m)
-let x3=mod(power(slope,2)-x1-x2,m)
-let y3=mod(slope*(x1-x3)-y1,m)
-[x3,y3]
-end
+we define ellipticScalarMul(a, k, point) = undefined, where k <= 0.
 
-def ellipticDoubleMod(a,point,m)=
-let x=nth(point,0)
-let y=nth(point,1)
-let inverse=modInverse(mod(2*y,m),m)
-if(same(inverse,undefined),undefined,ellipticDoubleStep(a,x,y,inverse,m))
-end
+we define ellipticScalarMul(a, k, point) = undefined, where same(point, undefined).
 
-def ellipticDoubleStep(a,x,y,inverse,m)=
-let slope=mod((3*power(x,2)+a)*inverse,m)
-let x3=mod(power(slope,2)-2*x,m)
-let y3=mod(slope*(x-x3)-y,m)
-[x3,y3]
-end
+we define ellipticScalarMul(a, k, point) = point, where k == 1.
 
-def ellipticScalarMulMod(a,k,point,m) when k<=0=undefined
-def ellipticScalarMulMod(a,k,point,m) when same(point,undefined)=undefined
-def ellipticScalarMulMod(a,k,point,m) when k==1=point
-def ellipticScalarMulMod(a,k,point,m)=
-if(isEven(k),ellipticScalarMulMod(a,k/2,ellipticDoubleMod(a,point,m),m),ellipticAddMod(a,point,ellipticScalarMulMod(a,k-1,point,m),m))
-end
+we define ellipticScalarMul(a, k, point) = if(isEven(k), ellipticScalarMul(a, k / 2, ellipticDouble(a, point)), ellipticAdd(a, point, ellipticScalarMul(a, k - 1, point))).
 
-def ellipticCurveDiffieHellman(a,b,p,generator,alice,bob)=
-ellipticScalarMulMod(a,bob,ellipticScalarMulMod(a,alice,generator,p),p)
-end
+we define ellipticPointOrder(a, point, limit) = ellipticPointOrderStep(a, point, 1, limit).
 
-end
+we define ellipticPointOrderStep(a, point, k, limit) = undefined, where k > limit.
+
+we define ellipticPointOrderStep(a, point, k, limit) = if(same(ellipticScalarMul(a, k, point), undefined), k, ellipticPointOrderStep(a, point, k + 1, limit)).
+
+we define ellipticPointCount(a, b, p) = let xs = rangeList(p) in let points = concat(map(xs, fn(x) => map(rangeList(p), fn(y) => if(ellipticIsOnCurveMod(a, b, x, y, p), [[x, y]], [])))) in length(filter(points, fn(pt) => length(pt) == 1)) + 1.
+
+we define ellipticAddMod(a, left, right, m) = right, where same(left, undefined).
+
+we define ellipticAddMod(a, left, right, m) = left, where same(right, undefined).
+
+we define ellipticAddMod(a, left, right, m) = let x1 = nth(left, 0) in let y1 = nth(left, 1) in let x2 = nth(right, 0) in let y2 = nth(right, 1) in if(mod(x1 - x2, m) == 0, ellipticSameXMod(a, x1, y1, y2, m), ellipticDistinctXMod(a, x1, y1, x2, y2, m)).
+
+we define ellipticSameXMod(a, x, y1, y2, m) = if(mod(y1 + y2, m) == 0, undefined, ellipticDoubleMod(a, [x, y1], m)).
+
+we define ellipticDistinctXMod(a, x1, y1, x2, y2, m) = let inverse = modInverse(mod(x2 - x1, m), m) in if(same(inverse, undefined), undefined, ellipticDistinctXStep(x1, y1, x2, y2, inverse, m)).
+
+we define ellipticDistinctXStep(x1, y1, x2, y2, inverse, m) = let slope = mod((y2 - y1) * inverse, m) in let x3 = mod(power(slope, 2) - x1 - x2, m) in let y3 = mod(slope * (x1 - x3) - y1, m) in [x3, y3].
+
+we define ellipticDoubleMod(a, point, m) = let x = nth(point, 0) in let y = nth(point, 1) in let inverse = modInverse(mod(2 * y, m), m) in if(same(inverse, undefined), undefined, ellipticDoubleStep(a, x, y, inverse, m)).
+
+we define ellipticDoubleStep(a, x, y, inverse, m) = let slope = mod((3 * power(x, 2) + a) * inverse, m) in let x3 = mod(power(slope, 2) - 2 * x, m) in let y3 = mod(slope * (x - x3) - y, m) in [x3, y3].
+
+we define ellipticScalarMulMod(a, k, point, m) = undefined, where k <= 0.
+
+we define ellipticScalarMulMod(a, k, point, m) = undefined, where same(point, undefined).
+
+we define ellipticScalarMulMod(a, k, point, m) = point, where k == 1.
+
+we define ellipticScalarMulMod(a, k, point, m) = if(isEven(k), ellipticScalarMulMod(a, k / 2, ellipticDoubleMod(a, point, m), m), ellipticAddMod(a, point, ellipticScalarMulMod(a, k - 1, point, m), m)).
+
+we define ellipticCurveDiffieHellman(a, b, p, generator, alice, bob) = ellipticScalarMulMod(a, bob, ellipticScalarMulMod(a, alice, generator, p), p).
+
+end module.

@@ -1,34 +1,34 @@
 # id	profile	kind	expected	source	rationale
-core.eval.0001	core	output	7	mod c\nprt 1+2+4\nend	Addition of exact integers.
-core.eval.0002	core	output	5/6	mod c\nprt 1/2+1/3\nend	Rational addition stays exact.
+core.eval.0001	core	output	7	module c.\nprint 1+2+4.\nend module.	Addition of exact integers.
+core.eval.0002	core	output	5/6	module c.\nprint 1/2+1/3.\nend module.	Rational addition stays exact.
 core.eval.0003	core	value	power(x,2)	x*x	Canonical form of a repeated product.
 core.eval.0004	core	value	0	x-x	Like terms cancel to exact zero.
-core.order.0001	core	output	0	mod c\ndef f(x)=0\ndef f(0)=1\nprt f(0)\nend	Rules are tried in definition order.
-core.order.0002	core	output	1	mod c\ndef f(0)=1\ndef f(x)=0\nprt f(0)\nend	A literal rule defined first wins.
-core.guard.0001	core	output	2	mod c\ndef f(x) when x>0=1\ndef f(x)=2\nprt f(-1)\nend	A false guard selects the next rule.
-core.hyg.0001	core	output	x1_->x	mod c\ndef f(k)=rule(x_,k)\nlet r=f(x)\nprt r\nend	A constructed rule renames its binder when needed.
-core.hyg.0002	core	output	2+y	mod c\ndef f(k)=fn(y)=>k+y\nlet r=apply(f(y),[2])\nprt r\nend	A closure parameter does not capture the rule value.
-core.hyg.0003	core	output	10+a	mod c\ndef f(k)=let([a=10,b=k],a+b)\nlet r=f(a)\nprt r\nend	A let binding does not capture an earlier value.
-core.local.0001	core	output	120	mod c\ndef fact(n)=\ndef loop(0,acc)=acc\ndef loop(k,acc)=loop(k-1,acc*k)\nloop(n,1)\nend\nprt fact(5)\nend	Local definitions are mutually recursive.
-core.local.0002	core	output	1\nhelper(1)	mod c\ndef outer(x)=\ndef helper(y)=y\nhelper(x)\nend\nprt outer(1)\nprt helper(1)\nend	A local definition does not escape its body.
+core.order.0001	core	output	0	module c.\nwe define f(x) = 0.\nwe define f(0) = 1.\nprint f(0).\nend module.	Rules are tried in definition order.
+core.order.0002	core	output	1	module c.\nwe define f(0) = 1.\nwe define f(x) = 0.\nprint f(0).\nend module.	A literal rule defined first wins.
+core.guard.0001	core	output	2	module c.\nwe define f(x) = 1, where x > 0.\nwe define f(x) = 2.\nprint f(-1).\nend module.	A false guard selects the next rule.
+core.hyg.0001	core	output	x1_->x	module c.\nwe define f(k) = rule(x_, k).\nlet r be f(x).\nprint r.\nend module.	A constructed rule renames its binder when needed.
+core.hyg.0002	core	output	2+y	module c.\nwe define f(k) = fn(y) => k + y.\nlet r be apply(f(y), [2]).\nprint r.\nend module.	A closure parameter does not capture the rule value.
+core.hyg.0003	core	output	10+a	module c.\nwe define f(k) = let([a=10, b=k], a + b).\nlet r be f(a).\nprint r.\nend module.	A let binding does not capture an earlier value.
+core.local.0001	core	output	120	module c.\nwe define fact(n) = let loop(0, acc) = acc, loop(k, acc) = loop(k - 1, acc * k) in loop(n, 1).\nprint fact(5).\nend module.	Local definitions are mutually recursive.
+core.local.0002	core	output	1\nhelper(1)	module c.\nwe define outer(x) = let helper(y) = y in helper(x).\nprint outer(1).\nprint helper(1).\nend module.	A local definition does not escape its body.
 core.err.0001	core	diagnostic	TGN-EVAL-0013	f(x_):=x\nf()	A fixed arity function rejects a wrong argument count.
 core.err.0002	core	diagnostic	TGN-EVAL-0011	plus=1	A protected symbol cannot be redefined.
 core.parse.0001	core	parse	TGN-PARSE-0001	1 + 2	Whitespace inside an expression is rejected.
-core.parse.0002	core	parse	TGN-PARSE-0004	mod c\nprt 1\nend\nextra\n	Statements after the module end are rejected.
-core.trace.0001	core	trace_line	3	mod c\ndef f(x)=x\nprt f()\nend	An evaluation diagnostic points at the failing statement.
+core.parse.0002	core	parse	TGN-PARSE-0004	module c.\nprint 1.\nend module.\nextra.	Statements after the module end are rejected.
+core.trace.0001	core	trace_line	3	module c.\nwe define f(x) = x.\nprint f().\nend module.	An evaluation diagnostic points at the failing statement.
 core.roundtrip.0001	core	roundtrip	plus(x,y)	x+y	Canonical printing round trips through the reader.
-core.bind.0001	core	output	true	mod c\nprt forall(x,[1,2,3],x>0)\nend	A universal binder over a finite domain.
-core.bind.0002	core	output	false	mod c\nprt exists(x,[1,2],x>2)\nend	An existential binder with no witness.
-core.bind.0003	core	output	[2,4]	mod c\nprt setBuilder(x,[1,2,3,4],isEven(x))\nend	A set builder over a finite domain.
-core.bind.0004	core	output	true	mod c\nprt same(forall(x,y,x>0),forall(z,y,z>0))\nend	Binders use canonical variable names.
-core.bind.0005	core	output	forall(v0,y,v0>0)	mod c\nprt forall(x,y,x>0)\nend	An undecidable binder remains symbolic.
-core.struct.0001	core	output	true	mod c\nstructure testMonoid\nfield carrier\nfield op\nfield identity\nlaw associative: forall(a,carrier,forall(b,carrier,forall(c,carrier,same(op(op(a,b),c),op(a,op(b,c))))))\nend\ninstance cyclic : testMonoid\ncarrier = [0,1,2]\nop = fn(a,b)=>mod(a+b,3)\nidentity = 0\nend\nprt testMonoidHolds(cyclic)\nend	An instance checks its laws.
-core.struct.0002	core	output	0	mod c\nstructure testMonoid\nfield carrier\nfield op\nfield identity\nlaw associative: forall(a,carrier,forall(b,carrier,forall(c,carrier,same(op(op(a,b),c),op(a,op(b,c))))))\nend\ninstance cyclic : testMonoid\ncarrier = [0,1,2]\nop = fn(a,b)=>mod(a+b,3)\nidentity = 0\nend\nprt apply(testMonoidOp(cyclic),[1,2])\nend	A generated accessor projects a field.
-core.struct.0003	core	output	[0,1,2]	mod c\nstructure testMonoid\nfield carrier\nfield op\nfield identity\nlaw associative: forall(a,carrier,forall(b,carrier,forall(c,carrier,same(op(op(a,b),c),op(a,op(b,c))))))\nend\ninstance cyclic : testMonoid\ncarrier = [0,1,2]\nop = fn(a,b)=>mod(a+b,3)\nidentity = 0\nend\nprt testMonoidCarrier(cyclic)\nend	A generated accessor projects the carrier.
+core.bind.0001	core	output	true	module c.\nprint forall(x,[1,2,3],x>0).\nend module.	A universal binder over a finite domain.
+core.bind.0002	core	output	false	module c.\nprint exists(x,[1,2],x>2).\nend module.	An existential binder with no witness.
+core.bind.0003	core	output	[2,4]	module c.\nprint setBuilder(x,[1,2,3,4],isEven(x)).\nend module.	A set builder over a finite domain.
+core.bind.0004	core	output	true	module c.\nprint same(forall(x,y,x>0),forall(z,y,z>0)).\nend module.	Binders use canonical variable names.
+core.bind.0005	core	output	forall(v0,y,v0>0)	module c.\nprint forall(x,y,x>0).\nend module.	An undecidable binder remains symbolic.
+core.struct.0001	core	output	true	module c.\nstructure testMonoid.\nfield carrier.\nfield op.\nfield identity.\nlaw associative: forall(a, carrier, forall(b, carrier, forall(c, carrier, same(op(op(a, b), c), op(a, op(b, c)))))).\nend structure.\ninstance cyclic : testMonoid.\ncarrier = [0, 1, 2].\nop = fn(a, b) => mod(a + b, 3).\nidentity = 0.\nend instance.\nprint testMonoidHolds(cyclic).\nend module.	An instance checks its laws.
+core.struct.0002	core	output	0	module c.\nstructure testMonoid.\nfield carrier.\nfield op.\nfield identity.\nlaw associative: forall(a, carrier, forall(b, carrier, forall(c, carrier, same(op(op(a, b), c), op(a, op(b, c)))))).\nend structure.\ninstance cyclic : testMonoid.\ncarrier = [0, 1, 2].\nop = fn(a, b) => mod(a + b, 3).\nidentity = 0.\nend instance.\nprint apply(testMonoidOp(cyclic), [1, 2]).\nend module.	A generated accessor projects a field.
+core.struct.0003	core	output	[0,1,2]	module c.\nstructure testMonoid.\nfield carrier.\nfield op.\nfield identity.\nlaw associative: forall(a, carrier, forall(b, carrier, forall(c, carrier, same(op(op(a, b), c), op(a, op(b, c)))))).\nend structure.\ninstance cyclic : testMonoid.\ncarrier = [0, 1, 2].\nop = fn(a, b) => mod(a + b, 3).\nidentity = 0.\nend instance.\nprint testMonoidCarrier(cyclic).\nend module.	A generated accessor projects the carrier.
 core.context.0001	core	value	"Global"	$Context	The current context is Global by default.
-core.context.0002	core	output	"foo"\n"foo"	mod c\nprt begin(foo)\nprt $Context\nend	Begin changes the current context.
+core.context.0002	core	output	"foo"\n"foo"	module c.\nprint begin(foo).\nprint $Context.\nend module.	Begin changes the current context.
 core.context.0003	core	value	5	foo;x=5\nfoo;x	A qualified name addresses a context directly.
-core.context.0004	core	output	"Global"	mod c\nprt first(contexts())\nend	Context introspection lists known contexts.
+core.context.0004	core	output	"Global"	module c.\nprint first(contexts()).\nend module.	Context introspection lists known contexts.
 core.context.0005	core	diagnostic	TGN-EVAL-0018	end()	End without an enclosing Begin is rejected.
 core.string.0001	core	value	"abc"	"abc"	String literals are atoms.
 core.string.0002	core	value	"b"	"abc"[[2]]	String indexing is one based.

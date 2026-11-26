@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.0.3
+
+Version 0.0.3 begins the controlled mathematical prose language transition.
+
+- Added the prose parser foundation for modules, imports, exports, definitions, clauses, derivative notation, and theorem statements.
+- Adopted Unicode as the canonical surface form with ASCII input aliases.
+- Added the `*` global notation escape for shadowed operators.
+- Added prose lowering to the evaluator statement AST for modules, definitions, guards, and theorem skeletons.
+- Ported every bundled library module to controlled mathematical prose.
+- Added local `let ... in ...` lowering for prose formulas and guards.
+- Added a first proof checker fragment for ground equality claims with definitional normalization.
+- Connected module-level assumptions to evaluation.
+- Added prose structure and instance declarations.
+- Added local function definitions through `let` equations.
+- Added prose `print` statements, module-level `let`, and a prose conformance profile.
+- Added `have` and `show` proof steps to the equality checker.
+- Added finite-domain existential theorem checking.
+- Added proof-local assumptions, symbolic equality rewriting, boolean claim verification, and finite-domain universal theorem checking.
+- Added assumed prose instances.
+- Added prose `if ... then:` blocks with optional `else:` and `match ... with:` blocks.
+- Migrated all integration test sources and the conformance corpus to prose.
+- Removed the old line-based parser.
+- Rewrote the syntax documentation and surface grammar for the prose language.
+- Ported the module and structure integration tests to prose.
+- Ported all remaining bundled library modules to prose.
+
 ## 0.0.2
 
 Version 0.0.2 begins the language-generalisation phase. The language version

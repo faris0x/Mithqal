@@ -203,7 +203,7 @@ impl<'a> Evaluator<'a> {
             }
             KernelFunction::Logic(function) => {
                 let arity = match function {
-                    LogicHead::Xor | LogicHead::Implies => 2,
+                    LogicHead::Xor | LogicHead::Implies | LogicHead::FreeOf => 2,
                     LogicHead::All | LogicHead::Any => 1,
                 };
                 if args.len() != arity {
@@ -800,6 +800,23 @@ impl<'a> Evaluator<'a> {
         }
     }
 
+    fn contains_symbol(arena: &Arena, expression: ExprId, symbol: crate::expr::SymbolId) -> bool {
+        match arena.node(expression) {
+            Node::Symbol(value) => *value == symbol,
+            Node::Call { head, args } => {
+                Self::contains_symbol(arena, *head, symbol)
+                    || args
+                        .iter()
+                        .any(|argument| Self::contains_symbol(arena, *argument, symbol))
+            }
+            Node::Association(entries) => entries.iter().any(|entry| {
+                Self::contains_symbol(arena, entry.key, symbol)
+                    || Self::contains_symbol(arena, entry.value, symbol)
+            }),
+            _ => false,
+        }
+    }
+
     pub(super) fn apply_logic(&mut self, function: LogicHead, args: &[ExprId]) -> Option<ExprId> {
         let boolean = |value| {
             if value {
@@ -818,6 +835,10 @@ impl<'a> Evaluator<'a> {
                 let left = self.boolean_value(args[0])?;
                 let right = self.boolean_value(args[1])?;
                 Some(boolean(!left || right))
+            }
+            LogicHead::FreeOf => {
+                let symbol = self.arena.symbol_id(args[1])?;
+                Some(boolean(!Self::contains_symbol(self.arena, args[0], symbol)))
             }
             LogicHead::All | LogicHead::Any => {
                 let Node::Call { head, args: values } = self.arena.node(args[0]) else {
@@ -941,7 +962,8 @@ impl<'a> Evaluator<'a> {
             | ExactNumericHead::Ceil
             | ExactNumericHead::Round
             | ExactNumericHead::Gamma
-            | ExactNumericHead::Lgamma => 1,
+            | ExactNumericHead::Lgamma
+            | ExactNumericHead::IsInteger => 1,
         };
         if args.len() != arity {
             return Err(Diagnostic::eval(
@@ -1052,6 +1074,9 @@ impl<'a> Evaluator<'a> {
             }
             ExactNumericHead::Gamma => self.exact_gamma(args[0]),
             ExactNumericHead::Lgamma => self.exact_lgamma(args[0]),
+            ExactNumericHead::IsInteger => {
+                Some(self.boolean(matches!(self.arena.node(args[0]), Node::Int(_))))
+            }
             ExactNumericHead::Floor | ExactNumericHead::Ceil | ExactNumericHead::Round => {
                 if let Node::Real(value) = self.arena.node(args[0]) {
                     let result = match function {

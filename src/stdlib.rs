@@ -303,11 +303,11 @@ mod tests {
         let modules = [
             Module {
                 name: "beta",
-                source: "mod beta\nimport alpha\nend\n",
+                source: "module beta.\nuse alpha.\nend module.",
             },
             Module {
                 name: "alpha",
-                source: "mod alpha\nend\n",
+                source: "module alpha.\nend module.",
             },
         ];
         let order = resolve_order(&modules).unwrap();
@@ -319,17 +319,17 @@ mod tests {
         let modules = [
             Module {
                 name: "alpha",
-                source: "mod alpha\nimport beta\nend\n",
+                source: "module alpha.\nuse beta.\nend module.",
             },
             Module {
                 name: "beta",
-                source: "mod beta\nimport alpha\nend\n",
+                source: "module beta.\nuse alpha.\nend module.",
             },
         ];
         assert!(resolve_order(&modules).is_err());
         let modules = [Module {
             name: "alpha",
-            source: "mod alpha\nimport missing\nend\n",
+            source: "module alpha.\nuse missing.\nend module.",
         }];
         assert!(resolve_order(&modules).is_err());
     }

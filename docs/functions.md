@@ -25,6 +25,8 @@ Functions implemented by the bundled Mithqal standard library rather than the Ru
 | `nth` | core | exact | `nth(list,index)` | a list and an in range integer index | infix | `nth([4,5,6],1)` | evaluates |
 | `reverse` | core | exact | `reverse(list)` | a list argument | infix | `reverse([1,2,3])` | evaluates |
 | `isNumber` | core | exact | `isNumber(value)` | any value | boolean | `isNumber(3)` | evaluates |
+| `isInteger` | core | exact | `isInteger(value)` | any value | boolean | `isInteger(3)` | evaluates |
+| `freeOf` | core | exact | `freeOf(expr, symbol)` | expressions | boolean | `freeOf(x+1,y)` | evaluates |
 | `expand` | algebra | symbolic | `expand(expr)` | supported expressions in the documented domain | infix | `expand((x+y)^3)` | evaluates |
 | `factor` | algebra | symbolic | `factor(expr)` | supported expressions in the documented domain | infix | `factor(x^6-1)` | evaluates |
 | `together` | algebra | symbolic | `together(expr)` | supported expressions in the documented domain | infix | `together(1/x+1/(x+1))` | evaluates |
